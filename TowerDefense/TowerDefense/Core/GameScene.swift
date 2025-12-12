@@ -122,13 +122,90 @@ final class GameScene: SKScene {
             label: "SPAWN"
         )
         
-        // Draw exit zone
+        // Draw exit zone with prominent BASE indicator
         drawZone(
             startX: GameConstants.gridWidth - GameConstants.exitZoneWidth,
             endX: GameConstants.gridWidth,
             color: SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.3),
             label: "EXIT"
         )
+        
+        // Add prominent BASE castle indicator in bottom-right
+        drawBaseIndicator()
+    }
+    
+    private func drawBaseIndicator() {
+        let baseNode = SKNode()
+        baseNode.zPosition = GameConstants.ZPosition.ui.rawValue - 10
+        
+        // Position in bottom-right of exit zone
+        let baseX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - GameConstants.cellSize * 1.5
+        let baseY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
+        baseNode.position = CGPoint(x: baseX, y: baseY)
+        
+        // Castle/Base icon background
+        let baseSize: CGFloat = 80
+        let baseBg = SKShapeNode(rectOf: CGSize(width: baseSize, height: baseSize), cornerRadius: 10)
+        baseBg.fillColor = SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 0.8)
+        baseBg.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 1.0)
+        baseBg.lineWidth = 3
+        baseNode.addChild(baseBg)
+        
+        // Castle towers
+        let towerWidth: CGFloat = 15
+        let towerHeight: CGFloat = 30
+        for xOffset in [-25, 25] as [CGFloat] {
+            let tower = SKShapeNode(rectOf: CGSize(width: towerWidth, height: towerHeight))
+            tower.fillColor = SKColor(red: 0.5, green: 0.15, blue: 0.15, alpha: 1.0)
+            tower.strokeColor = .clear
+            tower.position = CGPoint(x: CGFloat(xOffset), y: 15)
+            baseNode.addChild(tower)
+            
+            // Tower top (crenellations)
+            let top = SKShapeNode(rectOf: CGSize(width: towerWidth + 4, height: 5))
+            top.fillColor = SKColor(red: 0.4, green: 0.1, blue: 0.1, alpha: 1.0)
+            top.strokeColor = .clear
+            top.position = CGPoint(x: CGFloat(xOffset), y: 32)
+            baseNode.addChild(top)
+        }
+        
+        // Main gate
+        let gate = SKShapeNode(rectOf: CGSize(width: 25, height: 35))
+        gate.fillColor = SKColor(red: 0.3, green: 0.1, blue: 0.1, alpha: 1.0)
+        gate.strokeColor = .clear
+        gate.position = CGPoint(x: 0, y: 0)
+        baseNode.addChild(gate)
+        
+        // "BASE" label
+        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        label.fontSize = 14
+        label.fontColor = .white
+        label.text = "🏰 BASE"
+        label.position = CGPoint(x: 0, y: -55)
+        baseNode.addChild(label)
+        
+        // Pulsing effect
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.05, duration: 0.8),
+            SKAction.scale(to: 1.0, duration: 0.8)
+        ])
+        baseBg.run(SKAction.repeatForever(pulse))
+        
+        // Arrow indicator pointing to base
+        let arrow = SKLabelNode(fontNamed: "Helvetica-Bold")
+        arrow.fontSize = 24
+        arrow.fontColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
+        arrow.text = "→→→"
+        arrow.position = CGPoint(x: -80, y: 0)
+        baseNode.addChild(arrow)
+        
+        let arrowPulse = SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.3, duration: 0.5),
+            SKAction.fadeAlpha(to: 1.0, duration: 0.5)
+        ])
+        arrow.run(SKAction.repeatForever(arrowPulse))
+        
+        gameLayer.addChild(baseNode)
     }
     
     private func drawGrid() {
