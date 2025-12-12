@@ -73,21 +73,25 @@ final class AudioManager {
     }
     
     private func setupAudioEngine() {
+        // Create a known-good format: stereo, 44.1kHz, float
+        audioFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)
+        
+        guard let format = audioFormat else {
+            print("Failed to create audio format")
+            return
+        }
+        
         audioEngine = AVAudioEngine()
         guard let engine = audioEngine else { return }
         
         mixerNode = engine.mainMixerNode
-        
-        // Use the mixer's output format to ensure compatibility
         guard let mixer = mixerNode else { return }
-        audioFormat = mixer.outputFormat(forBus: 0)
         
-        // Create pool of player nodes
+        // Create pool of player nodes with our known format
         for _ in 0..<8 {
             let player = AVAudioPlayerNode()
             engine.attach(player)
-            // Connect with mixer's format for compatibility
-            engine.connect(player, to: mixer, format: audioFormat)
+            engine.connect(player, to: mixer, format: format)
             playerNodes.append(player)
         }
         
@@ -95,6 +99,8 @@ final class AudioManager {
             try engine.start()
         } catch {
             print("Audio engine start failed: \(error)")
+            // Disable audio on failure
+            audioEngine = nil
         }
     }
     
@@ -335,9 +341,10 @@ final class AudioManager {
         volume: Float
     ) -> AVAudioPCMBuffer? {
         
-        // Use actual sample rate from format
         guard let format = audioFormat else { return nil }
-        let actualSampleRate = format.sampleRate
+        
+        // Always use 44100 to match our format
+        let actualSampleRate: Double = 44100
         let frameCount = AVAudioFrameCount(duration * actualSampleRate)
         
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
@@ -421,12 +428,22 @@ final class AudioManager {
     }
     
     private func playBuffer(_ buffer: AVAudioPCMBuffer?) {
-        guard let buffer = buffer else { return }
+        guard let buffer = buffer,
+              let engine = audioEngine,
+              engine.isRunning,
+              let format = audioFormat else { return }
+        
+        // Verify format matches to prevent crash
+        guard buffer.format.channelCount == format.channelCount,
+              buffer.format.sampleRate == format.sampleRate else {
+            print("Audio format mismatch - skipping playback")
+            return
+        }
         
         // Find available player node
         for player in playerNodes {
             if !player.isPlaying {
-                player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
+                player.scheduleBuffer(buffer, at: nil, options: [])
                 player.play()
                 return
             }
@@ -435,7 +452,7 @@ final class AudioManager {
         // If all players busy, use first one
         if let player = playerNodes.first {
             player.stop()
-            player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
+            player.scheduleBuffer(buffer, at: nil, options: [])
             player.play()
         }
     }
