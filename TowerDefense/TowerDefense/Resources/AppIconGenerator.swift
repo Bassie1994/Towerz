@@ -8,7 +8,6 @@ final class AppIconGenerator {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
         
         return renderer.image { context in
-            let rect = CGRect(x: 0, y: 0, width: size, height: size)
             let ctx = context.cgContext
             
             // Background gradient

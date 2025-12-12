@@ -148,7 +148,7 @@ class Enemy: SKNode {
         let separation = calculateSeparation(from: enemies)
         
         // Combine forces
-        var finalDirection = CGVector(
+        let finalDirection = CGVector(
             dx: direction.dx + separation.dx * 0.3,
             dy: direction.dy + separation.dy * 0.3
         ).normalized()
@@ -277,7 +277,6 @@ class Enemy: SKNode {
     private func updateHealthBar() {
         let healthPercent = max(0, currentHealth / maxHealth)
         let fullWidth: CGFloat = enemySize + 8
-        let newWidth = fullWidth * healthPercent
         
         // Update fill width using scale
         healthBarFill.xScale = healthPercent

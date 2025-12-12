@@ -392,7 +392,7 @@ final class AudioManager {
             return Float(attack * decay)
         case .victory:
             let segments = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-            let freqMults = [1.0, 1.25, 1.5, 1.25, 1.5, 2.0]
+            _ = [1.0, 1.25, 1.5, 1.25, 1.5, 2.0]  // freqMults - reserved for future use
             var idx = 0
             for i in 0..<segments.count-1 {
                 if t >= segments[i] && t < segments[i+1] { idx = i; break }

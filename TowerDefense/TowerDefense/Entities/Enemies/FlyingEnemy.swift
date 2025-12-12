@@ -155,7 +155,7 @@ final class FlyingEnemy: Enemy {
         }
         
         // Combine direction with light separation
-        var finalDirection = CGVector(
+        let finalDirection = CGVector(
             dx: direction.dx + separation.dx * 0.1,
             dy: direction.dy + separation.dy * 0.1
         ).normalized()
