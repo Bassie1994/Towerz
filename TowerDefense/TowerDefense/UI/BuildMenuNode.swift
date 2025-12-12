@@ -19,7 +19,7 @@ final class BuildMenuNode: SKNode {
     
     private let menuBackground: SKShapeNode
     private let menuWidth: CGFloat = 100
-    private let menuHeight: CGFloat = 650
+    private let menuHeight: CGFloat = 720
     
     // MARK: - Initialization
     
@@ -53,9 +53,9 @@ final class BuildMenuNode: SKNode {
         title.position = CGPoint(x: 0, y: menuHeight / 2 - 20)
         menuBackground.addChild(title)
         
-        // Create buttons for each tower type (8 towers now)
-        let buttonSpacing: CGFloat = 76  // Reduced spacing for 8 buttons
-        var yOffset: CGFloat = menuHeight / 2 - 60
+        // Create buttons for each tower type (9 towers now)
+        let buttonSpacing: CGFloat = 68  // Reduced spacing for 9 buttons
+        var yOffset: CGFloat = menuHeight / 2 - 55
         
         for towerType in TowerType.allCases {
             let button = TowerButton(type: towerType)
@@ -189,6 +189,8 @@ class TowerButton: SKNode {
         symbol.verticalAlignmentMode = .center
         
         switch towerType {
+        case .wall:
+            symbol.text = "▢"
         case .machineGun:
             symbol.text = "⟫"
         case .cannon:

@@ -43,6 +43,7 @@
 		005000015 /* Projectile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000014 /* Projectile.swift */; };
 		005000017 /* LaserTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000016 /* LaserTower.swift */; };
 		005000019 /* AntiAirTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000018 /* AntiAirTower.swift */; };
+		005000021 /* WallTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000020 /* WallTower.swift */; };
 		
 		/* Systems */
 		006000001 /* WaveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000000 /* WaveManager.swift */; };
@@ -104,6 +105,7 @@
 		005000014 /* Projectile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Projectile.swift; sourceTree = "<group>"; };
 		005000016 /* LaserTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaserTower.swift; sourceTree = "<group>"; };
 		005000018 /* AntiAirTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AntiAirTower.swift; sourceTree = "<group>"; };
+		005000020 /* WallTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallTower.swift; sourceTree = "<group>"; };
 		
 		/* Systems */
 		006000000 /* WaveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveManager.swift; sourceTree = "<group>"; };
@@ -229,6 +231,7 @@
 				005000014 /* Projectile.swift */,
 				005000016 /* LaserTower.swift */,
 				005000018 /* AntiAirTower.swift */,
+				005000020 /* WallTower.swift */,
 			);
 			path = Towers;
 			sourceTree = "<group>";
@@ -373,6 +376,7 @@
 				005000015 /* Projectile.swift in Sources */,
 				005000017 /* LaserTower.swift in Sources */,
 				005000019 /* AntiAirTower.swift in Sources */,
+				005000021 /* WallTower.swift in Sources */,
 				006000001 /* WaveManager.swift in Sources */,
 				006000009 /* AudioManager.swift in Sources */,
 				006000011 /* LevelManager.swift in Sources */,

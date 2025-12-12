@@ -10,10 +10,10 @@ final class FlyingEnemy: Enemy {
     
     // Flying stats per level - WEAKER than ground units
     static let baseStats: (health: CGFloat, speed: CGFloat, armor: CGFloat, reward: Int) = (
-        health: 40,     // Reduced from 60 - very fragile
-        speed: 90,      // Slightly slower
+        health: 40,     // Very fragile
+        speed: 60,      // Reduced from 90 - slower
         armor: 0,       // No armor
-        reward: 12      // Less reward due to being easier in some ways
+        reward: 2       // Reduced from 12 (factor ~5)
     )
     
     // Hover animation offset

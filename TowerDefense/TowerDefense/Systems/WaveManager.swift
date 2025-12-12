@@ -168,76 +168,77 @@ struct WaveConfig: Codable {
         }
     }
     
-    // Default waves for fallback
+    // Default waves for fallback - MASSIVE enemy counts
     static var defaultWaves: [WaveConfig] {
         return [
-            // Wave 1: Easy intro
+            // Wave 1: Large intro wave
             WaveConfig(waveNumber: 1, groups: [
-                EnemyGroup(type: .infantry, count: 8, level: 1, spawnInterval: 1.2)
+                EnemyGroup(type: .infantry, count: 30, level: 1, spawnInterval: 0.8)
             ]),
             
             // Wave 2: More infantry
             WaveConfig(waveNumber: 2, groups: [
-                EnemyGroup(type: .infantry, count: 10, level: 1, spawnInterval: 1.0),
-                EnemyGroup(type: .infantry, count: 5, level: 1, spawnInterval: 0.8, groupDelay: 3.0)
+                EnemyGroup(type: .infantry, count: 40, level: 1, spawnInterval: 0.6),
+                EnemyGroup(type: .infantry, count: 20, level: 1, spawnInterval: 0.5, groupDelay: 2.0)
             ]),
             
             // Wave 3: Introduce flying
             WaveConfig(waveNumber: 3, groups: [
-                EnemyGroup(type: .infantry, count: 8, level: 1, spawnInterval: 1.0),
-                EnemyGroup(type: .flying, count: 4, level: 1, spawnInterval: 1.5, groupDelay: 2.0)
+                EnemyGroup(type: .infantry, count: 35, level: 1, spawnInterval: 0.6),
+                EnemyGroup(type: .flying, count: 15, level: 1, spawnInterval: 1.0, groupDelay: 2.0)
             ]),
             
-            // Wave 4: Introduce cavalry
+            // Wave 4: Introduce cavalry (slow tanks)
             WaveConfig(waveNumber: 4, groups: [
-                EnemyGroup(type: .infantry, count: 6, level: 2, spawnInterval: 0.9),
-                EnemyGroup(type: .cavalry, count: 3, level: 1, spawnInterval: 2.0, groupDelay: 2.0),
-                EnemyGroup(type: .flying, count: 4, level: 1, spawnInterval: 1.2, groupDelay: 1.0)
+                EnemyGroup(type: .infantry, count: 40, level: 2, spawnInterval: 0.5),
+                EnemyGroup(type: .cavalry, count: 8, level: 1, spawnInterval: 2.0, groupDelay: 2.0),
+                EnemyGroup(type: .flying, count: 12, level: 1, spawnInterval: 0.8, groupDelay: 1.0)
             ]),
             
             // Wave 5: Mixed assault
             WaveConfig(waveNumber: 5, groups: [
-                EnemyGroup(type: .infantry, count: 12, level: 2, spawnInterval: 0.7),
-                EnemyGroup(type: .cavalry, count: 4, level: 2, spawnInterval: 1.5, groupDelay: 2.0),
-                EnemyGroup(type: .flying, count: 6, level: 2, spawnInterval: 1.0, groupDelay: 1.0),
-                EnemyGroup(type: .infantry, count: 8, level: 2, spawnInterval: 0.6, groupDelay: 2.0)
+                EnemyGroup(type: .infantry, count: 50, level: 2, spawnInterval: 0.4),
+                EnemyGroup(type: .cavalry, count: 10, level: 2, spawnInterval: 1.5, groupDelay: 2.0),
+                EnemyGroup(type: .flying, count: 20, level: 2, spawnInterval: 0.6, groupDelay: 1.0),
+                EnemyGroup(type: .infantry, count: 30, level: 2, spawnInterval: 0.3, groupDelay: 2.0)
             ]),
             
-            // Wave 6: Cavalry rush
+            // Wave 6: Tank rush
             WaveConfig(waveNumber: 6, groups: [
-                EnemyGroup(type: .cavalry, count: 8, level: 2, spawnInterval: 1.0),
-                EnemyGroup(type: .cavalry, count: 4, level: 3, spawnInterval: 1.2, groupDelay: 3.0)
+                EnemyGroup(type: .cavalry, count: 20, level: 2, spawnInterval: 1.2),
+                EnemyGroup(type: .cavalry, count: 15, level: 3, spawnInterval: 1.0, groupDelay: 3.0),
+                EnemyGroup(type: .infantry, count: 40, level: 2, spawnInterval: 0.4, groupDelay: 2.0)
             ]),
             
             // Wave 7: Air superiority
             WaveConfig(waveNumber: 7, groups: [
-                EnemyGroup(type: .flying, count: 10, level: 2, spawnInterval: 0.8),
-                EnemyGroup(type: .flying, count: 6, level: 3, spawnInterval: 0.7, groupDelay: 2.0),
-                EnemyGroup(type: .infantry, count: 10, level: 2, spawnInterval: 0.6, groupDelay: 1.0)
+                EnemyGroup(type: .flying, count: 30, level: 2, spawnInterval: 0.5),
+                EnemyGroup(type: .flying, count: 25, level: 3, spawnInterval: 0.4, groupDelay: 2.0),
+                EnemyGroup(type: .infantry, count: 50, level: 2, spawnInterval: 0.3, groupDelay: 1.0)
             ]),
             
             // Wave 8: Full assault
             WaveConfig(waveNumber: 8, groups: [
-                EnemyGroup(type: .infantry, count: 15, level: 3, spawnInterval: 0.5),
-                EnemyGroup(type: .cavalry, count: 6, level: 3, spawnInterval: 1.0, groupDelay: 2.0),
-                EnemyGroup(type: .flying, count: 8, level: 3, spawnInterval: 0.8, groupDelay: 1.0),
-                EnemyGroup(type: .infantry, count: 10, level: 3, spawnInterval: 0.4, groupDelay: 2.0)
+                EnemyGroup(type: .infantry, count: 60, level: 3, spawnInterval: 0.3),
+                EnemyGroup(type: .cavalry, count: 15, level: 3, spawnInterval: 1.2, groupDelay: 2.0),
+                EnemyGroup(type: .flying, count: 25, level: 3, spawnInterval: 0.5, groupDelay: 1.0),
+                EnemyGroup(type: .infantry, count: 40, level: 3, spawnInterval: 0.25, groupDelay: 2.0)
             ]),
             
             // Wave 9: Elite wave
             WaveConfig(waveNumber: 9, groups: [
-                EnemyGroup(type: .cavalry, count: 10, level: 4, spawnInterval: 0.8),
-                EnemyGroup(type: .flying, count: 10, level: 4, spawnInterval: 0.6, groupDelay: 1.0),
-                EnemyGroup(type: .infantry, count: 20, level: 4, spawnInterval: 0.3, groupDelay: 2.0)
+                EnemyGroup(type: .cavalry, count: 25, level: 4, spawnInterval: 1.0),
+                EnemyGroup(type: .flying, count: 35, level: 4, spawnInterval: 0.4, groupDelay: 1.0),
+                EnemyGroup(type: .infantry, count: 80, level: 4, spawnInterval: 0.2, groupDelay: 2.0)
             ]),
             
-            // Wave 10: Final boss wave
+            // Wave 10: Final boss wave - MASSIVE
             WaveConfig(waveNumber: 10, groups: [
-                EnemyGroup(type: .infantry, count: 25, level: 4, spawnInterval: 0.3),
-                EnemyGroup(type: .cavalry, count: 12, level: 5, spawnInterval: 0.6, groupDelay: 1.0),
-                EnemyGroup(type: .flying, count: 15, level: 5, spawnInterval: 0.5, groupDelay: 1.0),
-                EnemyGroup(type: .cavalry, count: 5, level: 5, spawnInterval: 1.0, groupDelay: 2.0),
-                EnemyGroup(type: .infantry, count: 15, level: 5, spawnInterval: 0.2, groupDelay: 1.0)
+                EnemyGroup(type: .infantry, count: 100, level: 4, spawnInterval: 0.15),
+                EnemyGroup(type: .cavalry, count: 30, level: 5, spawnInterval: 0.8, groupDelay: 1.0),
+                EnemyGroup(type: .flying, count: 50, level: 5, spawnInterval: 0.3, groupDelay: 1.0),
+                EnemyGroup(type: .cavalry, count: 20, level: 5, spawnInterval: 1.0, groupDelay: 2.0),
+                EnemyGroup(type: .infantry, count: 60, level: 5, spawnInterval: 0.1, groupDelay: 1.0)
             ])
         ]
     }

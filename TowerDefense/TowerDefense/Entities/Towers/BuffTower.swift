@@ -8,7 +8,7 @@ final class BuffTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
         damage: 0,      // No damage
-        range: 150,     // Buff radius
+        range: 30,      // Small buff radius - towers must be adjacent
         fireRate: 1.0   // Update rate (not used for attacks)
     )
     
@@ -177,9 +177,9 @@ final class BuffTower: Tower {
         let result = super.upgrade()
         
         if result {
-            // Increase buff strength
-            damageBuffPercent = 0.15 + CGFloat(upgradeLevel) * 0.05
-            fireRateBuffPercent = 0.10 + CGFloat(upgradeLevel) * 0.05
+            // Increase buff strength significantly per level: 15% -> 25% -> 35%
+            damageBuffPercent = 0.15 + CGFloat(upgradeLevel) * 0.10
+            fireRateBuffPercent = 0.15 + CGFloat(upgradeLevel) * 0.10
             
             // Update visual
             let newPath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)

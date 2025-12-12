@@ -5,13 +5,14 @@ Een complete Tower Defense game voor iOS met **dynamische obstacle-based pathfin
 ## 🎮 Features
 
 - **Dynamische Pathfinding**: Vijanden berekenen hun route in real-time met een Flow Field algoritme
-- **8 Unieke Torens**: Elk met eigen strategie en upgrade-pad
-- **3 Vijandtypes**: Infantry, Cavalry (gepantserd), en Flying (negeert obstakels)
+- **9 Unieke Torens**: Inclusief Wall tower voor goedkoop maze building
+- **3 Vijandtypes**: Infantry (snel), Cavalry (trage tanks), en Flying (negeert obstakels)
 - **Pad-validatie**: Torens kunnen niet geplaatst worden als ze alle paden blokkeren
 - **11 Levels**: Tutorial + 10 levels met 20-50 waves elk
 - **Economy systeem**: Verdien geld door vijanden te doden, koop en upgrade torens
 - **Procedural Audio**: Synthesized sound effects voor alle acties
 - **Flying Mechanics**: Vliegende vijanden zijn NIET padgebonden maar wel zwakker
+- **Massive Waves**: Honderden vijanden per wave voor epische gevechten
 
 ## 🛠 Technologie Keuze: SpriteKit
 
@@ -100,26 +101,37 @@ Flying enemies hebben unieke eigenschappen:
 | **Beperkte counters** | Alleen MG, Slow, Shotgun, AntiAir kunnen ze raken |
 | **Immune voor** | Cannon, Splash, Laser (projectielen gaan eronder) |
 
-## 📊 Enemy Stats
+## 📊 Enemy Stats (REBALANCED)
 
-| Type | Health | Speed | Armor | Reward | Pathfinding |
-|------|--------|-------|-------|--------|-------------|
-| Infantry | 100 | 80 | 0 | 10 | Flow Field |
-| Cavalry | 180 | 120 | 30 | 20 | Flow Field |
-| Flying | 40 | 90 | 0 | 12 | **Direct** |
+| Type | Health | Speed | Armor | Reward | Pathfinding | Notes |
+|------|--------|-------|-------|--------|-------------|-------|
+| Infantry | 100 | **100** | 0 | **2** | Flow Field | Snel, zwerm |
+| Cavalry | **300** | **50** | 30 | **4** | Flow Field | **TRAGE TANK** |
+| Flying | 40 | **60** | 0 | **2** | **Direct** | Traag, fragiel |
 
-## 🗼 Tower Stats (8 Torens)
+**Reward Ratio**: 5x lager dan voorheen = veel meer vijanden nodig om dezelfde torens te bouwen!
+
+## 🗼 Tower Stats (9 Torens - ALL NERFED 50%)
 
 | Tower | Damage | Range | ROF | Cost | Target | Special |
 |-------|--------|-------|-----|------|--------|---------|
-| MachineGun | 8 | 150 | 8.0/s | 50 | All | Prioriteert flying |
-| Cannon | 60 | 180 | 0.8/s | 80 | Ground | 50 armor pen, **NO flying** |
+| **Wall** | 0 | 0 | - | **10** | - | Blokkeert alleen, converteerbaar |
+| MachineGun | **4** | 150 | 8.0/s | 50 | All | Prioriteert flying |
+| Cannon | **30** | **70** | 0.8/s | 80 | Ground | Korte range, **NO flying** |
 | Slow | 0 | 120 | 2.0/s | 60 | All | 50% slow, 2s |
-| Buff | 0 | 150 | - | 100 | Towers | +15% dmg, +10% ROF |
-| Shotgun | 12×6 | 100 | 1.5/s | 70 | All | Cone spread |
-| Splash | 30 | 160 | 0.7/s | 90 | Ground | 60 radius, **NO flying** |
-| **Laser** | 15 DPS | 250 | 10/s | 120 | Ground | Piercing beam, **NO flying** |
-| **AntiAir** | 25 | 200 | 3.0/s | 75 | **Flying only** | +150% vs flying |
+| Buff | 0 | **30** | - | 100 | Towers | **15/25/35%** per level |
+| Shotgun | **6**×6 | **60** | 1.5/s | 70 | All | ZEER korte range |
+| Splash | **15** | 160 | 0.7/s | 90 | Ground | 60 radius, **NO flying** |
+| **Laser** | **7** DPS | **1300** | 10/s | 120 | Ground | **FULL FIELD**, **NO flying** |
+| **AntiAir** | **12** | 200 | 3.0/s | 75 | **Flying only** | +150% vs flying |
+
+### 🧱 Wall Tower - Nieuw!
+
+De Wall tower is speciaal:
+- Kost slechts **$10** - goedkoopste optie voor maze building
+- Doet **geen schade** - puur voor het blokkeren van paden
+- Kan later worden **geconverteerd** naar elke andere toren (betaal het verschil)
+- Perfect voor vroege game maze setup met beperkt budget
 
 ## ⬆️ Upgrade Balancing
 
@@ -129,6 +141,15 @@ Flying enemies hebben unieke eigenschappen:
 |---------|------|--------|-------|-----------|
 | Level 1→2 | 40% base | +35% | +15% | +25% |
 | Level 2→3 | 50% base | +70% | +30% | +50% |
+
+### Buff Tower Upgrade Scaling
+
+De Buff tower wordt **significant sterker** per upgrade:
+| Level | Damage Buff | ROF Buff |
+|-------|-------------|----------|
+| 1 | 15% | 15% |
+| 2 | **25%** | **25%** |
+| 3 | **35%** | **35%** |
 
 **Voorbeeld MachineGun ($50 base):**
 - Upgrade 1→2: $20 voor +35% stats
@@ -140,13 +161,14 @@ Flying enemies hebben unieke eigenschappen:
 
 | Tower | Priority |
 |-------|----------|
+| Wall | N/A (blocks only) |
 | MachineGun | Flying > Closest |
-| Cannon | Most Armored (ground only) |
+| Cannon | Most Armored (ground only) - **Short range!** |
 | Slow | All in range (AoE) |
-| Buff | N/A (buffs towers) |
-| Shotgun | Closest |
+| Buff | N/A (buffs adjacent towers - **tiny range**) |
+| Shotgun | Closest - **Very short range!** |
 | Splash | Most enemies in radius (ground) |
-| Laser | Closest ground enemy (beam pierces) |
+| Laser | Closest ground enemy (beam pierces) - **Full field!** |
 | AntiAir | **Only flying** - homing missiles |
 
 ## 🎮 Levels
@@ -214,20 +236,25 @@ De app icon wordt proceduraal gegenereerd door `AppIconGenerator.swift`:
 1. **Upgrades > New Towers**: Maximale stats voor minimale investering
 2. **Counter System**: Elke vijand heeft sterke en zwakke counters
 3. **Flying Tradeoff**: Geen pathfinding maar zeer fragiel
-4. **Specialization**: Laser voor DPS, AntiAir voor vliegers, Buff voor support
+4. **Specialization**: Laser voor full-field DPS, AntiAir voor vliegers, Buff voor support
+5. **Swarm Economy**: Lage rewards = veel vijanden = epische gevechten
+6. **Cavalry = Tanks**: Traag maar moeilijk te stoppen
+7. **Range Matters**: Cannon/Shotgun zeer korte range, Laser ongelimiteerd
 
 ## 📝 What's Implemented
 
 ✅ Dynamic obstacle-based pathfinding (Flow Field)
-✅ 8 unique tower types with upgrades
+✅ **9 unique tower types** with upgrades (including Wall)
 ✅ 3 enemy types with distinct behaviors
 ✅ Flying units ignore pathing, are weaker
 ✅ 11 levels (tutorial + 10 main levels)
-✅ 20-50 waves per level
+✅ 20-50 waves per level with **massive enemy counts**
 ✅ Procedural audio system
 ✅ App icon generator
 ✅ Upgrade value > new tower value
 ✅ Tower targeting restrictions (no flying for cannon/splash/laser)
+✅ Wall tower conversion system
+✅ Rebalanced damage (50% nerf) and rewards (5x smaller)
 
 ## 🚧 Future Improvements
 

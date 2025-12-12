@@ -7,9 +7,9 @@ import SpriteKit
 final class SplashTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 30,
+        damage: 15,     // Nerfed from 30
         range: 160,
-        fireRate: 0.7  // Slow firing
+        fireRate: 0.7   // Slow firing
     )
     
     var splashRadius: CGFloat = 60

@@ -146,6 +146,7 @@ final class PlacementPreviewNode: SKNode {
     
     private func getTowerRange(for type: TowerType) -> CGFloat {
         switch type {
+        case .wall: return WallTower.stats.range
         case .machineGun: return MachineGunTower.stats.range
         case .cannon: return CannonTower.stats.range
         case .slow: return SlowTower.stats.range

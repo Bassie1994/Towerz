@@ -20,8 +20,8 @@ class Enemy: SKNode {
     // Stats
     var maxHealth: CGFloat
     var currentHealth: CGFloat
-    var speed: CGFloat
-    var baseSpeed: CGFloat
+    var moveSpeed: CGFloat
+    var baseMoveSpeed: CGFloat
     var armor: CGFloat
     var killReward: Int
     
@@ -50,8 +50,8 @@ class Enemy: SKNode {
         self.enemyType = type
         self.maxHealth = health
         self.currentHealth = health
-        self.speed = speed
-        self.baseSpeed = speed
+        self.moveSpeed = speed
+        self.baseMoveSpeed = speed
         self.armor = armor
         self.killReward = reward
         
@@ -160,7 +160,7 @@ class Enemy: SKNode {
         ).normalized()
         
         // Calculate actual speed (with slow effect)
-        let actualSpeed = speed * slowMultiplier
+        let actualSpeed = moveSpeed * slowMultiplier
         
         // Move
         let movement = CGVector(

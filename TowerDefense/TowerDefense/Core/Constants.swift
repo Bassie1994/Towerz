@@ -75,6 +75,7 @@ enum EnemyType: String, CaseIterable, Codable {
 
 // MARK: - Tower Types
 enum TowerType: String, CaseIterable {
+    case wall       // NEW: Cheap blocker, can convert to other towers
     case machineGun
     case cannon
     case slow
@@ -86,6 +87,7 @@ enum TowerType: String, CaseIterable {
     
     var displayName: String {
         switch self {
+        case .wall: return "Wall"
         case .machineGun: return "MG"
         case .cannon: return "Cannon"
         case .slow: return "Slow"
@@ -99,6 +101,7 @@ enum TowerType: String, CaseIterable {
     
     var color: SKColor {
         switch self {
+        case .wall: return SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1.0)
         case .machineGun: return SKColor(red: 0.3, green: 0.3, blue: 0.8, alpha: 1.0)
         case .cannon: return SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0)
         case .slow: return SKColor(red: 0.4, green: 0.7, blue: 0.9, alpha: 1.0)
@@ -112,6 +115,7 @@ enum TowerType: String, CaseIterable {
     
     var baseCost: Int {
         switch self {
+        case .wall: return 10       // Very cheap - just for blocking
         case .machineGun: return 50
         case .cannon: return 80
         case .slow: return 60

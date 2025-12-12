@@ -7,9 +7,9 @@ import SpriteKit
 final class MachineGunTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 8,
+        damage: 4,      // Nerfed from 8
         range: 150,
-        fireRate: 8.0  // 8 shots per second
+        fireRate: 8.0   // 8 shots per second
     )
     
     init(gridPosition: GridPosition) {

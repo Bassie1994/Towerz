@@ -13,7 +13,7 @@ class Projectile: SKNode {
     let damage: CGFloat
     let armorPenetration: CGFloat
     weak var target: Enemy?
-    let speed: CGFloat
+    let projectileSpeed: CGFloat
     
     var visualType: ProjectileVisualType = .bullet {
         didSet {
@@ -27,7 +27,7 @@ class Projectile: SKNode {
     init(from startPosition: CGPoint, to target: Enemy, damage: CGFloat, speed: CGFloat, armorPenetration: CGFloat = 0) {
         self.damage = damage
         self.target = target
-        self.speed = speed
+        self.projectileSpeed = speed
         self.armorPenetration = armorPenetration
         
         projectileNode = SKShapeNode(circleOfRadius: 4)
@@ -142,7 +142,7 @@ class Projectile: SKNode {
             dy: direction.dy / distance
         )
         
-        let moveSpeed = speed / 60.0  // Assuming 60 FPS
+        let moveSpeed = projectileSpeed / 60.0  // Assuming 60 FPS
         position = CGPoint(
             x: position.x + normalizedDirection.dx * moveSpeed,
             y: position.y + normalizedDirection.dy * moveSpeed

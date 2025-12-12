@@ -22,33 +22,33 @@ struct GameConfig {
     static let enemyStats: [EnemyType: EnemyStats] = [
         .infantry: EnemyStats(
             health: 100,
-            speed: 80,
+            speed: 100,      // CHANGED from 80 - faster
             armor: 0,
-            reward: 10,
+            reward: 2,       // CHANGED from 10 - 5x smaller
             healthScaling: 0.30,
             speedScaling: 0.0,
             armorScaling: 5,
-            rewardScaling: 2
+            rewardScaling: 0
         ),
         .cavalry: EnemyStats(
-            health: 180,
-            speed: 120,
+            health: 300,     // CHANGED from 180 - TANKY
+            speed: 50,       // CHANGED from 120 - SLOW
             armor: 30,
-            reward: 20,
+            reward: 4,       // CHANGED from 20 - 5x smaller
             healthScaling: 0.35,
-            speedScaling: 5,
+            speedScaling: 0,
             armorScaling: 10,
-            rewardScaling: 4
+            rewardScaling: 1
         ),
         .flying: EnemyStats(
-            health: 40,      // Reduced! Flying are weaker
-            speed: 90,
+            health: 40,      // Weak
+            speed: 60,       // CHANGED from 90 - slower
             armor: 0,
-            reward: 12,
-            healthScaling: 0.20,  // Slower scaling
-            speedScaling: 5,
+            reward: 2,       // CHANGED from 12 - 5x smaller
+            healthScaling: 0.20,
+            speedScaling: 0,
             armorScaling: 0,
-            rewardScaling: 2
+            rewardScaling: 0
         )
     ]
     
@@ -68,8 +68,18 @@ struct GameConfig {
     }
     
     static let towerStats: [TowerType: TowerStats] = [
+        .wall: TowerStats(
+            damage: 0,
+            range: 0,
+            fireRate: 0,
+            cost: 10,         // Very cheap - just for blocking
+            damageScaling: 0.0,
+            rangeScaling: 0.0,
+            fireRateScaling: 0.0,
+            upgradeCostMultiplier: 0.0
+        ),
         .machineGun: TowerStats(
-            damage: 8,
+            damage: 4,        // NERFED from 8 (50%)
             range: 150,
             fireRate: 8.0,
             cost: 50,
@@ -79,8 +89,8 @@ struct GameConfig {
             upgradeCostMultiplier: 0.5
         ),
         .cannon: TowerStats(
-            damage: 60,
-            range: 180,
+            damage: 30,       // NERFED from 60 (50%)
+            range: 70,        // NERFED from 180 - SHORT range
             fireRate: 0.8,
             cost: 80,
             damageScaling: 0.25,
@@ -100,17 +110,17 @@ struct GameConfig {
         ),
         .buff: TowerStats(
             damage: 0,
-            range: 150,
+            range: 30,        // NERFED from 150 - TINY buff radius
             fireRate: 1.0,
             cost: 100,
             damageScaling: 0.0,
-            rangeScaling: 0.15,
+            rangeScaling: 0.0,  // No range scaling - stays tiny
             fireRateScaling: 0.0,
             upgradeCostMultiplier: 0.6
         ),
         .shotgun: TowerStats(
-            damage: 12,
-            range: 100,
+            damage: 6,        // NERFED from 12 (50%)
+            range: 60,        // NERFED from 100 - VERY SHORT range
             fireRate: 1.5,
             cost: 70,
             damageScaling: 0.20,
@@ -119,7 +129,7 @@ struct GameConfig {
             upgradeCostMultiplier: 0.5
         ),
         .splash: TowerStats(
-            damage: 30,
+            damage: 15,       // NERFED from 30 (50%)
             range: 160,
             fireRate: 0.7,
             cost: 90,
@@ -129,17 +139,17 @@ struct GameConfig {
             upgradeCostMultiplier: 0.55
         ),
         .laser: TowerStats(
-            damage: 15,       // DPS per tick
-            range: 250,       // Long range
-            fireRate: 10.0,   // 10 damage ticks per second
+            damage: 7,        // NERFED from 15 (50%)
+            range: 1300,      // BUFFED - FULL FIELD range
+            fireRate: 10.0,
             cost: 120,
             damageScaling: 0.35,
-            rangeScaling: 0.10,
+            rangeScaling: 0.0,  // Already max range
             fireRateScaling: 0.15,
             upgradeCostMultiplier: 0.5
         ),
         .antiAir: TowerStats(
-            damage: 25,       // Base damage (x2.5 vs flying)
+            damage: 12,       // NERFED from 25 (50%)
             range: 200,
             fireRate: 3.0,
             cost: 75,
@@ -179,10 +189,10 @@ struct GameConfig {
     
     struct BuffTowerConfig {
         static let baseDamageBuffPercent: CGFloat = 0.15
-        static let damageBuffPerLevel: CGFloat = 0.05
+        static let damageBuffPerLevel: CGFloat = 0.10  // BUFFED: 15% -> 25% -> 35%
         
-        static let baseFireRateBuffPercent: CGFloat = 0.10
-        static let fireRateBuffPerLevel: CGFloat = 0.05
+        static let baseFireRateBuffPercent: CGFloat = 0.15  // Matched to damage
+        static let fireRateBuffPerLevel: CGFloat = 0.10  // BUFFED: 15% -> 25% -> 35%
         
         static let buffStackingEnabled = false
     }
@@ -231,44 +241,48 @@ struct GameConfig {
 
 /*
  ╔══════════════════════════════════════════════════════════════════════════════════════╗
- ║                              ENEMY STATS TABLE                                        ║
+ ║                         ENEMY STATS TABLE (REBALANCED)                               ║
  ╠══════════════╦════════╦═══════╦═══════╦════════╦═════════════════════════════════════╣
  ║ Type         ║ Health ║ Speed ║ Armor ║ Reward ║ Notes                               ║
  ╠══════════════╬════════╬═══════╬═══════╬════════╬═════════════════════════════════════╣
- ║ Infantry     ║  100   ║  80   ║   0   ║   10   ║ Standard ground unit                ║
- ║ Cavalry      ║  180   ║  120  ║  30   ║   20   ║ Fast, armored, ground               ║
- ║ Flying       ║   40   ║  90   ║   0   ║   12   ║ Ignores path, WEAKER, immune to     ║
+ ║ Infantry     ║  100   ║  100  ║   0   ║    2   ║ Fast ground swarm                   ║
+ ║ Cavalry      ║  300   ║   50  ║  30   ║    4   ║ SLOW TANK, armored, ground          ║
+ ║ Flying       ║   40   ║   60  ║   0   ║    2   ║ Ignores path, WEAKER, immune to     ║
  ║              ║        ║       ║       ║        ║ Cannon/Splash/Laser                 ║
  ╚══════════════╩════════╩═══════╩═══════╩════════╩═════════════════════════════════════╝
  
  ╔══════════════════════════════════════════════════════════════════════════════════════╗
- ║                              TOWER STATS TABLE                                        ║
+ ║                        TOWER STATS TABLE (50% DMG NERF)                              ║
  ╠════════════╦════════╦═══════╦═══════════╦══════╦══════════════════════════════════════╣
  ║ Type       ║ Damage ║ Range ║ Fire Rate ║ Cost ║ Special                              ║
  ╠════════════╬════════╬═══════╬═══════════╬══════╬══════════════════════════════════════╣
- ║ MachineGun ║    8   ║  150  ║   8.0/s   ║  50  ║ Prioritizes flying, hits all        ║
- ║ Cannon     ║   60   ║  180  ║   0.8/s   ║  80  ║ 50 armor pen, NO FLYING             ║
+ ║ Wall       ║    0   ║    0  ║    N/A    ║  10  ║ Blocks only, convert later           ║
+ ║ MachineGun ║    4   ║  150  ║   8.0/s   ║  50  ║ Prioritizes flying, hits all        ║
+ ║ Cannon     ║   30   ║   70  ║   0.8/s   ║  80  ║ SHORT range, armor pen, NO FLYING   ║
  ║ Slow       ║    0   ║  120  ║   2.0/s   ║  60  ║ 50% slow for 2s, hits all           ║
- ║ Buff       ║    0   ║  150  ║    N/A    ║ 100  ║ +15% dmg, +10% ROF to towers        ║
- ║ Shotgun    ║   12   ║  100  ║   1.5/s   ║  70  ║ 6 pellets cone, hits all            ║
- ║ Splash     ║   30   ║  160  ║   0.7/s   ║  90  ║ 60 radius AoE, NO FLYING            ║
- ║ Laser      ║   15   ║  250  ║  10.0/s   ║ 120  ║ Piercing beam, NO FLYING            ║
- ║ AntiAir    ║   25   ║  200  ║   3.0/s   ║  75  ║ ONLY flying, +150% dmg to flying    ║
+ ║ Buff       ║    0   ║   30  ║    N/A    ║ 100  ║ TINY range, 15/25/35% buff          ║
+ ║ Shotgun    ║    6   ║   60  ║   1.5/s   ║  70  ║ VERY SHORT range, 6 pellets         ║
+ ║ Splash     ║   15   ║  160  ║   0.7/s   ║  90  ║ 60 radius AoE, NO FLYING            ║
+ ║ Laser      ║    7   ║ 1300  ║  10.0/s   ║ 120  ║ FULL FIELD range, NO FLYING         ║
+ ║ AntiAir    ║   12   ║  200  ║   3.0/s   ║  75  ║ ONLY flying, +150% dmg to flying    ║
  ╚════════════╩════════╩═══════╩═══════════╩══════╩══════════════════════════════════════╝
  
  TOWER TARGETING:
  - Can hit Flying: MachineGun, Slow, Shotgun, AntiAir
  - Cannot hit Flying: Cannon, Splash, Laser (projectiles go under them)
  - AntiAir: ONLY targets flying enemies
+ - Wall: Cannot attack - for maze building only
  
- UPGRADE SCALING (per level):
- - Damage: +35%
- - Range: +15%
- - Fire Rate: +25%
- - Max upgrade level: 2 (so max is level 3)
+ BUFF TOWER SCALING:
+ - Level 1: 15% damage/ROF buff
+ - Level 2: 25% damage/ROF buff
+ - Level 3: 35% damage/ROF buff
  
- UPGRADE COST:
- - Level 1->2: 40% of base cost
- - Level 2->3: 50% of base cost
- - Total for max: 90% extra investment for 170%+ stats = BETTER than buying 2nd tower!
+ WALL TOWER:
+ - Costs only $10
+ - Can be converted to any other tower (pay the difference)
+ - Great for maze building on a budget
+ 
+ REWARD RATIO: 5x smaller rewards = need to kill many more enemies!
+ WAVES: Much larger enemy counts to compensate
  */

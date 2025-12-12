@@ -150,29 +150,29 @@ extension LevelConfig {
     
     private static func generateTutorialWaves() -> [WaveConfig] {
         return [
-            // Wave 1: Simple infantry
+            // Wave 1: Simple infantry - larger groups
             WaveConfig(waveNumber: 1, groups: [
-                WaveConfig.EnemyGroup(type: .infantry, count: 5, level: 1, spawnInterval: 2.0)
+                WaveConfig.EnemyGroup(type: .infantry, count: 20, level: 1, spawnInterval: 1.0)
             ]),
             // Wave 2: More infantry
             WaveConfig(waveNumber: 2, groups: [
-                WaveConfig.EnemyGroup(type: .infantry, count: 8, level: 1, spawnInterval: 1.5)
+                WaveConfig.EnemyGroup(type: .infantry, count: 30, level: 1, spawnInterval: 0.8)
             ]),
             // Wave 3: Introduce flying
             WaveConfig(waveNumber: 3, groups: [
-                WaveConfig.EnemyGroup(type: .infantry, count: 5, level: 1, spawnInterval: 1.5),
-                WaveConfig.EnemyGroup(type: .flying, count: 3, level: 1, spawnInterval: 2.0, groupDelay: 3.0)
+                WaveConfig.EnemyGroup(type: .infantry, count: 25, level: 1, spawnInterval: 0.8),
+                WaveConfig.EnemyGroup(type: .flying, count: 10, level: 1, spawnInterval: 1.2, groupDelay: 3.0)
             ]),
-            // Wave 4: Introduce cavalry
+            // Wave 4: Introduce cavalry (slow tanks)
             WaveConfig(waveNumber: 4, groups: [
-                WaveConfig.EnemyGroup(type: .infantry, count: 6, level: 1, spawnInterval: 1.2),
-                WaveConfig.EnemyGroup(type: .cavalry, count: 2, level: 1, spawnInterval: 2.5, groupDelay: 2.0)
+                WaveConfig.EnemyGroup(type: .infantry, count: 30, level: 1, spawnInterval: 0.7),
+                WaveConfig.EnemyGroup(type: .cavalry, count: 5, level: 1, spawnInterval: 2.0, groupDelay: 2.0)
             ]),
             // Wave 5: Mixed
             WaveConfig(waveNumber: 5, groups: [
-                WaveConfig.EnemyGroup(type: .infantry, count: 8, level: 1, spawnInterval: 1.0),
-                WaveConfig.EnemyGroup(type: .flying, count: 4, level: 1, spawnInterval: 1.5, groupDelay: 2.0),
-                WaveConfig.EnemyGroup(type: .cavalry, count: 3, level: 1, spawnInterval: 2.0, groupDelay: 2.0)
+                WaveConfig.EnemyGroup(type: .infantry, count: 40, level: 1, spawnInterval: 0.6),
+                WaveConfig.EnemyGroup(type: .flying, count: 15, level: 1, spawnInterval: 1.0, groupDelay: 2.0),
+                WaveConfig.EnemyGroup(type: .cavalry, count: 8, level: 1, spawnInterval: 1.5, groupDelay: 2.0)
             ])
         ]
     }
@@ -200,21 +200,21 @@ extension LevelConfig {
             let level = 1 + (i - 1) / 5
             var groups: [WaveConfig.EnemyGroup] = []
             
-            // Infantry base
+            // Infantry base - MUCH larger counts for smaller rewards
             groups.append(WaveConfig.EnemyGroup(
                 type: .infantry,
-                count: 5 + i,
+                count: 25 + i * 5,  // 30-125 infantry
                 level: level,
-                spawnInterval: max(0.5, 1.5 - Double(i) * 0.05)
+                spawnInterval: max(0.3, 1.0 - Double(i) * 0.03)
             ))
             
             // Add flying from wave 5
             if i >= 5 {
                 groups.append(WaveConfig.EnemyGroup(
                     type: .flying,
-                    count: 2 + (i - 5) / 3,
+                    count: 8 + (i - 5) * 2,  // 8-38 flying
                     level: level,
-                    spawnInterval: 1.5,
+                    spawnInterval: 0.8,
                     groupDelay: 2.0
                 ))
             }
@@ -223,9 +223,9 @@ extension LevelConfig {
             if i >= 10 {
                 groups.append(WaveConfig.EnemyGroup(
                     type: .cavalry,
-                    count: 1 + (i - 10) / 4,
+                    count: 5 + (i - 10),  // 5-15 cavalry
                     level: level,
-                    spawnInterval: 2.0,
+                    spawnInterval: 1.5,
                     groupDelay: 2.0
                 ))
             }
@@ -259,30 +259,30 @@ extension LevelConfig {
             let level = 1 + (i - 1) / 6
             var groups: [WaveConfig.EnemyGroup] = []
             
-            // Light infantry
+            // Infantry support
             groups.append(WaveConfig.EnemyGroup(
                 type: .infantry,
-                count: 4 + i / 2,
+                count: 20 + i * 3,  // 23-95
                 level: level,
-                spawnInterval: 1.2
+                spawnInterval: 0.6
             ))
             
             // Heavy flying emphasis
             groups.append(WaveConfig.EnemyGroup(
                 type: .flying,
-                count: 3 + i / 2,
+                count: 15 + i * 2,  // 17-65 flying
                 level: level,
-                spawnInterval: max(0.6, 1.2 - Double(i) * 0.02),
+                spawnInterval: max(0.4, 0.8 - Double(i) * 0.01),
                 groupDelay: 1.5
             ))
             
             // Some cavalry for variety
-            if i >= 8 && i % 3 == 0 {
+            if i >= 8 {
                 groups.append(WaveConfig.EnemyGroup(
                     type: .cavalry,
-                    count: 2 + i / 8,
+                    count: 5 + i / 3,  // 5-13
                     level: level,
-                    spawnInterval: 2.0,
+                    spawnInterval: 1.5,
                     groupDelay: 2.0
                 ))
             }
@@ -319,27 +319,27 @@ extension LevelConfig {
             // Infantry support
             groups.append(WaveConfig.EnemyGroup(
                 type: .infantry,
-                count: 6 + i / 2,
+                count: 30 + i * 3,  // 33-105
                 level: level,
-                spawnInterval: 1.0
+                spawnInterval: 0.5
             ))
             
-            // Heavy cavalry emphasis
+            // Heavy cavalry emphasis - slow but tanky
             groups.append(WaveConfig.EnemyGroup(
                 type: .cavalry,
-                count: 2 + i / 3,
+                count: 10 + i,  // 11-35 cavalry tanks
                 level: level,
                 spawnInterval: max(0.8, 1.5 - Double(i) * 0.02),
                 groupDelay: 2.0
             ))
             
             // Light flying
-            if i % 4 == 0 {
+            if i % 2 == 0 {
                 groups.append(WaveConfig.EnemyGroup(
                     type: .flying,
-                    count: 3 + i / 6,
+                    count: 10 + i / 2,  // 10-22
                     level: level,
-                    spawnInterval: 1.5,
+                    spawnInterval: 0.8,
                     groupDelay: 1.5
                 ))
             }
@@ -448,53 +448,54 @@ extension LevelConfig {
             var groups: [WaveConfig.EnemyGroup] = []
             
             let progress = Double(i) / Double(waveCount)
-            let baseCount = 8 + Int(progress * 15)
-            let spawnSpeed = max(0.3, 1.2 - progress * 0.5)
+            // MASSIVE base counts for 5x smaller rewards
+            let baseCount = 40 + Int(progress * 80)  // 40-120 base
+            let spawnSpeed = max(0.2, 0.8 - progress * 0.4)
             
             switch emphasis {
             case .infantry:
-                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount + i / 2, level: level, spawnInterval: spawnSpeed))
-                if i % 5 == 0 { groups.append(WaveConfig.EnemyGroup(type: .flying, count: 3 + i / 10, level: level, spawnInterval: 1.2, groupDelay: 2.0)) }
-                if i % 7 == 0 { groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: 2 + i / 12, level: level, spawnInterval: 1.5, groupDelay: 2.0)) }
+                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount + i * 3, level: level, spawnInterval: spawnSpeed))
+                if i % 3 == 0 { groups.append(WaveConfig.EnemyGroup(type: .flying, count: 15 + i, level: level, spawnInterval: 0.6, groupDelay: 2.0)) }
+                if i % 4 == 0 { groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: 8 + i / 2, level: level, spawnInterval: 1.2, groupDelay: 2.0)) }
                 
             case .flying:
-                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount / 2 + i / 3, level: level, spawnInterval: max(0.5, spawnSpeed)))
-                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount / 3, level: level, spawnInterval: 1.0, groupDelay: 1.5))
-                if i % 6 == 0 { groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: 2 + i / 10, level: level, spawnInterval: 1.5, groupDelay: 2.0)) }
+                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount / 2 + i * 2, level: level, spawnInterval: max(0.3, spawnSpeed)))
+                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount / 2, level: level, spawnInterval: 0.5, groupDelay: 1.5))
+                if i % 3 == 0 { groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: 8 + i / 2, level: level, spawnInterval: 1.0, groupDelay: 2.0)) }
                 
             case .cavalry:
-                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 3 + i / 4, level: level, spawnInterval: max(0.6, spawnSpeed + 0.3)))
-                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount / 2, level: level, spawnInterval: 0.8, groupDelay: 1.5))
-                if i % 4 == 0 { groups.append(WaveConfig.EnemyGroup(type: .flying, count: 3 + i / 8, level: level, spawnInterval: 1.0, groupDelay: 2.0)) }
+                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 3 + i, level: level, spawnInterval: max(0.5, spawnSpeed + 0.2)))
+                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount, level: level, spawnInterval: 0.4, groupDelay: 1.5))
+                if i % 2 == 0 { groups.append(WaveConfig.EnemyGroup(type: .flying, count: 15 + i / 2, level: level, spawnInterval: 0.5, groupDelay: 2.0)) }
                 
             case .mixed:
-                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount / 2, level: level, spawnInterval: spawnSpeed))
-                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount / 4, level: level, spawnInterval: spawnSpeed + 0.2, groupDelay: 1.5))
-                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 4, level: level, spawnInterval: spawnSpeed + 0.4, groupDelay: 1.5))
+                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount, level: level, spawnInterval: spawnSpeed))
+                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount / 2, level: level, spawnInterval: spawnSpeed + 0.1, groupDelay: 1.5))
+                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 3, level: level, spawnInterval: spawnSpeed + 0.2, groupDelay: 1.5))
                 
             case .fast:
                 let fastLevel = level + 1
-                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount, level: fastLevel, spawnInterval: max(0.25, spawnSpeed - 0.3)))
-                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount / 3, level: fastLevel, spawnInterval: 0.5, groupDelay: 1.0))
-                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 4, level: fastLevel, spawnInterval: 0.8, groupDelay: 1.0))
+                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount + i * 2, level: fastLevel, spawnInterval: max(0.15, spawnSpeed - 0.2)))
+                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount / 2, level: fastLevel, spawnInterval: 0.3, groupDelay: 1.0))
+                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 3, level: fastLevel, spawnInterval: 0.6, groupDelay: 1.0))
                 
             case .massive:
-                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount + i, level: level, spawnInterval: max(0.2, spawnSpeed - 0.4)))
-                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount / 2, level: level, spawnInterval: 0.6, groupDelay: 1.0))
-                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 3, level: level, spawnInterval: 0.8, groupDelay: 1.0))
-                if i % 3 == 0 {
-                    groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount / 2, level: level + 1, spawnInterval: 0.3, groupDelay: 2.0))
+                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount * 2 + i * 3, level: level, spawnInterval: max(0.1, spawnSpeed - 0.3)))
+                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount, level: level, spawnInterval: 0.4, groupDelay: 1.0))
+                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 2, level: level, spawnInterval: 0.6, groupDelay: 1.0))
+                if i % 2 == 0 {
+                    groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount, level: level + 1, spawnInterval: 0.2, groupDelay: 2.0))
                 }
                 
             case .ultimate:
                 let eliteLevel = level + 2
-                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount + i * 2, level: eliteLevel, spawnInterval: max(0.15, 0.5 - progress * 0.3)))
-                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount / 2 + i / 2, level: eliteLevel, spawnInterval: 0.4, groupDelay: 0.5))
-                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 3 + i / 3, level: eliteLevel, spawnInterval: 0.6, groupDelay: 0.5))
-                // Boss waves every 10
-                if i % 10 == 0 {
-                    groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: 5 + i / 5, level: eliteLevel + 1, spawnInterval: 1.0, groupDelay: 1.0))
-                    groups.append(WaveConfig.EnemyGroup(type: .flying, count: 8 + i / 4, level: eliteLevel + 1, spawnInterval: 0.3, groupDelay: 0.5))
+                groups.append(WaveConfig.EnemyGroup(type: .infantry, count: baseCount * 2 + i * 5, level: eliteLevel, spawnInterval: max(0.08, 0.3 - progress * 0.2)))
+                groups.append(WaveConfig.EnemyGroup(type: .flying, count: baseCount + i * 2, level: eliteLevel, spawnInterval: 0.25, groupDelay: 0.5))
+                groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: baseCount / 2 + i, level: eliteLevel, spawnInterval: 0.4, groupDelay: 0.5))
+                // Boss waves every 5
+                if i % 5 == 0 {
+                    groups.append(WaveConfig.EnemyGroup(type: .cavalry, count: 15 + i, level: eliteLevel + 1, spawnInterval: 0.8, groupDelay: 1.0))
+                    groups.append(WaveConfig.EnemyGroup(type: .flying, count: 25 + i, level: eliteLevel + 1, spawnInterval: 0.2, groupDelay: 0.5))
                 }
             }
             
