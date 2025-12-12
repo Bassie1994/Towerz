@@ -5,12 +5,12 @@ import SpriteKit
 /// Best countered by Cannon tower (armor penetration)
 final class CavalryEnemy: Enemy {
     
-    // Cavalry stats per level
+    // Cavalry stats per level - TANKY but SLOW
     static let baseStats: (health: CGFloat, speed: CGFloat, armor: CGFloat, reward: Int) = (
-        health: 180,
-        speed: 120,
+        health: 300,    // Increased from 180 - very tanky
+        speed: 50,      // Reduced from 120 - slow moving
         armor: 30,
-        reward: 20
+        reward: 4       // Reduced from 20 (factor 5)
     )
     
     init(level: Int = 1) {

@@ -7,7 +7,7 @@ import SpriteKit
 final class AntiAirTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 25,      // Base damage
+        damage: 12,      // Nerfed from 25
         range: 200,      // Good range for air coverage
         fireRate: 3.0    // Fast firing
     )

@@ -7,8 +7,8 @@ import SpriteKit
 final class ShotgunTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 12,      // Per pellet
-        range: 100,      // Short range
+        damage: 6,       // Nerfed from 12 per pellet
+        range: 60,       // Reduced from 100 - very short range
         fireRate: 1.5    // Shots per second
     )
     

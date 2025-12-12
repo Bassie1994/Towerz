@@ -7,8 +7,8 @@ import SpriteKit
 final class LaserTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 15,      // DPS while beam active
-        range: 250,      // Long range beam
+        damage: 7,       // Nerfed from 15 DPS
+        range: 1300,     // Full field range (26 cells * 48 + buffer)
         fireRate: 10.0   // Damage ticks per second
     )
     

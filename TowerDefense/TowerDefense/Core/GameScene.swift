@@ -264,6 +264,12 @@ final class GameScene: SKScene {
     }
     
     private func handleTouch(at location: CGPoint) {
+        // Check conversion overlay first
+        if let overlay = childNode(withName: "conversionOverlay") {
+            handleConversionTouch(at: location, overlay: overlay)
+            return
+        }
+        
         // Check for game over/victory restart
         if gameManager.gameState == .gameOver || gameManager.gameState == .victory {
             restartGame()
@@ -305,6 +311,58 @@ final class GameScene: SKScene {
         if selectedTowerType != nil {
             updatePlacementPreview(at: location)
         }
+    }
+    
+    private func handleConversionTouch(at location: CGPoint, overlay: SKNode) {
+        // Find what was touched
+        let nodesAtPoint = nodes(at: location)
+        
+        for node in nodesAtPoint {
+            // Cancel button
+            if node.name == "cancelConversion" || node.name == "conversionDimmer" {
+                overlay.removeFromParent()
+                return
+            }
+            
+            // Conversion button
+            if let nodeName = node.name, nodeName.hasPrefix("convert_") {
+                let typeString = String(nodeName.dropFirst("convert_".count))
+                if let targetType = TowerType(rawValue: typeString),
+                   let wallTower = overlay.userData?["wallTower"] as? Tower {
+                    performConversion(wallTower: wallTower, to: targetType)
+                    overlay.removeFromParent()
+                    towerInfoNode.hide()
+                }
+                return
+            }
+        }
+    }
+    
+    private func performConversion(wallTower: Tower, to targetType: TowerType) {
+        let conversionCost = targetType.baseCost - TowerType.wall.baseCost
+        
+        guard gameManager.economyManager.gold >= conversionCost else {
+            AudioManager.shared.playSound(.error)
+            return
+        }
+        
+        // Spend gold
+        gameManager.economyManager.spendGold(conversionCost)
+        
+        // Remove wall tower
+        let gridPos = wallTower.gridPosition
+        wallTower.removeFromParent()
+        gameManager.towers.removeAll { $0 === wallTower }
+        
+        // Don't unblock - we're replacing with another tower
+        // Create new tower
+        let newTower = createTower(type: targetType, at: gridPos)
+        newTower.position = gameManager.placementValidator.gridToWorld(gridPosition: gridPos)
+        gameManager.towers.append(newTower)
+        worldNode.addChild(newTower)
+        
+        AudioManager.shared.playSound(.towerPlace)
+        updateUI()
     }
     
     private func updatePlacementPreview(at location: CGPoint) {
@@ -373,6 +431,8 @@ final class GameScene: SKScene {
         let tower: Tower
         
         switch type {
+        case .wall:
+            tower = WallTower(gridPosition: gridPosition)
         case .machineGun:
             tower = MachineGunTower(gridPosition: gridPosition)
         case .cannon:
@@ -549,6 +609,98 @@ extension GameScene: TowerInfoNodeDelegate {
     func towerInfoDidTapSell(_ tower: Tower) {
         gameManager.sellTower(tower)
         updateUI()
+    }
+    
+    func towerInfoDidTapConvert(_ tower: Tower) {
+        // Show conversion menu for wall tower
+        guard tower.towerType == .wall else { return }
+        showConversionMenu(for: tower)
+    }
+    
+    private func showConversionMenu(for wallTower: Tower) {
+        // Create a simple conversion overlay
+        let overlay = SKNode()
+        overlay.name = "conversionOverlay"
+        overlay.zPosition = GameConstants.ZPosition.ui.rawValue + 20
+        
+        // Background dimmer
+        let dimmer = SKShapeNode(rectOf: CGSize(width: 1400, height: 800))
+        dimmer.fillColor = SKColor.black.withAlphaComponent(0.7)
+        dimmer.strokeColor = .clear
+        dimmer.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        dimmer.name = "conversionDimmer"
+        overlay.addChild(dimmer)
+        
+        // Panel
+        let panelWidth: CGFloat = 400
+        let panelHeight: CGFloat = 500
+        let panel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 15)
+        panel.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.2, alpha: 0.95)
+        panel.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.6, alpha: 1.0)
+        panel.lineWidth = 2
+        panel.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.addChild(panel)
+        
+        // Title
+        let title = SKLabelNode(fontNamed: "Helvetica-Bold")
+        title.text = "Convert Wall To:"
+        title.fontSize = 20
+        title.fontColor = .white
+        title.position = CGPoint(x: 0, y: panelHeight / 2 - 35)
+        panel.addChild(title)
+        
+        // Tower buttons - excluding wall
+        let convertibleTypes: [TowerType] = [.machineGun, .cannon, .slow, .buff, .shotgun, .splash, .laser, .antiAir]
+        let buttonWidth: CGFloat = 170
+        let buttonHeight: CGFloat = 45
+        let startY: CGFloat = panelHeight / 2 - 80
+        
+        for (index, type) in convertibleTypes.enumerated() {
+            let row = index / 2
+            let col = index % 2
+            let x: CGFloat = col == 0 ? -buttonWidth / 2 - 10 : buttonWidth / 2 + 10
+            let y: CGFloat = startY - CGFloat(row) * 55
+            
+            let cost = type.baseCost - TowerType.wall.baseCost
+            
+            let button = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 8)
+            button.fillColor = type.color.withAlphaComponent(0.6)
+            button.strokeColor = type.color
+            button.lineWidth = 2
+            button.position = CGPoint(x: x, y: y)
+            button.name = "convert_\(type.rawValue)"
+            
+            let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+            label.text = "\(type.displayName) ($\(cost))"
+            label.fontSize = 14
+            label.fontColor = .white
+            label.verticalAlignmentMode = .center
+            button.addChild(label)
+            
+            panel.addChild(button)
+        }
+        
+        // Cancel button
+        let cancelButton = SKShapeNode(rectOf: CGSize(width: 120, height: 40), cornerRadius: 8)
+        cancelButton.fillColor = SKColor(red: 0.5, green: 0.2, blue: 0.2, alpha: 1.0)
+        cancelButton.strokeColor = .white
+        cancelButton.lineWidth = 1
+        cancelButton.position = CGPoint(x: 0, y: -panelHeight / 2 + 40)
+        cancelButton.name = "cancelConversion"
+        
+        let cancelLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        cancelLabel.text = "Cancel"
+        cancelLabel.fontSize = 14
+        cancelLabel.fontColor = .white
+        cancelLabel.verticalAlignmentMode = .center
+        cancelButton.addChild(cancelLabel)
+        panel.addChild(cancelButton)
+        
+        // Store wall tower reference
+        overlay.userData = NSMutableDictionary()
+        overlay.userData?["wallTower"] = wallTower
+        
+        addChild(overlay)
     }
     
     func towerInfoDidClose() {

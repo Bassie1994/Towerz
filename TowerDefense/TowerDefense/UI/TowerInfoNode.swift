@@ -4,6 +4,7 @@ import SpriteKit
 protocol TowerInfoNodeDelegate: AnyObject {
     func towerInfoDidTapUpgrade(_ tower: Tower)
     func towerInfoDidTapSell(_ tower: Tower)
+    func towerInfoDidTapConvert(_ tower: Tower)
     func towerInfoDidClose()
 }
 
@@ -172,7 +173,7 @@ final class TowerInfoNode: SKNode {
         var yOffset: CGFloat = 0
         let lineHeight: CGFloat = 22
         
-        let statOrder = ["Type", "Damage", "Range", "Fire Rate", "DPS", "Slow", "Duration", "Damage Buff", "ROF Buff", "Buffing", "Pellets", "Spread", "Splash Radius", "vs Flying", "Special", "Best vs", "Note", "Level", "Sell Value"]
+        let statOrder = ["Type", "Damage", "Range", "Fire Rate", "DPS", "Slow", "Duration", "Damage Buff", "ROF Buff", "Buffing", "Pellets", "Spread", "Splash Radius", "vs Flying", "Special", "Hint", "Best vs", "Note", "Level", "Sell Value"]
         
         for key in statOrder {
             if let value = stats[key] {
@@ -187,8 +188,12 @@ final class TowerInfoNode: SKNode {
             }
         }
         
-        // Update upgrade button
-        if let upgradeCost = tower.getUpgradeCost() {
+        // Update upgrade button - show "Convert" for wall towers
+        if tower.towerType == .wall {
+            upgradeLabel.text = "Convert"
+            upgradeButton.alpha = 1.0
+            upgradeButton.fillColor = SKColor(red: 0.4, green: 0.3, blue: 0.6, alpha: 1.0)
+        } else if let upgradeCost = tower.getUpgradeCost() {
             upgradeLabel.text = "⬆ $\(upgradeCost)"
             upgradeButton.alpha = 1.0
             upgradeButton.fillColor = SKColor(red: 0.2, green: 0.5, blue: 0.2, alpha: 1.0)
@@ -216,11 +221,17 @@ final class TowerInfoNode: SKNode {
         }
         
         // Check upgrade button
-        if upgradeButton.contains(localPoint) && tower.canUpgrade() {
-            delegate?.towerInfoDidTapUpgrade(tower)
-            animateButton(upgradeButton)
-            updateContent()
-            return true
+        if upgradeButton.contains(localPoint) {
+            if tower.towerType == .wall {
+                delegate?.towerInfoDidTapConvert(tower)
+                animateButton(upgradeButton)
+                return true
+            } else if tower.canUpgrade() {
+                delegate?.towerInfoDidTapUpgrade(tower)
+                animateButton(upgradeButton)
+                updateContent()
+                return true
+            }
         }
         
         // Check sell button
