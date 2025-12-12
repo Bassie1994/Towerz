@@ -1,0 +1,111 @@
+[
+    {
+        "waveNumber": 1,
+        "groups": [
+            {
+                "type": "infantry",
+                "count": 8,
+                "level": 1,
+                "spawnInterval": 1.2,
+                "groupDelay": 0.0
+            }
+        ]
+    },
+    {
+        "waveNumber": 2,
+        "groups": [
+            {
+                "type": "infantry",
+                "count": 10,
+                "level": 1,
+                "spawnInterval": 1.0,
+                "groupDelay": 0.0
+            },
+            {
+                "type": "infantry",
+                "count": 5,
+                "level": 1,
+                "spawnInterval": 0.8,
+                "groupDelay": 3.0
+            }
+        ]
+    },
+    {
+        "waveNumber": 3,
+        "groups": [
+            {
+                "type": "infantry",
+                "count": 8,
+                "level": 1,
+                "spawnInterval": 1.0,
+                "groupDelay": 0.0
+            },
+            {
+                "type": "flying",
+                "count": 4,
+                "level": 1,
+                "spawnInterval": 1.5,
+                "groupDelay": 2.0
+            }
+        ]
+    },
+    {
+        "waveNumber": 4,
+        "groups": [
+            {
+                "type": "infantry",
+                "count": 6,
+                "level": 2,
+                "spawnInterval": 0.9,
+                "groupDelay": 0.0
+            },
+            {
+                "type": "cavalry",
+                "count": 3,
+                "level": 1,
+                "spawnInterval": 2.0,
+                "groupDelay": 2.0
+            },
+            {
+                "type": "flying",
+                "count": 4,
+                "level": 1,
+                "spawnInterval": 1.2,
+                "groupDelay": 1.0
+            }
+        ]
+    },
+    {
+        "waveNumber": 5,
+        "groups": [
+            {
+                "type": "infantry",
+                "count": 12,
+                "level": 2,
+                "spawnInterval": 0.7,
+                "groupDelay": 0.0
+            },
+            {
+                "type": "cavalry",
+                "count": 4,
+                "level": 2,
+                "spawnInterval": 1.5,
+                "groupDelay": 2.0
+            },
+            {
+                "type": "flying",
+                "count": 6,
+                "level": 2,
+                "spawnInterval": 1.0,
+                "groupDelay": 1.0
+            },
+            {
+                "type": "infantry",
+                "count": 8,
+                "level": 2,
+                "spawnInterval": 0.6,
+                "groupDelay": 2.0
+            }
+        ]
+    }
+]
