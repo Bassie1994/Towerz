@@ -225,7 +225,7 @@ class AntiAirMissile: SKNode {
     
     let damage: CGFloat
     weak var target: Enemy?
-    let speed: CGFloat = 500
+    let missileSpeed: CGFloat = 500
     
     private let missileNode: SKShapeNode
     private var hasHit = false
@@ -288,7 +288,7 @@ class AntiAirMissile: SKNode {
         
         // Home toward target
         let normalizedDir = CGVector(dx: direction.dx / distance, dy: direction.dy / distance)
-        let moveSpeed = speed / 60.0
+        let moveSpeed = missileSpeed / 60.0
         
         position = CGPoint(
             x: position.x + normalizedDir.dx * moveSpeed,

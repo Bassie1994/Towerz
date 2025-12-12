@@ -480,7 +480,7 @@ final class GameScene: SKScene {
         notifyPathfindingChanged()
     }
     
-    private func spawnEnemy(type: EnemyType, level: Int) {
+    func spawnEnemy(type: EnemyType, level: Int) {
         let enemy: Enemy
         
         switch type {
@@ -738,9 +738,7 @@ extension GameScene: TowerDelegate {
         return targetingSystem.getEnemiesInRange(of: tower)
     }
     
-    func getAllTowers() -> [Tower] {
-        return towers
-    }
+    // getAllTowers() is defined in main class body
 }
 
 // MARK: - WaveManagerDelegate
@@ -793,9 +791,7 @@ extension GameScene: WaveManagerDelegate {
         // Handled by gameManager.victory()
     }
     
-    func spawnEnemy(type: EnemyType, level: Int) {
-        self.spawnEnemy(type: type, level: level)
-    }
+    // spawnEnemy is defined in main class body
 }
 
 // MARK: - EconomyManagerDelegate

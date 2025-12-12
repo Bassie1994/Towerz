@@ -258,7 +258,7 @@ final class TowerInfoNode: SKNode {
         button.run(press)
     }
     
-    func containsPoint(_ location: CGPoint) -> Bool {
+    func containsTouchPoint(_ location: CGPoint) -> Bool {
         guard !isHidden else { return false }
         let localPoint = convert(location, to: panelBackground)
         return panelBackground.contains(localPoint)
