@@ -341,25 +341,26 @@ final class GameScene: SKScene {
     private func performConversion(wallTower: Tower, to targetType: TowerType) {
         let conversionCost = targetType.baseCost - TowerType.wall.baseCost
         
-        guard gameManager.economyManager.gold >= conversionCost else {
-            AudioManager.shared.playSound(.error)
+        guard gameManager.economyManager.canAfford(conversionCost) else {
+            AudioManager.shared.playSound(.invalidPlacement)
             return
         }
         
-        // Spend gold
-        gameManager.economyManager.spendGold(conversionCost)
+        // Spend money
+        _ = gameManager.economyManager.spend(conversionCost)
         
-        // Remove wall tower
+        // Remove wall tower from our array
         let gridPos = wallTower.gridPosition
         wallTower.removeFromParent()
-        gameManager.towers.removeAll { $0 === wallTower }
+        towers.removeAll { $0 === wallTower }
         
-        // Don't unblock - we're replacing with another tower
+        // Don't unblock grid - we're replacing with another tower
         // Create new tower
         let newTower = createTower(type: targetType, at: gridPos)
-        newTower.position = gameManager.placementValidator.gridToWorld(gridPosition: gridPos)
-        gameManager.towers.append(newTower)
-        worldNode.addChild(newTower)
+        newTower.position = gridPos.toWorldPosition()
+        newTower.delegate = self
+        towers.append(newTower)
+        towerLayer.addChild(newTower)
         
         AudioManager.shared.playSound(.towerPlace)
         updateUI()
@@ -385,7 +386,7 @@ final class GameScene: SKScene {
         
         let gridPos = gameManager.placementValidator.snapToGrid(worldPosition: location)
         
-        if let tower = gameManager.placeTower(type: type, at: gridPos) {
+        if gameManager.placeTower(type: type, at: gridPos) != nil {
             placementPreviewNode.animatePlacementSuccess()
             
             // Keep placement mode active for consecutive placements
