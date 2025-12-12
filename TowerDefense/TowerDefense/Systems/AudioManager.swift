@@ -42,6 +42,7 @@ final class AudioManager {
     private var audioEngine: AVAudioEngine?
     private var playerNodes: [AVAudioPlayerNode] = []
     private var mixerNode: AVAudioMixerNode?
+    private var audioFormat: AVAudioFormat?
     
     // Settings
     private(set) var soundEnabled: Bool = true
@@ -75,11 +76,19 @@ final class AudioManager {
         audioEngine = AVAudioEngine()
         mixerNode = audioEngine?.mainMixerNode
         
-        // Create pool of player nodes
+        // Create a consistent audio format for all procedural sounds (mono, 44.1kHz)
+        audioFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)
+        
+        guard let format = audioFormat else {
+            print("Failed to create audio format")
+            return
+        }
+        
+        // Create pool of player nodes with consistent format
         for _ in 0..<8 {
             let player = AVAudioPlayerNode()
             audioEngine?.attach(player)
-            audioEngine?.connect(player, to: mixerNode!, format: nil)
+            audioEngine?.connect(player, to: mixerNode!, format: format)
             playerNodes.append(player)
         }
         
@@ -329,7 +338,8 @@ final class AudioManager {
         
         let frameCount = AVAudioFrameCount(duration * sampleRate)
         
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
+        // Use the same format as the player nodes
+        guard let format = audioFormat,
               let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
             return nil
         }
