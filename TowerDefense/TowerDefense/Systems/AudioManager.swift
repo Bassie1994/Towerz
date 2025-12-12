@@ -107,6 +107,11 @@ final class AudioManager {
     // MARK: - Public Methods
     
     func playSound(_ effect: SoundEffect) {
+        // Audio temporarily disabled due to format issues
+        // TODO: Fix audio engine format compatibility
+        return
+        
+        /*
         guard soundEnabled else { return }
         
         // Cooldown check
@@ -118,6 +123,7 @@ final class AudioManager {
         
         // Generate and play procedural sound
         generateAndPlaySound(for: effect)
+        */
     }
     
     func toggleSound() {
