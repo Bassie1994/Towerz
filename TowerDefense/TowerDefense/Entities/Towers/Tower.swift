@@ -223,7 +223,10 @@ class Tower: SKNode {
     
     func getUpgradeCost() -> Int? {
         guard upgradeLevel < maxUpgradeLevel else { return nil }
-        return towerType.baseCost / 2 * (upgradeLevel + 1)
+        // Upgrade costs 40% of base cost - making upgrades very cost effective
+        // Level 1->2: 40% of base, Level 2->3: 50% of base
+        let costPercent = 0.40 + Double(upgradeLevel) * 0.10
+        return Int(Double(towerType.baseCost) * costPercent)
     }
     
     func canUpgrade() -> Bool {
@@ -235,11 +238,19 @@ class Tower: SKNode {
         
         upgradeLevel += 1
         
-        // Update stats (20% increase per level)
-        let multiplier = 1.0 + (CGFloat(upgradeLevel) * 0.2)
-        damage = baseDamage * multiplier
-        range = baseRange * (1.0 + CGFloat(upgradeLevel) * 0.1) // 10% range increase
-        fireRate = baseFireRate * (1.0 + CGFloat(upgradeLevel) * 0.15) // 15% fire rate increase
+        // BUFFED upgrade scaling - makes upgrades more valuable than buying new towers
+        // Each upgrade gives 35% damage, 15% range, 25% fire rate
+        // This means level 3 tower has: 170% damage, 130% range, 150% fire rate
+        // At 90% total cost (40% + 50% = 90% for both upgrades)
+        // Buying TWO towers would cost 200% but only give 200% base stats
+        // So upgrading one tower is more efficient!
+        let damageMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.35)  // +35% per level
+        let rangeMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.15)   // +15% per level
+        let fireRateMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.25) // +25% per level
+        
+        damage = baseDamage * damageMultiplier
+        range = baseRange * rangeMultiplier
+        fireRate = baseFireRate * fireRateMultiplier
         
         // Update range indicator
         let newPath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)

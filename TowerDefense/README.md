@@ -5,11 +5,13 @@ Een complete Tower Defense game voor iOS met **dynamische obstacle-based pathfin
 ## 🎮 Features
 
 - **Dynamische Pathfinding**: Vijanden berekenen hun route in real-time met een Flow Field algoritme
-- **6 Unieke Torens**: Elk met eigen strategie en upgrade-pad
+- **8 Unieke Torens**: Elk met eigen strategie en upgrade-pad
 - **3 Vijandtypes**: Infantry, Cavalry (gepantserd), en Flying (negeert obstakels)
 - **Pad-validatie**: Torens kunnen niet geplaatst worden als ze alle paden blokkeren
-- **10 Waves**: Met oplopende moeilijkheid en gemixte vijandtypes
+- **11 Levels**: Tutorial + 10 levels met 20-50 waves elk
 - **Economy systeem**: Verdien geld door vijanden te doden, koop en upgrade torens
+- **Procedural Audio**: Synthesized sound effects voor alle acties
+- **Flying Mechanics**: Vliegende vijanden zijn NIET padgebonden maar wel zwakker
 
 ## 🛠 Technologie Keuze: SpriteKit
 
@@ -27,27 +29,27 @@ Een complete Tower Defense game voor iOS met **dynamische obstacle-based pathfin
 TowerDefense/
 ├── TowerDefense.xcodeproj/
 ├── TowerDefense/
-│   ├── AppDelegate.swift          # App lifecycle
-│   ├── SceneDelegate.swift        # Scene lifecycle
-│   ├── GameViewController.swift   # SpriteKit view controller
+│   ├── AppDelegate.swift
+│   ├── SceneDelegate.swift
+│   ├── GameViewController.swift
 │   │
 │   ├── Core/
-│   │   ├── GameScene.swift        # Hoofdscene, integreert alle systemen
-│   │   ├── GameManager.swift      # Centrale game state manager
-│   │   ├── Constants.swift        # Game constanten en enums
-│   │   └── Extensions.swift       # Helper extensions
+│   │   ├── GameScene.swift        # Hoofdscene
+│   │   ├── GameManager.swift      # Game state
+│   │   ├── Constants.swift        # Enums & constanten
+│   │   └── Extensions.swift       # Helpers
 │   │
 │   ├── Pathfinding/
-│   │   ├── PathfindingGrid.swift  # Grid met walkability data
-│   │   ├── AStarPathfinder.swift  # A* voor validatie
-│   │   └── FlowField.swift        # Flow Field voor navigatie
+│   │   ├── PathfindingGrid.swift  # Grid walkability
+│   │   ├── AStarPathfinder.swift  # A* validatie
+│   │   └── FlowField.swift        # Navigatie systeem
 │   │
 │   ├── Entities/
 │   │   ├── Enemies/
 │   │   │   ├── Enemy.swift        # Base class
 │   │   │   ├── InfantryEnemy.swift
 │   │   │   ├── CavalryEnemy.swift
-│   │   │   └── FlyingEnemy.swift
+│   │   │   └── FlyingEnemy.swift  # Niet padgebonden!
 │   │   │
 │   │   └── Towers/
 │   │       ├── Tower.swift        # Base class
@@ -57,98 +59,120 @@ TowerDefense/
 │   │       ├── BuffTower.swift
 │   │       ├── ShotgunTower.swift
 │   │       ├── SplashTower.swift
+│   │       ├── LaserTower.swift   # NIEUW: Piercing beam
+│   │       ├── AntiAirTower.swift # NIEUW: Anti-vliegtuig
 │   │       └── Projectile.swift
 │   │
 │   ├── Systems/
-│   │   ├── WaveManager.swift      # Wave spawning
-│   │   ├── EconomyManager.swift   # Geld management
+│   │   ├── WaveManager.swift
+│   │   ├── EconomyManager.swift
 │   │   ├── PlacementValidator.swift
-│   │   └── TargetingSystem.swift
+│   │   ├── TargetingSystem.swift
+│   │   ├── AudioManager.swift     # Procedural audio
+│   │   └── LevelManager.swift     # 11 levels
 │   │
 │   ├── UI/
-│   │   ├── HUDNode.swift          # Lives, money, wave info
-│   │   ├── BuildMenuNode.swift    # Tower selectie
-│   │   ├── TowerInfoNode.swift    # Selected tower info
+│   │   ├── HUDNode.swift
+│   │   ├── BuildMenuNode.swift
+│   │   ├── TowerInfoNode.swift
 │   │   └── PlacementPreviewNode.swift
 │   │
 │   ├── Config/
-│   │   ├── GameConfig.swift       # Balancing constanten
-│   │   └── WaveConfig.json        # Wave definities
+│   │   ├── GameConfig.swift
+│   │   └── WaveConfig.json
 │   │
 │   └── Resources/
 │       ├── Assets.xcassets/
+│       ├── AppIconGenerator.swift
 │       ├── Main.storyboard
 │       └── LaunchScreen.storyboard
 ```
 
-## 🔧 Dynamic Pathfinding Implementatie
+## ✈️ Flying Units - Speciale Mechanics
 
-### Flow Field Algorithm
+Flying enemies hebben unieke eigenschappen:
 
-Het spel gebruikt een **Flow Field** in plaats van individuele A* paden per vijand:
-
-1. **Distance Field**: BFS vanuit alle exit posities berekent afstand naar exit voor elke cel
-2. **Direction Field**: Elke cel krijgt een richting die naar de exit wijst
-3. **Real-time Updates**: Bij tower placement wordt het flow field opnieuw berekend
-4. **Interpolatie**: Vijanden samplen de flow field met bilinear interpolation voor vloeiende beweging
-
-### Placement Validatie
-
-```swift
-func validate(gridPosition: GridPosition) -> PlacementValidationResult {
-    // 1. Bounds check
-    // 2. Niet in spawn/exit zone
-    // 3. Cel niet bezet
-    // 4. KRITIEK: Testblock om te checken of pad nog bestaat
-    if !grid.testBlockCell(gridPosition) {
-        return .invalid(reason: "Would block all paths!")
-    }
-    return .valid()
-}
-```
-
-De `testBlockCell` methode:
-- Blokkeert de cel tijdelijk
-- Voert BFS uit vanuit exits om te checken of spawns bereikbaar zijn
-- Herstelt de cel
-- Retourneert of plaatsing geldig is
+| Eigenschap | Beschrijving |
+|------------|--------------|
+| **Geen pathfinding** | Vliegen direct naar exit, negeren torens |
+| **Zwakker** | Minder HP (40 base vs 100 infantry) |
+| **Geen armor** | 0 armor, geen scaling |
+| **Beperkte counters** | Alleen MG, Slow, Shotgun, AntiAir kunnen ze raken |
+| **Immune voor** | Cannon, Splash, Laser (projectielen gaan eronder) |
 
 ## 📊 Enemy Stats
 
-| Type | Health | Speed | Armor | Reward | Notes |
-|------|--------|-------|-------|--------|-------|
-| Infantry | 100 | 80 | 0 | 10 | Standaard grondunit |
-| Cavalry | 180 | 120 | 30 | 20 | Snel, gepantserd |
-| Flying | 60 | 100 | 0 | 15 | Negeert obstakels |
+| Type | Health | Speed | Armor | Reward | Pathfinding |
+|------|--------|-------|-------|--------|-------------|
+| Infantry | 100 | 80 | 0 | 10 | Flow Field |
+| Cavalry | 180 | 120 | 30 | 20 | Flow Field |
+| Flying | 40 | 90 | 0 | 12 | **Direct** |
 
-**Scaling per level**: Health +25-35%, Armor +5-10, Speed +0-8
+## 🗼 Tower Stats (8 Torens)
 
-## 🗼 Tower Stats
+| Tower | Damage | Range | ROF | Cost | Target | Special |
+|-------|--------|-------|-----|------|--------|---------|
+| MachineGun | 8 | 150 | 8.0/s | 50 | All | Prioriteert flying |
+| Cannon | 60 | 180 | 0.8/s | 80 | Ground | 50 armor pen, **NO flying** |
+| Slow | 0 | 120 | 2.0/s | 60 | All | 50% slow, 2s |
+| Buff | 0 | 150 | - | 100 | Towers | +15% dmg, +10% ROF |
+| Shotgun | 12×6 | 100 | 1.5/s | 70 | All | Cone spread |
+| Splash | 30 | 160 | 0.7/s | 90 | Ground | 60 radius, **NO flying** |
+| **Laser** | 15 DPS | 250 | 10/s | 120 | Ground | Piercing beam, **NO flying** |
+| **AntiAir** | 25 | 200 | 3.0/s | 75 | **Flying only** | +150% vs flying |
 
-| Tower | Damage | Range | Fire Rate | Cost | Special |
-|-------|--------|-------|-----------|------|---------|
-| Machine Gun | 8 | 150 | 8.0/s | 50 | Prioriteert flying |
-| Cannon | 60 | 180 | 0.8/s | 80 | 50 armor penetration |
-| Slow | 0 | 120 | 2.0/s | 60 | 50% slow, 2s |
-| Buff | 0 | 150 | - | 100 | +15% dmg, +10% ROF |
-| Shotgun | 12/pellet | 100 | 1.5/s | 70 | 6 pellets, cone |
-| Splash | 30 | 160 | 0.7/s | 90 | 60 radius AoE |
+## ⬆️ Upgrade Balancing
 
-**Upgrades**: Max 2 upgrades per toren
-- Damage: +20% per level
-- Range: +10% per level
-- Fire Rate: +15% per level
+**Upgrades zijn waardevoller dan nieuwe torens kopen!**
+
+| Upgrade | Cost | Damage | Range | Fire Rate |
+|---------|------|--------|-------|-----------|
+| Level 1→2 | 40% base | +35% | +15% | +25% |
+| Level 2→3 | 50% base | +70% | +30% | +50% |
+
+**Voorbeeld MachineGun ($50 base):**
+- Upgrade 1→2: $20 voor +35% stats
+- Upgrade 2→3: $25 voor +70% stats totaal
+- **Totaal: $95 voor 170% damage**
+- Vergelijk: 2 nieuwe torens = $100 voor 200% base damage maar geen synergy
 
 ## 🎯 Target Selection
 
 | Tower | Priority |
 |-------|----------|
-| Machine Gun | Flying > Closest |
-| Cannon | Most Armored > Most HP |
+| MachineGun | Flying > Closest |
+| Cannon | Most Armored (ground only) |
 | Slow | All in range (AoE) |
 | Buff | N/A (buffs towers) |
 | Shotgun | Closest |
-| Splash | Most enemies in splash radius |
+| Splash | Most enemies in radius (ground) |
+| Laser | Closest ground enemy (beam pierces) |
+| AntiAir | **Only flying** - homing missiles |
+
+## 🎮 Levels
+
+| Level | Name | Waves | Emphasis |
+|-------|------|-------|----------|
+| 0 | Tutorial | 5 | Learning basics |
+| 1 | First Defense | 20 | Infantry intro |
+| 2 | Air Raid | 25 | Heavy flying |
+| 3 | Armored Assault | 25 | Heavy cavalry |
+| 4 | The Swarm | 30 | Massive infantry |
+| 5 | Combined Arms | 35 | Balanced mixed |
+| 6 | Sky Terror | 35 | Air superiority |
+| 7 | Iron Legion | 40 | Elite armor |
+| 8 | Blitzkrieg | 40 | Fast assault |
+| 9 | Endless Tide | 45 | Massive numbers |
+| 10 | Final Stand | 50 | Ultimate challenge |
+
+## 🔊 Audio System
+
+Proceduraal gegenereerde geluiden via AVAudioEngine:
+
+- **Tower sounds**: Plaats, upgrade, verkoop, elk wapen type
+- **Enemy sounds**: Dood, exit bereikt, spawn
+- **Game sounds**: Wave start/complete, victory, game over
+- **UI sounds**: Button clicks, invalid placement
 
 ## 🏃 Build & Run
 
@@ -164,59 +188,55 @@ De `testBlockCell` methode:
 3. Build & Run (⌘R)
 
 ```bash
-# Of via command line:
+# Command line build:
 cd TowerDefense
 xcodebuild -scheme TowerDefense -destination 'platform=iOS Simulator,name=iPhone 15' build
 ```
 
 ## 🎮 Controls
 
-- **Tap** op Build Menu → Selecteer toren type
-- **Tap** op speelveld → Plaats toren (groen = geldig, rood = ongeldig)
-- **Tap** op geplaatste toren → Open info panel
-- **Upgrade/Sell** via toren info panel
-- **Start Wave** knop om wave te starten
-- **2x** knop voor fast forward
+- **Tap** Build Menu → Selecteer toren
+- **Tap** speelveld → Plaats toren (groen=geldig, rood=ongeldig)
+- **Tap** geplaatste toren → Info/Upgrade/Sell
+- **Start Wave** → Begin volgende wave
+- **2x** → Fast forward
 
-## ⚙️ Configuratie
+## 🖼 App Icon
 
-Wave configuratie kan aangepast worden in `WaveConfig.json`:
+De app icon wordt proceduraal gegenereerd door `AppIconGenerator.swift`:
+- Tower silhouette met range indicator
+- Enemy dots approaching
+- Muzzle flash effect
+- Dark gradient background met grid
 
-```json
-{
-    "waveNumber": 1,
-    "groups": [
-        {
-            "type": "infantry",
-            "count": 8,
-            "level": 1,
-            "spawnInterval": 1.2,
-            "groupDelay": 0.0
-        }
-    ]
-}
-```
+## ⚙️ Balance Philosophy
 
-## 🚧 Wat NIET is geïmplementeerd
+1. **Upgrades > New Towers**: Maximale stats voor minimale investering
+2. **Counter System**: Elke vijand heeft sterke en zwakke counters
+3. **Flying Tradeoff**: Geen pathfinding maar zeer fragiel
+4. **Specialization**: Laser voor DPS, AntiAir voor vliegers, Buff voor support
 
-- **Sound/Music**: Geen audio assets toegevoegd
-- **App Icon**: Placeholder configuratie (geen artwork)
-- **Tutorial**: Geen in-game uitleg (wel intuïtieve UI)
-- **Persistence**: Game state wordt niet opgeslagen
-- **Achievements**: Geen tracking van prestaties
-- **Meerdere levels**: Alleen 1 level (10 waves)
-- **iCloud sync**: Geen cloud opslag
+## 📝 What's Implemented
 
-## 🔍 Performance Optimalisaties
+✅ Dynamic obstacle-based pathfinding (Flow Field)
+✅ 8 unique tower types with upgrades
+✅ 3 enemy types with distinct behaviors
+✅ Flying units ignore pathing, are weaker
+✅ 11 levels (tutorial + 10 main levels)
+✅ 20-50 waves per level
+✅ Procedural audio system
+✅ App icon generator
+✅ Upgrade value > new tower value
+✅ Tower targeting restrictions (no flying for cannon/splash/laser)
 
-1. **Flow Field Caching**: Niet elke frame herberekend, alleen bij grid wijzigingen
-2. **Spatial Partitioning**: Enemies in range queries zijn geoptimaliseerd
-3. **Object Pooling**: Niet volledig geïmplementeerd maar makkelijk toe te voegen
-4. **Batch Rendering**: SpriteKit handled dit automatisch
+## 🚧 Future Improvements
 
-## 📝 License
-
-MIT License - vrij te gebruiken en aan te passen.
+- Save/Load game progress between sessions
+- More tower types
+- Boss enemies
+- Achievement system
+- Leaderboards
+- Additional levels
 
 ---
 

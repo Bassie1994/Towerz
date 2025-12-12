@@ -60,8 +60,9 @@ final class SplashTower: Tower {
             return
         }
         
-        let aliveEnemies = enemies.filter { $0.isAlive }
-        guard !aliveEnemies.isEmpty else {
+        // Splash cannot hit flying enemies - explosion is ground-level
+        let groundEnemies = enemies.filter { $0.isAlive && $0.enemyType != .flying }
+        guard !groundEnemies.isEmpty else {
             currentTarget = nil
             return
         }
@@ -70,10 +71,10 @@ final class SplashTower: Tower {
         var bestTarget: Enemy?
         var bestScore = 0
         
-        for enemy in aliveEnemies {
+        for enemy in groundEnemies {
             var score = 1
-            // Count how many other enemies would be hit by splash
-            for other in aliveEnemies {
+            // Count how many other ground enemies would be hit by splash
+            for other in groundEnemies {
                 if other.id != enemy.id {
                     let distance = enemy.position.distance(to: other.position)
                     if distance <= splashRadius {
@@ -88,11 +89,12 @@ final class SplashTower: Tower {
             }
         }
         
-        currentTarget = bestTarget ?? aliveEnemies.first
+        currentTarget = bestTarget ?? groundEnemies.first
     }
     
     override func fire(at target: Enemy, currentTime: TimeInterval) {
         delegate?.towerDidFire(self, at: target)
+        AudioManager.shared.playSound(.splashFire)
         
         // Create arcing projectile
         let projectile = SplashProjectile(
@@ -141,8 +143,8 @@ final class SplashTower: Tower {
         let effectiveSplashRadius = splashRadius + CGFloat(upgradeLevel) * 10
         let effectiveDamage = damage * damageMultiplier
         
-        // Damage all enemies in splash radius
-        for enemy in enemies where enemy.isAlive {
+        // Damage all ground enemies in splash radius (flying are above explosion)
+        for enemy in enemies where enemy.isAlive && enemy.enemyType != .flying {
             let distance = impactPosition.distance(to: enemy.position)
             if distance <= effectiveSplashRadius {
                 // Calculate damage with falloff
@@ -234,6 +236,7 @@ final class SplashTower: Tower {
         var stats = super.getStats()
         stats["Splash Radius"] = String(format: "%.0f", splashRadius + CGFloat(upgradeLevel) * 10)
         stats["Best vs"] = "Groups"
+        stats["Note"] = "Cannot hit Flying"
         return stats
     }
 }
