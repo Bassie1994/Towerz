@@ -58,8 +58,9 @@ final class AudioManager {
     private let minimumInterval: TimeInterval = 0.05
     
     private init() {
-        setupAudioEngine()
-        setupAudioSession()
+        // Audio completely disabled due to format crashes
+        // setupAudioEngine()
+        // setupAudioSession()
     }
     
     private func setupAudioSession() {
