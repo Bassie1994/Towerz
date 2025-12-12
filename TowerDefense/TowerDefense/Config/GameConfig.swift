@@ -41,14 +41,14 @@ struct GameConfig {
             rewardScaling: 4
         ),
         .flying: EnemyStats(
-            health: 60,
-            speed: 100,
+            health: 40,      // Reduced! Flying are weaker
+            speed: 90,
             armor: 0,
-            reward: 15,
-            healthScaling: 0.25,
-            speedScaling: 8,
+            reward: 12,
+            healthScaling: 0.20,  // Slower scaling
+            speedScaling: 5,
             armorScaling: 0,
-            rewardScaling: 3
+            rewardScaling: 2
         )
     ]
     
@@ -127,6 +127,26 @@ struct GameConfig {
             rangeScaling: 0.10,
             fireRateScaling: 0.08,
             upgradeCostMultiplier: 0.55
+        ),
+        .laser: TowerStats(
+            damage: 15,       // DPS per tick
+            range: 250,       // Long range
+            fireRate: 10.0,   // 10 damage ticks per second
+            cost: 120,
+            damageScaling: 0.35,
+            rangeScaling: 0.10,
+            fireRateScaling: 0.15,
+            upgradeCostMultiplier: 0.5
+        ),
+        .antiAir: TowerStats(
+            damage: 25,       // Base damage (x2.5 vs flying)
+            range: 200,
+            fireRate: 3.0,
+            cost: 75,
+            damageScaling: 0.30,
+            rangeScaling: 0.12,
+            fireRateScaling: 0.20,
+            upgradeCostMultiplier: 0.45
         )
     ]
     
@@ -190,34 +210,65 @@ struct GameConfig {
         static let splashRadiusPerLevel: CGFloat = 10
         static let splashDamageFalloff: CGFloat = 0.50
     }
+    
+    // MARK: - Laser Tower Config
+    
+    struct LaserTowerConfig {
+        static let beamWidth: CGFloat = 20
+        static let damageTicksPerSecond: CGFloat = 10
+    }
+    
+    // MARK: - AntiAir Tower Config
+    
+    struct AntiAirTowerConfig {
+        static let flyingDamageMultiplier: CGFloat = 2.5  // 250% damage to flying
+        static let missileSpeed: CGFloat = 500
+        static let missileTrackingStrength: CGFloat = 1.0
+    }
 }
 
 // MARK: - Stats Table (for documentation)
 
 /*
- ╔══════════════════════════════════════════════════════════════════════════════╗
- ║                           ENEMY STATS TABLE                                   ║
- ╠══════════════╦════════╦═══════╦═══════╦════════╦══════════════════════════════╣
- ║ Type         ║ Health ║ Speed ║ Armor ║ Reward ║ Notes                        ║
- ╠══════════════╬════════╬═══════╬═══════╬════════╬══════════════════════════════╣
- ║ Infantry     ║  100   ║  80   ║   0   ║   10   ║ Standard ground unit         ║
- ║ Cavalry      ║  180   ║  120  ║  30   ║   20   ║ Fast, armored, ground        ║
- ║ Flying       ║   60   ║  100  ║   0   ║   15   ║ Ignores obstacles            ║
- ╚══════════════╩════════╩═══════╩═══════╩════════╩══════════════════════════════╝
+ ╔══════════════════════════════════════════════════════════════════════════════════════╗
+ ║                              ENEMY STATS TABLE                                        ║
+ ╠══════════════╦════════╦═══════╦═══════╦════════╦═════════════════════════════════════╣
+ ║ Type         ║ Health ║ Speed ║ Armor ║ Reward ║ Notes                               ║
+ ╠══════════════╬════════╬═══════╬═══════╬════════╬═════════════════════════════════════╣
+ ║ Infantry     ║  100   ║  80   ║   0   ║   10   ║ Standard ground unit                ║
+ ║ Cavalry      ║  180   ║  120  ║  30   ║   20   ║ Fast, armored, ground               ║
+ ║ Flying       ║   40   ║  90   ║   0   ║   12   ║ Ignores path, WEAKER, immune to     ║
+ ║              ║        ║       ║       ║        ║ Cannon/Splash/Laser                 ║
+ ╚══════════════╩════════╩═══════╩═══════╩════════╩═════════════════════════════════════╝
  
- ╔══════════════════════════════════════════════════════════════════════════════╗
- ║                           TOWER STATS TABLE                                   ║
- ╠════════════╦════════╦═══════╦═══════════╦══════╦═════════════════════════════╣
- ║ Type       ║ Damage ║ Range ║ Fire Rate ║ Cost ║ Special                     ║
- ╠════════════╬════════╬═══════╬═══════════╬══════╬═════════════════════════════╣
- ║ MachineGun ║    8   ║  150  ║   8.0/s   ║  50  ║ Prioritizes flying          ║
- ║ Cannon     ║   60   ║  180  ║   0.8/s   ║  80  ║ 50 armor penetration        ║
- ║ Slow       ║    0   ║  120  ║   2.0/s   ║  60  ║ 50% slow for 2s             ║
- ║ Buff       ║    0   ║  150  ║    N/A    ║ 100  ║ +15% dmg, +10% ROF          ║
- ║ Shotgun    ║   12   ║  100  ║   1.5/s   ║  70  ║ 6 pellets, cone spread      ║
- ║ Splash     ║   30   ║  160  ║   0.7/s   ║  90  ║ 60 radius AoE               ║
- ╚════════════╩════════╩═══════╩═══════════╩══════╩═════════════════════════════╝
+ ╔══════════════════════════════════════════════════════════════════════════════════════╗
+ ║                              TOWER STATS TABLE                                        ║
+ ╠════════════╦════════╦═══════╦═══════════╦══════╦══════════════════════════════════════╣
+ ║ Type       ║ Damage ║ Range ║ Fire Rate ║ Cost ║ Special                              ║
+ ╠════════════╬════════╬═══════╬═══════════╬══════╬══════════════════════════════════════╣
+ ║ MachineGun ║    8   ║  150  ║   8.0/s   ║  50  ║ Prioritizes flying, hits all        ║
+ ║ Cannon     ║   60   ║  180  ║   0.8/s   ║  80  ║ 50 armor pen, NO FLYING             ║
+ ║ Slow       ║    0   ║  120  ║   2.0/s   ║  60  ║ 50% slow for 2s, hits all           ║
+ ║ Buff       ║    0   ║  150  ║    N/A    ║ 100  ║ +15% dmg, +10% ROF to towers        ║
+ ║ Shotgun    ║   12   ║  100  ║   1.5/s   ║  70  ║ 6 pellets cone, hits all            ║
+ ║ Splash     ║   30   ║  160  ║   0.7/s   ║  90  ║ 60 radius AoE, NO FLYING            ║
+ ║ Laser      ║   15   ║  250  ║  10.0/s   ║ 120  ║ Piercing beam, NO FLYING            ║
+ ║ AntiAir    ║   25   ║  200  ║   3.0/s   ║  75  ║ ONLY flying, +150% dmg to flying    ║
+ ╚════════════╩════════╩═══════╩═══════════╩══════╩══════════════════════════════════════╝
  
- Upgrade scaling: +20% damage, +10% range, +15% fire rate per level
- Max upgrade level: 2 (so max is level 3)
+ TOWER TARGETING:
+ - Can hit Flying: MachineGun, Slow, Shotgun, AntiAir
+ - Cannot hit Flying: Cannon, Splash, Laser (projectiles go under them)
+ - AntiAir: ONLY targets flying enemies
+ 
+ UPGRADE SCALING (per level):
+ - Damage: +35%
+ - Range: +15%
+ - Fire Rate: +25%
+ - Max upgrade level: 2 (so max is level 3)
+ 
+ UPGRADE COST:
+ - Level 1->2: 40% of base cost
+ - Level 2->3: 50% of base cost
+ - Total for max: 90% extra investment for 170%+ stats = BETTER than buying 2nd tower!
  */

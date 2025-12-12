@@ -236,6 +236,10 @@ class Tower: SKNode {
     func upgrade() -> Bool {
         guard upgradeLevel < maxUpgradeLevel else { return false }
         
+        // Track investment for sell value BEFORE incrementing level
+        let upgradeCost = getUpgradeCost() ?? 0
+        totalInvested += upgradeCost
+        
         upgradeLevel += 1
         
         // BUFFED upgrade scaling - makes upgrades more valuable than buying new towers
@@ -244,13 +248,13 @@ class Tower: SKNode {
         // At 90% total cost (40% + 50% = 90% for both upgrades)
         // Buying TWO towers would cost 200% but only give 200% base stats
         // So upgrading one tower is more efficient!
-        let damageMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.35)  // +35% per level
-        let rangeMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.15)   // +15% per level
-        let fireRateMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.25) // +25% per level
+        let upgradeDamageMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.35)  // +35% per level
+        let upgradeRangeMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.15)   // +15% per level
+        let upgradeFireRateMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.25) // +25% per level
         
-        damage = baseDamage * damageMultiplier
-        range = baseRange * rangeMultiplier
-        fireRate = baseFireRate * fireRateMultiplier
+        damage = baseDamage * upgradeDamageMultiplier
+        range = baseRange * upgradeRangeMultiplier
+        fireRate = baseFireRate * upgradeFireRateMultiplier
         
         // Update range indicator
         let newPath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)
@@ -259,11 +263,6 @@ class Tower: SKNode {
         // Update visual indicator
         if upgradeLevel <= upgradeIndicators.count {
             upgradeIndicators[upgradeLevel - 1].fillColor = .yellow
-        }
-        
-        // Track investment for sell value
-        if let cost = getUpgradeCost() {
-            totalInvested += cost
         }
         
         // Upgrade animation
