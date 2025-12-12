@@ -81,6 +81,8 @@ enum TowerType: String, CaseIterable {
     case buff
     case shotgun
     case splash
+    case laser
+    case antiAir
     
     var displayName: String {
         switch self {
@@ -90,6 +92,8 @@ enum TowerType: String, CaseIterable {
         case .buff: return "Buff"
         case .shotgun: return "Shotgun"
         case .splash: return "Splash"
+        case .laser: return "Laser"
+        case .antiAir: return "AA"
         }
     }
     
@@ -101,6 +105,8 @@ enum TowerType: String, CaseIterable {
         case .buff: return SKColor(red: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
         case .shotgun: return SKColor(red: 0.7, green: 0.3, blue: 0.3, alpha: 1.0)
         case .splash: return SKColor(red: 0.8, green: 0.4, blue: 0.6, alpha: 1.0)
+        case .laser: return SKColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0)
+        case .antiAir: return SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
         }
     }
     
@@ -112,6 +118,8 @@ enum TowerType: String, CaseIterable {
         case .buff: return 100
         case .shotgun: return 70
         case .splash: return 90
+        case .laser: return 120
+        case .antiAir: return 75
         }
     }
 }

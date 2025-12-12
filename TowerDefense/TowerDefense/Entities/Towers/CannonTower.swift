@@ -58,22 +58,24 @@ final class CannonTower: Tower {
             return
         }
         
-        let aliveEnemies = enemies.filter { $0.isAlive }
+        // Cannon cannot hit flying enemies - projectile goes under them
+        let groundEnemies = enemies.filter { $0.isAlive && $0.enemyType != .flying }
         
         // Prioritize armored enemies (cavalry)
-        let armoredEnemies = aliveEnemies.filter { $0.armor > 0 }
+        let armoredEnemies = groundEnemies.filter { $0.armor > 0 }
         
         if !armoredEnemies.isEmpty {
             // Target cavalry with most armor
             currentTarget = armoredEnemies.max { $0.armor < $1.armor }
         } else {
             // Target enemy with most health
-            currentTarget = aliveEnemies.max { $0.currentHealth < $1.currentHealth }
+            currentTarget = groundEnemies.max { $0.currentHealth < $1.currentHealth }
         }
     }
     
     override func fire(at target: Enemy, currentTime: TimeInterval) {
         delegate?.towerDidFire(self, at: target)
+        AudioManager.shared.playSound(.cannonFire)
         
         // Create projectile
         let projectile = Projectile(
@@ -150,6 +152,7 @@ final class CannonTower: Tower {
         var stats = super.getStats()
         stats["Special"] = "Armor Pen: \(Int(armorPenetration + CGFloat(upgradeLevel) * 15))"
         stats["Best vs"] = "Cavalry"
+        stats["Note"] = "Cannot hit Flying"
         return stats
     }
 }

@@ -152,6 +152,8 @@ final class PlacementPreviewNode: SKNode {
         case .buff: return BuffTower.stats.range
         case .shotgun: return ShotgunTower.stats.range
         case .splash: return SplashTower.stats.range
+        case .laser: return LaserTower.stats.range
+        case .antiAir: return AntiAirTower.stats.range
         }
     }
     

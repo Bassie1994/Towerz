@@ -55,6 +55,7 @@ final class ShotgunTower: Tower {
     
     override func fire(at target: Enemy, currentTime: TimeInterval) {
         delegate?.towerDidFire(self, at: target)
+        AudioManager.shared.playSound(.shotgunFire)
         
         let baseAngle = position.angle(to: target.position)
         let effectiveDamage = damage * damageMultiplier

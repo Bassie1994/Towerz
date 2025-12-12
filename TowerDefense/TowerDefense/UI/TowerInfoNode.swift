@@ -172,7 +172,7 @@ final class TowerInfoNode: SKNode {
         var yOffset: CGFloat = 0
         let lineHeight: CGFloat = 22
         
-        let statOrder = ["Damage", "Range", "Fire Rate", "DPS", "Slow", "Duration", "Damage Buff", "ROF Buff", "Buffing", "Pellets", "Splash Radius", "Special", "Best vs", "Level"]
+        let statOrder = ["Type", "Damage", "Range", "Fire Rate", "DPS", "Slow", "Duration", "Damage Buff", "ROF Buff", "Buffing", "Pellets", "Spread", "Splash Radius", "vs Flying", "Special", "Best vs", "Note", "Level", "Sell Value"]
         
         for key in statOrder {
             if let value = stats[key] {
