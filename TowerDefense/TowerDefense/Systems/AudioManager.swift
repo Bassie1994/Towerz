@@ -74,26 +74,25 @@ final class AudioManager {
     
     private func setupAudioEngine() {
         audioEngine = AVAudioEngine()
-        mixerNode = audioEngine?.mainMixerNode
+        guard let engine = audioEngine else { return }
         
-        // Create a consistent audio format for all procedural sounds (mono, 44.1kHz)
-        audioFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)
+        mixerNode = engine.mainMixerNode
         
-        guard let format = audioFormat else {
-            print("Failed to create audio format")
-            return
-        }
+        // Use the mixer's output format to ensure compatibility
+        guard let mixer = mixerNode else { return }
+        audioFormat = mixer.outputFormat(forBus: 0)
         
-        // Create pool of player nodes with consistent format
+        // Create pool of player nodes
         for _ in 0..<8 {
             let player = AVAudioPlayerNode()
-            audioEngine?.attach(player)
-            audioEngine?.connect(player, to: mixerNode!, format: format)
+            engine.attach(player)
+            // Connect with mixer's format for compatibility
+            engine.connect(player, to: mixer, format: audioFormat)
             playerNodes.append(player)
         }
         
         do {
-            try audioEngine?.start()
+            try engine.start()
         } catch {
             print("Audio engine start failed: \(error)")
         }
@@ -336,22 +335,25 @@ final class AudioManager {
         volume: Float
     ) -> AVAudioPCMBuffer? {
         
-        let frameCount = AVAudioFrameCount(duration * sampleRate)
+        // Use actual sample rate from format
+        guard let format = audioFormat else { return nil }
+        let actualSampleRate = format.sampleRate
+        let frameCount = AVAudioFrameCount(duration * actualSampleRate)
         
-        // Use the same format as the player nodes
-        guard let format = audioFormat,
-              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
             return nil
         }
         
         buffer.frameLength = frameCount
         
-        guard let channelData = buffer.floatChannelData?[0] else {
+        guard let channelData = buffer.floatChannelData else {
             return nil
         }
         
+        let channelCount = Int(format.channelCount)
+        
         for frame in 0..<Int(frameCount) {
-            let time = Double(frame) / sampleRate
+            let time = Double(frame) / actualSampleRate
             let normalizedTime = time / duration
             
             // Generate waveform
@@ -373,8 +375,12 @@ final class AudioManager {
             
             // Apply envelope
             let envelopeValue = getEnvelopeValue(normalizedTime: normalizedTime, type: envelope)
+            let finalSample = sample * envelopeValue * volume
             
-            channelData[frame] = sample * envelopeValue * volume
+            // Write to all channels (mono or stereo)
+            for channel in 0..<channelCount {
+                channelData[channel][frame] = finalSample
+            }
         }
         
         return buffer
