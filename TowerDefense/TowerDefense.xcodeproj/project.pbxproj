@@ -1,0 +1,573 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		/* App Entry */
+		001000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001000000 /* AppDelegate.swift */; };
+		001000003 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001000002 /* SceneDelegate.swift */; };
+		001000005 /* GameViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001000004 /* GameViewController.swift */; };
+		001000007 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 001000006 /* Main.storyboard */; };
+		001000009 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 001000008 /* LaunchScreen.storyboard */; };
+		001000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 001000010 /* Assets.xcassets */; };
+		
+		/* Core */
+		002000001 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002000000 /* GameScene.swift */; };
+		002000003 /* GameManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002000002 /* GameManager.swift */; };
+		002000005 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002000004 /* Constants.swift */; };
+		002000007 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002000006 /* Extensions.swift */; };
+		
+		/* Pathfinding */
+		003000001 /* PathfindingGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003000000 /* PathfindingGrid.swift */; };
+		003000003 /* AStarPathfinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003000002 /* AStarPathfinder.swift */; };
+		003000005 /* FlowField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003000004 /* FlowField.swift */; };
+		
+		/* Entities */
+		004000001 /* Enemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004000000 /* Enemy.swift */; };
+		004000003 /* InfantryEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004000002 /* InfantryEnemy.swift */; };
+		004000005 /* CavalryEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004000004 /* CavalryEnemy.swift */; };
+		004000007 /* FlyingEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004000006 /* FlyingEnemy.swift */; };
+		
+		/* Towers */
+		005000001 /* Tower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000000 /* Tower.swift */; };
+		005000003 /* MachineGunTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000002 /* MachineGunTower.swift */; };
+		005000005 /* CannonTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000004 /* CannonTower.swift */; };
+		005000007 /* SlowTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000006 /* SlowTower.swift */; };
+		005000009 /* BuffTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000008 /* BuffTower.swift */; };
+		005000011 /* ShotgunTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000010 /* ShotgunTower.swift */; };
+		005000013 /* SplashTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000012 /* SplashTower.swift */; };
+		005000015 /* Projectile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000014 /* Projectile.swift */; };
+		
+		/* Systems */
+		006000001 /* WaveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000000 /* WaveManager.swift */; };
+		006000003 /* EconomyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000002 /* EconomyManager.swift */; };
+		006000005 /* PlacementValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000004 /* PlacementValidator.swift */; };
+		006000007 /* TargetingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000006 /* TargetingSystem.swift */; };
+		
+		/* UI */
+		007000001 /* HUDNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007000000 /* HUDNode.swift */; };
+		007000003 /* BuildMenuNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007000002 /* BuildMenuNode.swift */; };
+		007000005 /* TowerInfoNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007000004 /* TowerInfoNode.swift */; };
+		007000007 /* PlacementPreviewNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007000006 /* PlacementPreviewNode.swift */; };
+		
+		/* Config */
+		008000001 /* GameConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008000000 /* GameConfig.swift */; };
+		008000003 /* WaveConfig.json in Resources */ = {isa = PBXBuildFile; fileRef = 008000002 /* WaveConfig.json */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		/* App Entry */
+		001000000 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		001000002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		001000004 /* GameViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewController.swift; sourceTree = "<group>"; };
+		001000006 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
+		001000008 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		001000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		001000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		
+		/* Core */
+		002000000 /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
+		002000002 /* GameManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameManager.swift; sourceTree = "<group>"; };
+		002000004 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		002000006 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		
+		/* Pathfinding */
+		003000000 /* PathfindingGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathfindingGrid.swift; sourceTree = "<group>"; };
+		003000002 /* AStarPathfinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AStarPathfinder.swift; sourceTree = "<group>"; };
+		003000004 /* FlowField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowField.swift; sourceTree = "<group>"; };
+		
+		/* Entities */
+		004000000 /* Enemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enemy.swift; sourceTree = "<group>"; };
+		004000002 /* InfantryEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfantryEnemy.swift; sourceTree = "<group>"; };
+		004000004 /* CavalryEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CavalryEnemy.swift; sourceTree = "<group>"; };
+		004000006 /* FlyingEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlyingEnemy.swift; sourceTree = "<group>"; };
+		
+		/* Towers */
+		005000000 /* Tower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tower.swift; sourceTree = "<group>"; };
+		005000002 /* MachineGunTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineGunTower.swift; sourceTree = "<group>"; };
+		005000004 /* CannonTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CannonTower.swift; sourceTree = "<group>"; };
+		005000006 /* SlowTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlowTower.swift; sourceTree = "<group>"; };
+		005000008 /* BuffTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuffTower.swift; sourceTree = "<group>"; };
+		005000010 /* ShotgunTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotgunTower.swift; sourceTree = "<group>"; };
+		005000012 /* SplashTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashTower.swift; sourceTree = "<group>"; };
+		005000014 /* Projectile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Projectile.swift; sourceTree = "<group>"; };
+		
+		/* Systems */
+		006000000 /* WaveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveManager.swift; sourceTree = "<group>"; };
+		006000002 /* EconomyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EconomyManager.swift; sourceTree = "<group>"; };
+		006000004 /* PlacementValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementValidator.swift; sourceTree = "<group>"; };
+		006000006 /* TargetingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetingSystem.swift; sourceTree = "<group>"; };
+		
+		/* UI */
+		007000000 /* HUDNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDNode.swift; sourceTree = "<group>"; };
+		007000002 /* BuildMenuNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildMenuNode.swift; sourceTree = "<group>"; };
+		007000004 /* TowerInfoNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TowerInfoNode.swift; sourceTree = "<group>"; };
+		007000006 /* PlacementPreviewNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementPreviewNode.swift; sourceTree = "<group>"; };
+		
+		/* Config */
+		008000000 /* GameConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameConfig.swift; sourceTree = "<group>"; };
+		008000002 /* WaveConfig.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = WaveConfig.json; sourceTree = "<group>"; };
+		
+		/* Product */
+		PRODUCT001 /* TowerDefense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TowerDefense.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FWBUILD01 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		MAINGRP0 = {
+			isa = PBXGroup;
+			children = (
+				SRCGRP00 /* TowerDefense */,
+				PRDGRP00 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		PRDGRP00 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				PRODUCT001 /* TowerDefense.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		SRCGRP00 /* TowerDefense */ = {
+			isa = PBXGroup;
+			children = (
+				001000000 /* AppDelegate.swift */,
+				001000002 /* SceneDelegate.swift */,
+				001000004 /* GameViewController.swift */,
+				COREGRP0 /* Core */,
+				PATHGRP0 /* Pathfinding */,
+				ENTGRP00 /* Entities */,
+				SYSGRP00 /* Systems */,
+				UIGRP000 /* UI */,
+				CFGGRP00 /* Config */,
+				RESGRP00 /* Resources */,
+				001000012 /* Info.plist */,
+			);
+			path = TowerDefense;
+			sourceTree = "<group>";
+		};
+		COREGRP0 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				002000000 /* GameScene.swift */,
+				002000002 /* GameManager.swift */,
+				002000004 /* Constants.swift */,
+				002000006 /* Extensions.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		PATHGRP0 /* Pathfinding */ = {
+			isa = PBXGroup;
+			children = (
+				003000000 /* PathfindingGrid.swift */,
+				003000002 /* AStarPathfinder.swift */,
+				003000004 /* FlowField.swift */,
+			);
+			path = Pathfinding;
+			sourceTree = "<group>";
+		};
+		ENTGRP00 /* Entities */ = {
+			isa = PBXGroup;
+			children = (
+				ENEMGRP0 /* Enemies */,
+				TOWRGRP0 /* Towers */,
+			);
+			path = Entities;
+			sourceTree = "<group>";
+		};
+		ENEMGRP0 /* Enemies */ = {
+			isa = PBXGroup;
+			children = (
+				004000000 /* Enemy.swift */,
+				004000002 /* InfantryEnemy.swift */,
+				004000004 /* CavalryEnemy.swift */,
+				004000006 /* FlyingEnemy.swift */,
+			);
+			path = Enemies;
+			sourceTree = "<group>";
+		};
+		TOWRGRP0 /* Towers */ = {
+			isa = PBXGroup;
+			children = (
+				005000000 /* Tower.swift */,
+				005000002 /* MachineGunTower.swift */,
+				005000004 /* CannonTower.swift */,
+				005000006 /* SlowTower.swift */,
+				005000008 /* BuffTower.swift */,
+				005000010 /* ShotgunTower.swift */,
+				005000012 /* SplashTower.swift */,
+				005000014 /* Projectile.swift */,
+			);
+			path = Towers;
+			sourceTree = "<group>";
+		};
+		SYSGRP00 /* Systems */ = {
+			isa = PBXGroup;
+			children = (
+				006000000 /* WaveManager.swift */,
+				006000002 /* EconomyManager.swift */,
+				006000004 /* PlacementValidator.swift */,
+				006000006 /* TargetingSystem.swift */,
+			);
+			path = Systems;
+			sourceTree = "<group>";
+		};
+		UIGRP000 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				007000000 /* HUDNode.swift */,
+				007000002 /* BuildMenuNode.swift */,
+				007000004 /* TowerInfoNode.swift */,
+				007000006 /* PlacementPreviewNode.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		CFGGRP00 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				008000000 /* GameConfig.swift */,
+				008000002 /* WaveConfig.json */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		RESGRP00 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				001000006 /* Main.storyboard */,
+				001000008 /* LaunchScreen.storyboard */,
+				001000010 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		TARGET01 /* TowerDefense */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BLDCFGLST;
+			buildPhases = (
+				SRCBUILD0 /* Sources */,
+				FWBUILD01 /* Frameworks */,
+				RESBUILD0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TowerDefense;
+			productName = TowerDefense;
+			productReference = PRODUCT001 /* TowerDefense.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		PROJECT0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					TARGET01 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = PRJCFGLST;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = MAINGRP0;
+			productRefGroup = PRDGRP00 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				TARGET01 /* TowerDefense */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		RESBUILD0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				001000007 /* Main.storyboard in Resources */,
+				001000009 /* LaunchScreen.storyboard in Resources */,
+				001000011 /* Assets.xcassets in Resources */,
+				008000003 /* WaveConfig.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		SRCBUILD0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				001000001 /* AppDelegate.swift in Sources */,
+				001000003 /* SceneDelegate.swift in Sources */,
+				001000005 /* GameViewController.swift in Sources */,
+				002000001 /* GameScene.swift in Sources */,
+				002000003 /* GameManager.swift in Sources */,
+				002000005 /* Constants.swift in Sources */,
+				002000007 /* Extensions.swift in Sources */,
+				003000001 /* PathfindingGrid.swift in Sources */,
+				003000003 /* AStarPathfinder.swift in Sources */,
+				003000005 /* FlowField.swift in Sources */,
+				004000001 /* Enemy.swift in Sources */,
+				004000003 /* InfantryEnemy.swift in Sources */,
+				004000005 /* CavalryEnemy.swift in Sources */,
+				004000007 /* FlyingEnemy.swift in Sources */,
+				005000001 /* Tower.swift in Sources */,
+				005000003 /* MachineGunTower.swift in Sources */,
+				005000005 /* CannonTower.swift in Sources */,
+				005000007 /* SlowTower.swift in Sources */,
+				005000009 /* BuffTower.swift in Sources */,
+				005000011 /* ShotgunTower.swift in Sources */,
+				005000013 /* SplashTower.swift in Sources */,
+				005000015 /* Projectile.swift in Sources */,
+				006000001 /* WaveManager.swift in Sources */,
+				006000003 /* EconomyManager.swift in Sources */,
+				006000005 /* PlacementValidator.swift in Sources */,
+				006000007 /* TargetingSystem.swift in Sources */,
+				007000001 /* HUDNode.swift in Sources */,
+				007000003 /* BuildMenuNode.swift in Sources */,
+				007000005 /* TowerInfoNode.swift in Sources */,
+				007000007 /* PlacementPreviewNode.swift in Sources */,
+				008000001 /* GameConfig.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		DBGCFG01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		RELCFG01 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		DBGCFG02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TowerDefense/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationLandscapeLeft;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.towerdefense.game;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		RELCFG02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TowerDefense/Info.plist;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationLandscapeLeft;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.towerdefense.game;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		PRJCFGLST /* Build configuration list for PBXProject */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DBGCFG01 /* Debug */,
+				RELCFG01 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BLDCFGLST /* Build configuration list for PBXNativeTarget */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DBGCFG02 /* Debug */,
+				RELCFG02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = PROJECT0 /* Project object */;
+}
