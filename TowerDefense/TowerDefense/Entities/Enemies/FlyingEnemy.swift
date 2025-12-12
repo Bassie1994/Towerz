@@ -187,7 +187,7 @@ final class FlyingEnemy: Enemy {
         let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
         if position.x >= exitX {
             isAlive = false
-            AudioManager.shared.playSound(.enemyReachExit)
+            // AudioManager.shared.playSound(.enemyReachExit)
             let exitAnimation = SKAction.sequence([
                 SKAction.fadeOut(withDuration: 0.3),
                 SKAction.removeFromParent()

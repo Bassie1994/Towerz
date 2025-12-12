@@ -177,7 +177,7 @@ final class LaserTower: Tower {
             
             // Play sound occasionally
             if Int(currentTime * 10) % 3 == 0 {
-                AudioManager.shared.playSound(.laserFire)
+                // AudioManager.shared.playSound(.laserFire)
             }
         }
         

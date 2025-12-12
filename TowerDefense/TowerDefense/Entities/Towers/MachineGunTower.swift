@@ -76,7 +76,7 @@ final class MachineGunTower: Tower {
         let effectiveDamage = damage * damageMultiplier
         target.takeDamage(effectiveDamage)
         delegate?.towerDidFire(self, at: target)
-        AudioManager.shared.playSound(.machineGunFire)
+        // AudioManager.shared.playSound(.machineGunFire)
         
         // Tracer effect (hitscan visual)
         let tracer = SKShapeNode()

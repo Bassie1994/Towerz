@@ -419,7 +419,7 @@ final class GameScene: SKScene {
         let conversionCost = targetType.baseCost - TowerType.wall.baseCost
         
         guard gameManager.economyManager.canAfford(conversionCost) else {
-            AudioManager.shared.playSound(.invalidPlacement)
+            // AudioManager.shared.playSound(.invalidPlacement)
             return
         }
         
@@ -439,7 +439,7 @@ final class GameScene: SKScene {
         towers.append(newTower)
         towerLayer.addChild(newTower)
         
-        AudioManager.shared.playSound(.towerPlace)
+        // AudioManager.shared.playSound(.towerPlace)
         updateUI()
     }
     
@@ -534,7 +534,7 @@ final class GameScene: SKScene {
         towerLayer.addChild(tower)
         
         // Play placement sound
-        AudioManager.shared.playSound(.towerPlace)
+        // AudioManager.shared.playSound(.towerPlace)
         
         // Update enemies' paths
         notifyPathfindingChanged()
@@ -552,7 +552,7 @@ final class GameScene: SKScene {
         tower.removeFromParent()
         
         // Play sell sound
-        AudioManager.shared.playSound(.towerSell)
+        // AudioManager.shared.playSound(.towerSell)
         
         // Update enemies' paths
         notifyPathfindingChanged()
@@ -593,12 +593,12 @@ final class GameScene: SKScene {
     // MARK: - Game State
     
     func handleGameOver() {
-        AudioManager.shared.playSound(.gameOver)
+        // AudioManager.shared.playSound(.gameOver)
         hudNode.showGameOver()
     }
     
     func handleVictory() {
-        AudioManager.shared.playSound(.victory)
+        // AudioManager.shared.playSound(.victory)
         hudNode.showVictory()
     }
     
@@ -678,7 +678,7 @@ extension GameScene: BuildMenuNodeDelegate {
 extension GameScene: TowerInfoNodeDelegate {
     func towerInfoDidTapUpgrade(_ tower: Tower) {
         if gameManager.upgradeTower(tower) {
-            AudioManager.shared.playSound(.towerUpgrade)
+            // AudioManager.shared.playSound(.towerUpgrade)
         }
         towerInfoNode.updateContent()
         updateUI()
@@ -790,13 +790,13 @@ extension GameScene: TowerInfoNodeDelegate {
 
 extension GameScene: EnemyDelegate {
     func enemyDidReachExit(_ enemy: Enemy) {
-        AudioManager.shared.playSound(.lifeLost)
+        // AudioManager.shared.playSound(.lifeLost)
         gameManager.enemyReachedExit(enemy)
     }
     
     func enemyDidDie(_ enemy: Enemy) {
-        AudioManager.shared.playSound(.enemyDeath)
-        AudioManager.shared.playSound(.coinEarn)
+        // AudioManager.shared.playSound(.enemyDeath)
+        // AudioManager.shared.playSound(.coinEarn)
         gameManager.enemyKilled(enemy)
     }
     
@@ -823,7 +823,7 @@ extension GameScene: TowerDelegate {
 
 extension GameScene: WaveManagerDelegate {
     func waveDidStart(waveNumber: Int) {
-        AudioManager.shared.playSound(.waveStart)
+        // AudioManager.shared.playSound(.waveStart)
         
         // Show wave start notification
         let label = SKLabelNode(fontNamed: "Helvetica-Bold")
@@ -845,7 +845,7 @@ extension GameScene: WaveManagerDelegate {
     }
     
     func waveDidComplete(waveNumber: Int) {
-        AudioManager.shared.playSound(.waveComplete)
+        // AudioManager.shared.playSound(.waveComplete)
         gameManager.waveCompleted(waveNumber: waveNumber)
         
         // Show completion notification
