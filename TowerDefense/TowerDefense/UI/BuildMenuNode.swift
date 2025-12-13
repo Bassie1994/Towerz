@@ -104,7 +104,7 @@ final class BuildMenuNode: SKNode {
         
         // Check each tower button
         for (type, button) in towerButtons {
-            if button.containsPoint(menuLocation) {
+            if button.containsTouchPoint(menuLocation) {
                 if selectedTower == type {
                     // Deselect if tapping same button
                     setSelectedTower(nil)
