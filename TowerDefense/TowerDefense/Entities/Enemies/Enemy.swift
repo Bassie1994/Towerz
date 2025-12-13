@@ -191,10 +191,14 @@ class Enemy: SKNode {
         // Apply separation from other enemies
         let separation = calculateSeparation(from: enemies)
         
-        // Combine forces
+        // Apply corridor centering - keep units in middle 25% of available path
+        let centering = calculateCorridorCentering()
+        
+        // Combine forces (centering is stronger for larger units)
+        let centeringStrength: CGFloat = enemyType == .boss ? 0.6 : (enemyType == .cavalry ? 0.5 : 0.4)
         var combinedDirection = CGVector(
-            dx: direction.dx + separation.dx * 0.3,
-            dy: direction.dy + separation.dy * 0.3
+            dx: direction.dx + separation.dx * 0.3 + centering.dx * centeringStrength,
+            dy: direction.dy + separation.dy * 0.3 + centering.dy * centeringStrength
         )
         
         // Safety: ensure combined direction is valid before normalizing
@@ -582,6 +586,119 @@ class Enemy: SKNode {
         let len = sqrt(separation.dx * separation.dx + separation.dy * separation.dy)
         if len > 0.1 {
             return CGVector(dx: separation.dx / len, dy: separation.dy / len)
+        }
+        return .zero
+    }
+    
+    /// Calculate force to keep unit in middle 25% of corridor
+    /// Checks perpendicular distance to walls (blocked cells) and steers away from edges
+    private func calculateCorridorCentering() -> CGVector {
+        let gridPos = position.toGridPosition()
+        
+        // Scan perpendicular to movement to find corridor width
+        // We'll check up/down (vertical corridor width)
+        var openUp: CGFloat = 0
+        var openDown: CGFloat = 0
+        var openLeft: CGFloat = 0
+        var openRight: CGFloat = 0
+        
+        let maxScan = 4  // Check up to 4 cells in each direction
+        
+        // Scan up
+        for i in 1...maxScan {
+            let checkPos = GridPosition(x: gridPos.x, y: gridPos.y + i)
+            if checkPos.y < GameConstants.gridHeight {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) != nil || checkPos.isInExitZone() || checkPos.isInSpawnZone() {
+                    openUp = CGFloat(i)
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // Scan down
+        for i in 1...maxScan {
+            let checkPos = GridPosition(x: gridPos.x, y: gridPos.y - i)
+            if checkPos.y >= 0 {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) != nil || checkPos.isInExitZone() || checkPos.isInSpawnZone() {
+                    openDown = CGFloat(i)
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // Scan left
+        for i in 1...maxScan {
+            let checkPos = GridPosition(x: gridPos.x - i, y: gridPos.y)
+            if checkPos.x >= 0 {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) != nil || checkPos.isInExitZone() || checkPos.isInSpawnZone() {
+                    openLeft = CGFloat(i)
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // Scan right
+        for i in 1...maxScan {
+            let checkPos = GridPosition(x: gridPos.x + i, y: gridPos.y)
+            if checkPos.x < GameConstants.gridWidth {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) != nil || checkPos.isInExitZone() || checkPos.isInSpawnZone() {
+                    openRight = CGFloat(i)
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // Calculate offset from center of corridor
+        var centeringForce = CGVector.zero
+        
+        // Vertical centering
+        let verticalCorridor = openUp + openDown + 1
+        if verticalCorridor > 1 {
+            let verticalCenter = openDown - openUp  // Positive = above center, negative = below
+            // Only apply force if not in middle 25%
+            let threshold = verticalCorridor * 0.375  // 37.5% from edge = middle 25%
+            if abs(verticalCenter) > threshold {
+                centeringForce.dy = -verticalCenter / verticalCorridor  // Push toward center
+            }
+        }
+        
+        // Horizontal centering (less aggressive since we want to move forward)
+        let horizontalCorridor = openLeft + openRight + 1
+        if horizontalCorridor > 1 {
+            let horizontalCenter = openRight - openLeft  // Positive = left of center
+            let threshold = horizontalCorridor * 0.375
+            if abs(horizontalCenter) > threshold {
+                centeringForce.dx = horizontalCenter / horizontalCorridor * 0.5  // Half strength for horizontal
+            }
+        }
+        
+        // Also add wall avoidance for immediate neighbors (stronger)
+        let immediateCheck = 1
+        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+            let checkPos = GridPosition(x: gridPos.x + dx * immediateCheck, y: gridPos.y + dy * immediateCheck)
+            if checkPos.x >= 0 && checkPos.x < GameConstants.gridWidth &&
+               checkPos.y >= 0 && checkPos.y < GameConstants.gridHeight {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) == nil && !checkPos.isInExitZone() && !checkPos.isInSpawnZone() {
+                    // Wall nearby - push away
+                    centeringForce.dx -= CGFloat(dx) * 0.8
+                    centeringForce.dy -= CGFloat(dy) * 0.8
+                }
+            }
+        }
+        
+        // Normalize if significant
+        let len = sqrt(centeringForce.dx * centeringForce.dx + centeringForce.dy * centeringForce.dy)
+        if len > 0.1 {
+            return CGVector(dx: centeringForce.dx / len, dy: centeringForce.dy / len)
         }
         return .zero
     }

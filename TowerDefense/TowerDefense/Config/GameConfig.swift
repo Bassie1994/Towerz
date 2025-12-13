@@ -139,13 +139,13 @@ struct GameConfig {
             upgradeCostMultiplier: 0.55
         ),
         .laser: TowerStats(
-            damage: 7,        // NERFED from 15 (50%)
-            range: 1300,      // BUFFED - FULL FIELD range
-            fireRate: 10.0,
-            cost: 120,
-            damageScaling: 0.35,
+            damage: 600,      // SNIPER: Extreme single-shot damage
+            range: 1300,      // Full field range - true sniper
+            fireRate: 0.08,   // ~1 shot every 12.5s - very slow
+            cost: 150,        // Expensive - high value per shot
+            damageScaling: 0.30,
             rangeScaling: 0.0,  // Already max range
-            fireRateScaling: 0.15,
+            fireRateScaling: 0.08,
             upgradeCostMultiplier: 0.5
         ),
         .antiAir: TowerStats(

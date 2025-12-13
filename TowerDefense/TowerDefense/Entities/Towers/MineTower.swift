@@ -12,12 +12,9 @@ final class MineTower: Tower {
         fireRate: 0.5    // 1 mine every 2 seconds
     )
     
-    static let maxTotalMines = 50  // Max mines across all mine towers
-    static var currentMineCount = 0
-    
     var splashRadius: CGFloat = 50
     private var mines: [Mine] = []
-    private let maxMinesPerTower = 15
+    private let maxMinesPerTower = 50  // Max 50 mines per tower, no global limit
     
     init(gridPosition: GridPosition) {
         super.init(
@@ -96,10 +93,7 @@ final class MineTower: Tower {
     }
     
     private func placeMine() {
-        // Check global mine limit
-        guard MineTower.currentMineCount < MineTower.maxTotalMines else { return }
-        
-        // Check per-tower limit
+        // Check per-tower limit (50 max per tower)
         guard mines.count < maxMinesPerTower else { return }
         
         // Find a valid position within range (not on a tower)
@@ -114,10 +108,9 @@ final class MineTower: Tower {
         mine.owner = self
         parent?.addChild(mine)
         mines.append(mine)
-        MineTower.currentMineCount += 1
         
-        // Deploy animation
-        spawnDeployEffect(at: validPosition)
+        // Show launch animation from tower to mine
+        spawnLaunchAnimation(to: validPosition)
     }
     
     private func findValidMinePosition() -> CGPoint? {
@@ -139,7 +132,7 @@ final class MineTower: Tower {
             guard gridX >= 0 && gridX < GameConstants.gridWidth &&
                   gridY >= 0 && gridY < GameConstants.gridHeight else { continue }
             
-            // Check if there's already a tower here
+            // Check if there's a tower here (mines can only be on non-tower cells)
             let cellCenter = CGPoint(
                 x: GameConstants.playFieldOrigin.x + CGFloat(gridX) * GameConstants.cellSize + GameConstants.cellSize / 2,
                 y: GameConstants.playFieldOrigin.y + CGFloat(gridY) * GameConstants.cellSize + GameConstants.cellSize / 2
@@ -155,17 +148,14 @@ final class MineTower: Tower {
                 }
             }
             
-            // Also check if there's already a mine nearby
-            var hasMine = false
-            for mine in mines {
-                if mine.position.distance(to: candidatePos) < GameConstants.cellSize * 0.8 {
-                    hasMine = true
-                    break
-                }
-            }
-            
-            if !hasTower && !hasMine {
-                return cellCenter
+            // Mines CAN stack - no check for existing mines
+            if !hasTower {
+                // Add small random offset for visual stacking variety
+                let stackOffset = CGPoint(
+                    x: CGFloat.random(in: -8...8),
+                    y: CGFloat.random(in: -8...8)
+                )
+                return CGPoint(x: cellCenter.x + stackOffset.x, y: cellCenter.y + stackOffset.y)
             }
         }
         
@@ -191,27 +181,93 @@ final class MineTower: Tower {
         // Clean up detonated mines
         for mine in minesToRemove {
             mines.removeAll { $0 === mine }
-            MineTower.currentMineCount -= 1
         }
     }
     
-    private func spawnDeployEffect(at pos: CGPoint) {
-        let effect = SKShapeNode(circleOfRadius: 5)
-        effect.fillColor = .orange
-        effect.strokeColor = .yellow
-        effect.lineWidth = 2
-        effect.position = pos
-        effect.zPosition = GameConstants.ZPosition.effects.rawValue
-        parent?.addChild(effect)
+    /// Animate mine launching from tower to target position
+    private func spawnLaunchAnimation(to targetPos: CGPoint) {
+        guard let parentNode = parent else { return }
         
-        let animation = SKAction.sequence([
-            SKAction.group([
-                SKAction.scale(to: 2.0, duration: 0.2),
-                SKAction.fadeOut(withDuration: 0.2)
-            ]),
+        // Create projectile that travels from tower to mine position
+        let projectile = SKShapeNode(circleOfRadius: 6)
+        projectile.fillColor = SKColor(red: 0.4, green: 0.3, blue: 0.2, alpha: 1.0)
+        projectile.strokeColor = .red
+        projectile.lineWidth = 2
+        projectile.position = position
+        projectile.zPosition = GameConstants.ZPosition.projectile.rawValue
+        parentNode.addChild(projectile)
+        
+        // Calculate arc trajectory
+        let distance = position.distance(to: targetPos)
+        let duration = TimeInterval(distance / 400)  // Speed
+        let arcHeight = distance * 0.4  // Height of arc
+        
+        // Create arc path
+        let midPoint = CGPoint(
+            x: (position.x + targetPos.x) / 2,
+            y: (position.y + targetPos.y) / 2 + arcHeight
+        )
+        
+        let path = CGMutablePath()
+        path.move(to: position)
+        path.addQuadCurve(to: targetPos, control: midPoint)
+        
+        // Trail effect while flying
+        let trailAction = SKAction.repeatForever(SKAction.sequence([
+            SKAction.run { [weak projectile, weak parentNode] in
+                guard let proj = projectile, let parent = parentNode else { return }
+                let trail = SKShapeNode(circleOfRadius: 3)
+                trail.fillColor = .orange
+                trail.strokeColor = .clear
+                trail.alpha = 0.6
+                trail.position = proj.position
+                trail.zPosition = GameConstants.ZPosition.effects.rawValue
+                parent.addChild(trail)
+                
+                trail.run(SKAction.sequence([
+                    SKAction.group([
+                        SKAction.fadeOut(withDuration: 0.15),
+                        SKAction.scale(to: 0.3, duration: 0.15)
+                    ]),
+                    SKAction.removeFromParent()
+                ]))
+            },
+            SKAction.wait(forDuration: 0.03)
+        ]))
+        projectile.run(trailAction, withKey: "trail")
+        
+        // Follow path and land
+        let followPath = SKAction.follow(path, asOffset: false, orientToPath: false, duration: duration)
+        let spin = SKAction.rotate(byAngle: .pi * 4, duration: duration)
+        
+        projectile.run(SKAction.sequence([
+            SKAction.group([followPath, spin]),
+            SKAction.run { [weak projectile] in
+                projectile?.removeAction(forKey: "trail")
+            },
             SKAction.removeFromParent()
-        ])
-        effect.run(animation)
+        ]))
+        
+        // Spawn landing effect at target
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak parentNode] in
+            guard let parent = parentNode else { return }
+            
+            let landEffect = SKShapeNode(circleOfRadius: 8)
+            landEffect.fillColor = .orange
+            landEffect.strokeColor = .yellow
+            landEffect.lineWidth = 2
+            landEffect.position = targetPos
+            landEffect.zPosition = GameConstants.ZPosition.effects.rawValue
+            parent.addChild(landEffect)
+            
+            landEffect.run(SKAction.sequence([
+                SKAction.group([
+                    SKAction.scale(to: 2.5, duration: 0.2),
+                    SKAction.fadeOut(withDuration: 0.2)
+                ]),
+                SKAction.removeFromParent()
+            ]))
+        }
     }
     
     override func upgrade() -> Bool {
@@ -228,7 +284,6 @@ final class MineTower: Tower {
     func removeAllMines() {
         for mine in mines {
             mine.removeFromParent()
-            MineTower.currentMineCount -= 1
         }
         mines.removeAll()
     }

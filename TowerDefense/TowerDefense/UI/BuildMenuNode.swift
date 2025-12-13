@@ -231,7 +231,7 @@ private class TowerButton: SKNode {
         case .splash:
             symbol.text = "◎"
         case .laser:
-            symbol.text = "═"
+            symbol.text = "🎯"  // Sniper crosshair
         case .antiAir:
             symbol.text = "↑"
         }

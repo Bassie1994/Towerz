@@ -610,7 +610,8 @@ final class GameScene: SKScene {
     
     func spawnEnemy(type: EnemyType, level: Int) {
         // Safety: limit max enemies on screen to prevent memory issues
-        guard enemies.count < 150 else { return }
+        // (bosses bypass this check)
+        guard enemies.count < 150 || type == .boss else { return }
         
         let enemy: Enemy
         
@@ -621,14 +622,27 @@ final class GameScene: SKScene {
             enemy = CavalryEnemy(level: max(1, level))
         case .flying:
             enemy = FlyingEnemy(level: max(1, level))
+        case .boss:
+            // Level >= 1000 means it encodes HP in thousands
+            if level >= 1000 {
+                let encodedHP = CGFloat(level - 1000) * 1000
+                enemy = BossEnemy(level: 1, customHP: max(5000, encodedHP))
+            } else {
+                enemy = BossEnemy(level: max(1, level))
+            }
         }
         
         enemy.delegate = self
         
-        // Random spawn position (with safety bounds)
+        // Spawn position - boss spawns in center, others random
         let minY = GameConstants.playFieldOrigin.y + 50
         let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - 50
-        let spawnY = CGFloat.random(in: minY...max(minY + 1, maxY))
+        let spawnY: CGFloat
+        if type == .boss {
+            spawnY = (minY + maxY) / 2  // Boss spawns in center
+        } else {
+            spawnY = CGFloat.random(in: minY...max(minY + 1, maxY))
+        }
         
         enemy.position = CGPoint(
             x: GameConstants.playFieldOrigin.x + GameConstants.cellSize,

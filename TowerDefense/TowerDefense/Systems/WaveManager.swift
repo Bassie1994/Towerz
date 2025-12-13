@@ -430,7 +430,7 @@ struct WaveConfig: Codable {
         return WaveConfig(waveNumber: number, groups: groups)
     }
     
-    /// Generate a boss wave - single powerful enemy with combined HP of previous wave
+    /// Generate a boss wave - BOSS spawns FIRST, then escorts follow
     private static func generateBossWave(number: Int) -> WaveConfig {
         // Calculate HP from previous wave (wave 4 for boss 5, wave 9 for boss 10, etc.)
         let previousWave = number - 1
@@ -439,33 +439,38 @@ struct WaveConfig: Codable {
         // Boss level scales with wave number
         let bossLevel = max(1, number / 5)
         
-        // Create a "boss" as multiple high-HP cavalry units
-        // Each cavalry base HP is 600, so we need bossHP / 600 units
-        // But we'll make fewer, stronger units instead
-        let bossUnitHP: CGFloat = 600 * CGFloat(bossLevel) * 2.0  // Each boss unit is extra tanky
-        let bossCount = max(1, Int(bossHP / bossUnitHP))
-        
-        // Also add some escort units
+        // Escort count scales with boss level
         let escortCount = 5 + bossLevel * 2
         
         var groups: [WaveConfig.EnemyGroup] = []
         
-        // Escort infantry first
+        // BOSS spawns FIRST - single massive enemy
+        // Level encodes the boss HP in thousands (we'll decode in spawnEnemy)
+        let encodedLevel = Int(bossHP / 1000) + 1000  // Add 1000 marker to identify as boss HP
+        groups.append(WaveConfig.EnemyGroup(
+            type: .boss,
+            count: 1,
+            level: encodedLevel,  // Encoded HP
+            spawnInterval: 0,
+            groupDelay: 0  // Spawns immediately
+        ))
+        
+        // Escort infantry after boss
         groups.append(WaveConfig.EnemyGroup(
             type: .infantry,
             count: escortCount,
             level: bossLevel + 1,
-            spawnInterval: 0.8,
-            groupDelay: 0
+            spawnInterval: 0.6,
+            groupDelay: 2.0  // After boss starts moving
         ))
         
-        // Boss units (cavalry) - spawn slowly
+        // Cavalry escorts
         groups.append(WaveConfig.EnemyGroup(
             type: .cavalry,
-            count: max(1, bossCount),
-            level: bossLevel + 2,  // Higher level for more HP
-            spawnInterval: 2.0,
-            groupDelay: 3.0
+            count: escortCount / 2,
+            level: bossLevel,
+            spawnInterval: 1.5,
+            groupDelay: 4.0
         ))
         
         // Flying escorts
@@ -474,7 +479,7 @@ struct WaveConfig: Codable {
             count: escortCount / 2 + 1,
             level: bossLevel + 1,
             spawnInterval: 1.0,
-            groupDelay: 2.0
+            groupDelay: 3.0
         ))
         
         return WaveConfig(waveNumber: number, groups: groups)
