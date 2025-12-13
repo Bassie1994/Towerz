@@ -786,7 +786,7 @@ class Enemy: SKNode {
     
     // MARK: - Death & Exit
     
-    private func die() {
+    func die() {
         guard isAlive else { return }
         isAlive = false
         

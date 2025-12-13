@@ -124,21 +124,6 @@ final class BossEnemy: Enemy {
         return CGVector(dx: 1, dy: 0)
     }
     
-    override func takeDamage(_ amount: CGFloat) {
-        super.takeDamage(amount)
-        
-        // Flash red when hit
-        let flash = SKAction.sequence([
-            SKAction.run { [weak self] in
-                self?.bodyNode.fillColor = .white
-            },
-            SKAction.wait(forDuration: 0.05),
-            SKAction.run { [weak self] in
-                self?.bodyNode.fillColor = SKColor(red: 0.6, green: 0.1, blue: 0.1, alpha: 1.0)
-            }
-        ])
-        bodyNode.run(flash)
-    }
     
     override func die() {
         // Epic death explosion for boss
