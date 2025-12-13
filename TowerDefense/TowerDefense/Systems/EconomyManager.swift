@@ -85,8 +85,11 @@ final class EconomyManager {
     
     // MARK: - Enemy Rewards
     
-    func rewardForKill(enemy: Enemy) {
-        earn(enemy.killReward)
+    @discardableResult
+    func rewardForKill(enemy: Enemy) -> Int {
+        let reward = enemy.killReward
+        earn(reward)
+        return reward
     }
     
     // MARK: - Wave Bonuses

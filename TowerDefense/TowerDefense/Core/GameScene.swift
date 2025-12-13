@@ -660,12 +660,20 @@ final class GameScene: SKScene {
     
     func handleGameOver() {
         // AudioManager.shared.playSound(.gameOver)
-        hudNode.showGameOver()
+        hudNode.showGameOver(
+            wave: gameManager.waveManager.currentWave,
+            enemiesKilled: gameManager.totalEnemiesKilled,
+            livesRemaining: gameManager.lives
+        )
     }
     
     func handleVictory() {
         // AudioManager.shared.playSound(.victory)
-        hudNode.showVictory()
+        hudNode.showVictory(
+            wave: gameManager.waveManager.currentWave,
+            enemiesKilled: gameManager.totalEnemiesKilled,
+            livesRemaining: gameManager.lives
+        )
     }
     
     private func restartGame() {

@@ -509,8 +509,19 @@ final class HUDNode: SKNode {
     
     // MARK: - Game Over / Victory
     
-    func showGameOver() {
-        let overlay = SKShapeNode(rectOf: CGSize(width: 400, height: 200), cornerRadius: 10)
+    func showGameOver(wave: Int, enemiesKilled: Int, livesRemaining: Int) {
+        // Calculate and save score
+        let score = HighscoreManager.calculateScore(
+            wave: wave,
+            enemiesKilled: enemiesKilled,
+            moneyEarned: 0,
+            livesRemaining: livesRemaining,
+            isVictory: false
+        )
+        let rank = HighscoreManager.shared.addScore(score: score, wave: wave, enemiesKilled: enemiesKilled)
+        
+        // Create larger overlay for highscores
+        let overlay = SKShapeNode(rectOf: CGSize(width: 500, height: 450), cornerRadius: 10)
         overlay.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.95)
         overlay.strokeColor = .healthBarRed
         overlay.lineWidth = 3
@@ -518,25 +529,72 @@ final class HUDNode: SKNode {
         overlay.zPosition = GameConstants.ZPosition.menu.rawValue
         overlay.name = "gameOverOverlay"
         
+        var yPos: CGFloat = 180
+        
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
         title.fontSize = 36
         title.fontColor = .healthBarRed
         title.text = "GAME OVER"
-        title.position = CGPoint(x: 0, y: 40)
+        title.position = CGPoint(x: 0, y: yPos)
         overlay.addChild(title)
+        yPos -= 35
         
-        let subtitle = SKLabelNode(fontNamed: "Helvetica")
-        subtitle.fontSize = 18
-        subtitle.fontColor = .white
-        subtitle.text = "The enemies broke through!"
-        subtitle.position = CGPoint(x: 0, y: 0)
-        overlay.addChild(subtitle)
+        // Dark humor joke
+        let joke = SKLabelNode(fontNamed: "Helvetica")
+        joke.fontSize = 14
+        joke.fontColor = SKColor(white: 0.7, alpha: 1.0)
+        joke.text = DarkHumorManager.shared.getGameOverJoke()
+        joke.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(joke)
+        yPos -= 30
+        
+        // Score display
+        let scoreLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        scoreLabel.fontSize = 20
+        scoreLabel.fontColor = .white
+        scoreLabel.text = "Score: \(score)"
+        scoreLabel.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(scoreLabel)
+        yPos -= 25
+        
+        // Stats
+        let statsLabel = SKLabelNode(fontNamed: "Helvetica")
+        statsLabel.fontSize = 14
+        statsLabel.fontColor = .gray
+        statsLabel.text = "Wave \(wave) • \(enemiesKilled) kills"
+        statsLabel.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(statsLabel)
+        yPos -= 30
+        
+        // New highscore?
+        if let rank = rank {
+            let newHSLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+            newHSLabel.fontSize = 18
+            newHSLabel.fontColor = SKColor(red: 1, green: 0.8, blue: 0.2, alpha: 1)
+            newHSLabel.text = rank == 1 ? "🏆 NEW HIGH SCORE! 🏆" : "📍 #\(rank) on leaderboard!"
+            newHSLabel.position = CGPoint(x: 0, y: yPos)
+            overlay.addChild(newHSLabel)
+            yPos -= 30
+        }
+        yPos -= 10
+        
+        // Highscores header
+        let hsHeader = SKLabelNode(fontNamed: "Helvetica-Bold")
+        hsHeader.fontSize = 16
+        hsHeader.fontColor = .white
+        hsHeader.text = "═══ TOP 10 ═══"
+        hsHeader.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(hsHeader)
+        yPos -= 22
+        
+        // Display highscores
+        addHighscoreList(to: overlay, startY: yPos, currentScore: score)
         
         let restartLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         restartLabel.fontSize = 16
         restartLabel.fontColor = .gray
         restartLabel.text = "Tap to restart"
-        restartLabel.position = CGPoint(x: 0, y: -50)
+        restartLabel.position = CGPoint(x: 0, y: -200)
         overlay.addChild(restartLabel)
         
         addChild(overlay)
@@ -546,8 +604,19 @@ final class HUDNode: SKNode {
         overlay.run(SKAction.scale(to: 1.0, duration: 0.3))
     }
     
-    func showVictory() {
-        let overlay = SKShapeNode(rectOf: CGSize(width: 400, height: 200), cornerRadius: 10)
+    func showVictory(wave: Int, enemiesKilled: Int, livesRemaining: Int) {
+        // Calculate and save score
+        let score = HighscoreManager.calculateScore(
+            wave: wave,
+            enemiesKilled: enemiesKilled,
+            moneyEarned: 0,
+            livesRemaining: livesRemaining,
+            isVictory: true
+        )
+        let rank = HighscoreManager.shared.addScore(score: score, wave: wave, enemiesKilled: enemiesKilled)
+        
+        // Create larger overlay for highscores
+        let overlay = SKShapeNode(rectOf: CGSize(width: 500, height: 450), cornerRadius: 10)
         overlay.fillColor = SKColor(red: 0.1, green: 0.15, blue: 0.1, alpha: 0.95)
         overlay.strokeColor = .healthBarGreen
         overlay.lineWidth = 3
@@ -555,25 +624,72 @@ final class HUDNode: SKNode {
         overlay.zPosition = GameConstants.ZPosition.menu.rawValue
         overlay.name = "victoryOverlay"
         
+        var yPos: CGFloat = 180
+        
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
         title.fontSize = 36
         title.fontColor = .healthBarGreen
-        title.text = "VICTORY!"
-        title.position = CGPoint(x: 0, y: 40)
+        title.text = "🎉 VICTORY! 🎉"
+        title.position = CGPoint(x: 0, y: yPos)
         overlay.addChild(title)
+        yPos -= 35
         
-        let subtitle = SKLabelNode(fontNamed: "Helvetica")
-        subtitle.fontSize = 18
-        subtitle.fontColor = .white
-        subtitle.text = "All waves defeated!"
-        subtitle.position = CGPoint(x: 0, y: 0)
-        overlay.addChild(subtitle)
+        // Dark humor joke
+        let joke = SKLabelNode(fontNamed: "Helvetica")
+        joke.fontSize = 14
+        joke.fontColor = SKColor(white: 0.7, alpha: 1.0)
+        joke.text = DarkHumorManager.shared.getVictoryJoke()
+        joke.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(joke)
+        yPos -= 30
+        
+        // Score display
+        let scoreLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        scoreLabel.fontSize = 20
+        scoreLabel.fontColor = .white
+        scoreLabel.text = "Score: \(score)"
+        scoreLabel.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(scoreLabel)
+        yPos -= 25
+        
+        // Stats
+        let statsLabel = SKLabelNode(fontNamed: "Helvetica")
+        statsLabel.fontSize = 14
+        statsLabel.fontColor = .gray
+        statsLabel.text = "All \(wave) waves • \(enemiesKilled) kills • \(livesRemaining) lives"
+        statsLabel.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(statsLabel)
+        yPos -= 30
+        
+        // New highscore?
+        if let rank = rank {
+            let newHSLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+            newHSLabel.fontSize = 18
+            newHSLabel.fontColor = SKColor(red: 1, green: 0.8, blue: 0.2, alpha: 1)
+            newHSLabel.text = rank == 1 ? "🏆 NEW HIGH SCORE! 🏆" : "📍 #\(rank) on leaderboard!"
+            newHSLabel.position = CGPoint(x: 0, y: yPos)
+            overlay.addChild(newHSLabel)
+            yPos -= 30
+        }
+        yPos -= 10
+        
+        // Highscores header
+        let hsHeader = SKLabelNode(fontNamed: "Helvetica-Bold")
+        hsHeader.fontSize = 16
+        hsHeader.fontColor = .white
+        hsHeader.text = "═══ TOP 10 ═══"
+        hsHeader.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(hsHeader)
+        yPos -= 22
+        
+        // Display highscores
+        addHighscoreList(to: overlay, startY: yPos, currentScore: score)
         
         let restartLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         restartLabel.fontSize = 16
         restartLabel.fontColor = .gray
         restartLabel.text = "Tap to play again"
-        restartLabel.position = CGPoint(x: 0, y: -50)
+        restartLabel.position = CGPoint(x: 0, y: -200)
         overlay.addChild(restartLabel)
         
         addChild(overlay)
@@ -581,6 +697,41 @@ final class HUDNode: SKNode {
         // Animate in
         overlay.setScale(0.1)
         overlay.run(SKAction.scale(to: 1.0, duration: 0.3))
+    }
+    
+    private func addHighscoreList(to overlay: SKNode, startY: CGFloat, currentScore: Int) {
+        var yPos = startY
+        let lineHeight: CGFloat = 18
+        let highscores = HighscoreManager.shared.highscores
+        
+        for (index, entry) in highscores.prefix(10).enumerated() {
+            let isCurrentScore = entry.score == currentScore
+            
+            let rankLabel = SKLabelNode(fontNamed: isCurrentScore ? "Helvetica-Bold" : "Helvetica")
+            rankLabel.fontSize = 13
+            rankLabel.fontColor = isCurrentScore ? SKColor(red: 1, green: 0.8, blue: 0.2, alpha: 1) : .lightGray
+            
+            let medal = index == 0 ? "🥇" : (index == 1 ? "🥈" : (index == 2 ? "🥉" : "  "))
+            rankLabel.text = "\(medal) #\(index + 1)  \(entry.score) pts  (W\(entry.wave), \(entry.enemiesKilled) kills)"
+            rankLabel.horizontalAlignmentMode = .center
+            rankLabel.position = CGPoint(x: 0, y: yPos)
+            overlay.addChild(rankLabel)
+            yPos -= lineHeight
+        }
+        
+        // Fill empty slots
+        if highscores.count < 10 {
+            for i in highscores.count..<10 {
+                let emptyLabel = SKLabelNode(fontNamed: "Helvetica")
+                emptyLabel.fontSize = 13
+                emptyLabel.fontColor = SKColor(white: 0.4, alpha: 1)
+                emptyLabel.text = "   #\(i + 1)  ---"
+                emptyLabel.horizontalAlignmentMode = .center
+                emptyLabel.position = CGPoint(x: 0, y: yPos)
+                overlay.addChild(emptyLabel)
+                yPos -= lineHeight
+            }
+        }
     }
     
     // MARK: - Trash Zone
