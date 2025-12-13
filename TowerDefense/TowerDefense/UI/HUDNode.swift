@@ -211,26 +211,26 @@ final class HUDNode: SKNode {
         // Control panel (bottom-left)
         setupControlPanel()
         
-        // Trash zone (bottom-right corner, visible and accessible)
-        trashZone.position = CGPoint(x: 1260, y: 80)
+        // Trash zone (top-right corner, near HUD)
+        trashZone.position = CGPoint(x: 1280, y: 665)
         trashZone.zPosition = 100  // Above other elements
         trashZone.addChild(trashLabel)
         addChild(trashZone)
         
         // Add "SELL" text below trash
         let sellLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        sellLabel.fontSize = 12
+        sellLabel.fontSize = 10
         sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
         sellLabel.text = "SELL"
-        sellLabel.position = CGPoint(x: 1260, y: 25)
+        sellLabel.position = CGPoint(x: 1280, y: 615)
         addChild(sellLabel)
         
         // Add border/frame around trash zone for visibility
-        let trashFrame = SKShapeNode(rectOf: CGSize(width: 90, height: 90), cornerRadius: 12)
+        let trashFrame = SKShapeNode(rectOf: CGSize(width: 70, height: 70), cornerRadius: 10)
         trashFrame.fillColor = .clear
         trashFrame.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
         trashFrame.lineWidth = 2
-        trashFrame.position = CGPoint(x: 1260, y: 80)
+        trashFrame.position = CGPoint(x: 1280, y: 665)
         trashFrame.zPosition = 99
         addChild(trashFrame)
         

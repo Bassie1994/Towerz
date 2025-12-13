@@ -767,6 +767,7 @@ extension GameScene: TowerInfoNodeDelegate {
     }
     
     func towerInfoDidTapSell(_ tower: Tower) {
+        towerInfoNode.hide()
         gameManager.sellTower(tower)
         updateUI()
     }
