@@ -8,9 +8,11 @@ final class PlacementPreviewNode: SKNode {
     private var currentTowerType: TowerType?
     private var currentGridPosition: GridPosition?
     private var isValid: Bool = false
+    private var currentBuffMultiplier: CGFloat = 1.0
     
     private let previewNode: SKShapeNode
     private let rangeIndicator: SKShapeNode
+    private let buffedRangeIndicator: SKShapeNode  // Shows buffed range
     private let invalidLabel: SKLabelNode
     private let gridHighlight: SKShapeNode
     
@@ -24,11 +26,18 @@ final class PlacementPreviewNode: SKNode {
         previewNode.lineWidth = 2
         previewNode.alpha = 0.7
         
-        // Range indicator
+        // Range indicator (base range)
         rangeIndicator = SKShapeNode()
         rangeIndicator.fillColor = SKColor.white.withAlphaComponent(0.1)
         rangeIndicator.strokeColor = SKColor.white.withAlphaComponent(0.3)
         rangeIndicator.lineWidth = 2
+        
+        // Buffed range indicator (shows when buff tower nearby)
+        buffedRangeIndicator = SKShapeNode()
+        buffedRangeIndicator.fillColor = SKColor.buffEffect.withAlphaComponent(0.08)
+        buffedRangeIndicator.strokeColor = SKColor.buffEffect.withAlphaComponent(0.5)
+        buffedRangeIndicator.lineWidth = 2
+        buffedRangeIndicator.isHidden = true
         
         // Invalid placement label
         invalidLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
@@ -46,6 +55,7 @@ final class PlacementPreviewNode: SKNode {
         
         super.init()
         
+        addChild(buffedRangeIndicator)  // Add buffed range first (behind base range)
         addChild(rangeIndicator)
         addChild(gridHighlight)
         addChild(previewNode)
@@ -63,6 +73,7 @@ final class PlacementPreviewNode: SKNode {
     
     func startPreview(towerType: TowerType) {
         currentTowerType = towerType
+        currentBuffMultiplier = 1.0
         
         // Update appearance for tower type
         previewNode.fillColor = towerType.color.withAlphaComponent(0.5)
@@ -72,15 +83,31 @@ final class PlacementPreviewNode: SKNode {
         let rangePath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)
         rangeIndicator.path = rangePath
         
+        // Hide buffed range initially
+        buffedRangeIndicator.isHidden = true
+        
         isHidden = false
     }
     
-    func updatePosition(gridPosition: GridPosition, isValid: Bool, invalidReason: String?) {
+    /// Update preview with optional buff multiplier for range
+    func updatePosition(gridPosition: GridPosition, isValid: Bool, invalidReason: String?, buffRangeMultiplier: CGFloat = 1.0) {
         currentGridPosition = gridPosition
         self.isValid = isValid
+        currentBuffMultiplier = buffRangeMultiplier
         
         // Update position
         position = gridPosition.toWorldPosition()
+        
+        // Update buffed range indicator
+        if buffRangeMultiplier > 1.0, let towerType = currentTowerType, towerType != .buff {
+            let baseRange = getTowerRange(for: towerType)
+            let buffedRange = baseRange * buffRangeMultiplier
+            let buffedPath = CGPath(ellipseIn: CGRect(x: -buffedRange, y: -buffedRange, width: buffedRange * 2, height: buffedRange * 2), transform: nil)
+            buffedRangeIndicator.path = buffedPath
+            buffedRangeIndicator.isHidden = false
+        } else {
+            buffedRangeIndicator.isHidden = true
+        }
         
         // Update validity visual
         if isValid {

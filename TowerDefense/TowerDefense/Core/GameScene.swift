@@ -437,12 +437,8 @@ final class GameScene: SKScene {
         towers.removeAll { $0 === wallTower }
         
         // Don't unblock grid - we're replacing with another tower
-        // Create new tower
-        let newTower = createTower(type: targetType, at: gridPos)
-        newTower.position = gridPos.toWorldPosition()
-        newTower.delegate = self
-        towers.append(newTower)
-        towerLayer.addChild(newTower)
+        // Create new tower - createTower already adds to towers array and towerLayer
+        _ = createTower(type: targetType, at: gridPos)
         
         // AudioManager.shared.playSound(.towerPlace)
         updateUI()
@@ -454,11 +450,35 @@ final class GameScene: SKScene {
         let gridPos = gameManager.placementValidator.snapToGrid(worldPosition: location)
         let result = gameManager.canPlaceTower(at: gridPos, type: towerType)
         
+        // Calculate buff multiplier at this position
+        let buffMultiplier = getBuffRangeMultiplierAt(position: gridPos.toWorldPosition())
+        
         placementPreviewNode.updatePosition(
             gridPosition: gridPos,
             isValid: result.isValid,
-            invalidReason: result.reason
+            invalidReason: result.reason,
+            buffRangeMultiplier: buffMultiplier
         )
+    }
+    
+    /// Get the range multiplier from nearby buff towers at a given position
+    func getBuffRangeMultiplierAt(position: CGPoint) -> CGFloat {
+        var bestMultiplier: CGFloat = 1.0
+        
+        for tower in towers {
+            guard let buffTower = tower as? BuffTower else { continue }
+            
+            let distance = position.distance(to: buffTower.position)
+            if distance <= buffTower.range {
+                // Calculate effective buff multiplier based on buff tower's upgrade level
+                // Range buff is roughly equivalent to damage buff: 15% + 10% per level
+                let buffPercent = 0.15 + CGFloat(buffTower.upgradeLevel) * 0.10
+                let multiplier = 1.0 + buffPercent
+                bestMultiplier = max(bestMultiplier, multiplier)
+            }
+        }
+        
+        return bestMultiplier
     }
     
     private func attemptPlacement(at location: CGPoint, type: TowerType) {

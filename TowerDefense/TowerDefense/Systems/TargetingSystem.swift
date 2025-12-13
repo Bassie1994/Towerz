@@ -10,16 +10,16 @@ final class TargetingSystem {
         self.gameScene = gameScene
     }
     
-    /// Get all enemies within range of a tower
+    /// Get all enemies within range of a tower (uses effective range including buffs)
     func getEnemiesInRange(of tower: Tower) -> [Enemy] {
         guard let scene = gameScene else { return [] }
         
         let enemies = scene.getAllEnemies()
-        let range = tower.range
+        let effectiveRange = tower.getEffectiveRange()  // Includes buff multiplier
         
         return enemies.filter { enemy in
             guard enemy.isAlive else { return false }
-            return tower.position.distance(to: enemy.position) <= range
+            return tower.position.distance(to: enemy.position) <= effectiveRange
         }
     }
     

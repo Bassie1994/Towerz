@@ -33,6 +33,7 @@ class Tower: SKNode {
     // Buff state (from buff towers)
     var damageMultiplier: CGFloat = 1.0
     var fireRateMultiplier: CGFloat = 1.0
+    var rangeMultiplier: CGFloat = 1.0
     var isBuffed: Bool = false
     
     // Combat state
@@ -87,15 +88,16 @@ class Tower: SKNode {
         rangeIndicator.isHidden = true
         rangeIndicator.zPosition = GameConstants.ZPosition.rangeIndicator.rawValue
         
-        // Create upgrade indicators (3 for 3 upgrade levels)
+        // Create upgrade indicators (3 for 3 upgrade levels) - inside the tower
         var indicators: [SKShapeNode] = []
         for i in 0..<3 {
-            let indicator = SKShapeNode(circleOfRadius: 3)
-            indicator.fillColor = .darkGray
+            let indicator = SKShapeNode(circleOfRadius: 4)
+            indicator.fillColor = SKColor.black.withAlphaComponent(0.6)  // Dark unfilled
             indicator.strokeColor = .white
-            indicator.lineWidth = 1
-            // Position 3 indicators evenly spaced below tower
-            indicator.position = CGPoint(x: -10 + CGFloat(i) * 10, y: -towerSize / 2 - 8)
+            indicator.lineWidth = 1.5
+            // Position 3 indicators inside tower at bottom, evenly spaced
+            indicator.position = CGPoint(x: -12 + CGFloat(i) * 12, y: -towerSize / 2 + 10)
+            indicator.zPosition = 5  // Above tower base
             indicators.append(indicator)
         }
         upgradeIndicators = indicators
@@ -261,9 +263,11 @@ class Tower: SKNode {
         let newPath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)
         rangeIndicator.path = newPath
         
-        // Update visual indicator
+        // Update visual indicator with bright contrasting color
         if upgradeLevel <= upgradeIndicators.count {
-            upgradeIndicators[upgradeLevel - 1].fillColor = .yellow
+            upgradeIndicators[upgradeLevel - 1].fillColor = .white  // Bright white for contrast
+            upgradeIndicators[upgradeLevel - 1].strokeColor = SKColor(red: 1.0, green: 0.85, blue: 0, alpha: 1.0)  // Gold outline
+            upgradeIndicators[upgradeLevel - 1].lineWidth = 2
         }
         
         // Upgrade animation
@@ -321,28 +325,64 @@ class Tower: SKNode {
     
     // MARK: - Buff Management
     
-    func applyBuff(damageMultiplier: CGFloat, fireRateMultiplier: CGFloat) {
+    func applyBuff(damageMultiplier: CGFloat, fireRateMultiplier: CGFloat, rangeMultiplier: CGFloat) {
         self.damageMultiplier = damageMultiplier
         self.fireRateMultiplier = fireRateMultiplier
+        self.rangeMultiplier = rangeMultiplier
         self.isBuffed = true
+        
+        // Update range indicator to show buffed range
+        updateRangeIndicatorForBuff()
     }
     
     func removeBuff() {
         self.damageMultiplier = 1.0
         self.fireRateMultiplier = 1.0
+        self.rangeMultiplier = 1.0
         self.isBuffed = false
+        
+        // Reset range indicator to base range
+        updateRangeIndicatorForBuff()
+    }
+    
+    /// Update range indicator to reflect current buff state
+    func updateRangeIndicatorForBuff() {
+        let effectiveRange = range * rangeMultiplier
+        let newPath = CGPath(ellipseIn: CGRect(x: -effectiveRange, y: -effectiveRange, width: effectiveRange * 2, height: effectiveRange * 2), transform: nil)
+        rangeIndicator.path = newPath
+        
+        // Change color when buffed
+        if isBuffed {
+            rangeIndicator.strokeColor = SKColor.buffEffect.withAlphaComponent(0.5)
+            rangeIndicator.fillColor = SKColor.buffEffect.withAlphaComponent(0.15)
+        } else {
+            rangeIndicator.strokeColor = SKColor.white.withAlphaComponent(0.3)
+            rangeIndicator.fillColor = SKColor.white.withAlphaComponent(0.1)
+        }
     }
     
     // MARK: - Info
     
+    /// Get effective range (including buff)
+    func getEffectiveRange() -> CGFloat {
+        return range * rangeMultiplier
+    }
+    
     func getStats() -> [String: String] {
-        return [
+        var stats = [
             "Type": towerType.displayName,
             "Damage": String(format: "%.0f", damage * damageMultiplier),
-            "Range": String(format: "%.0f", range),
+            "Range": String(format: "%.0f", getEffectiveRange()),
             "Fire Rate": String(format: "%.1f/s", fireRate * fireRateMultiplier),
             "Level": "\(upgradeLevel + 1)/\(maxUpgradeLevel + 1)",
             "Sell Value": "\(sellValue)"
         ]
+        
+        // Add buff indicator if buffed
+        if isBuffed {
+            stats["Buffed"] = "✓ +\(Int((rangeMultiplier - 1) * 100))% range"
+        }
+        
+        return stats
     }
 }
