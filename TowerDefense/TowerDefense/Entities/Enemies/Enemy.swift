@@ -126,6 +126,8 @@ class Enemy: SKNode {
             indicator.text = "C"
         case .flying:
             indicator.text = "F"
+        case .boss:
+            indicator.text = "💀"
             // Add wing indicators for flying
             let wing1 = SKShapeNode(ellipseOf: CGSize(width: 12, height: 6))
             wing1.fillColor = enemyType.color.withAlphaComponent(0.6)
