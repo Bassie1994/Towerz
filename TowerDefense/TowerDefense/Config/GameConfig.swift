@@ -118,10 +118,10 @@ struct GameConfig {
             fireRateScaling: 0.0,
             upgradeCostMultiplier: 0.6
         ),
-        .shotgun: TowerStats(
-            damage: 6,        // NERFED from 12 (50%)
-            range: 60,        // NERFED from 100 - VERY SHORT range
-            fireRate: 1.5,
+        .mine: TowerStats(
+            damage: 25,       // Mine explosion damage
+            range: 120,       // Range to place mines
+            fireRate: 0.5,    // 1 mine every 2 seconds
             cost: 70,
             damageScaling: 0.20,
             rangeScaling: 0.08,
