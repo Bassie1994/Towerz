@@ -31,6 +31,10 @@ class Enemy: SKNode {
     var slowEndTime: TimeInterval = 0
     var slowMultiplier: CGFloat = 1.0
     
+    // Drunk movement (Booze effect)
+    var drunkPhase: CGFloat = CGFloat.random(in: 0...(.pi * 2))
+    var drunkAmplitude: CGFloat = CGFloat.random(in: 0.3...0.6)
+    
     // Visual components
     let bodyNode: SKShapeNode
     let healthBarBackground: SKShapeNode
@@ -170,6 +174,21 @@ class Enemy: SKNode {
             combinedDirection = CGVector(dx: 1, dy: 0)
         }
         
+        // Apply drunk movement if booze is active
+        if BoozeManager.shared.isActive {
+            drunkPhase += CGFloat(deltaTime) * 4.0  // Oscillation speed
+            let sway = sin(drunkPhase) * drunkAmplitude
+            combinedDirection = CGVector(
+                dx: combinedDirection.dx + sway * 0.5,
+                dy: combinedDirection.dy + cos(drunkPhase * 1.3) * drunkAmplitude * 0.3
+            )
+            // Re-normalize after drunk adjustment
+            let drunkMag = sqrt(combinedDirection.dx * combinedDirection.dx + combinedDirection.dy * combinedDirection.dy)
+            if drunkMag > 0 {
+                combinedDirection = CGVector(dx: combinedDirection.dx / drunkMag, dy: combinedDirection.dy / drunkMag)
+            }
+        }
+        
         // Smooth direction change to prevent jittering
         currentDirection = CGVector(
             dx: currentDirection.dx * 0.7 + combinedDirection.dx * 0.3,
@@ -214,17 +233,43 @@ class Enemy: SKNode {
                     // Try multiple alternatives to find a way around
                     let moveDistance = actualSpeed * CGFloat(deltaTime)
                     
-                    // Try 8 different directions to find a valid path
-                    let alternatives: [(CGFloat, CGFloat)] = [
-                        (movement.dx, 0),           // Horizontal only
-                        (0, movement.dy),           // Vertical only
-                        (moveDistance, 0),          // Pure right
-                        (-moveDistance, 0),         // Pure left
-                        (0, moveDistance),          // Pure up
-                        (0, -moveDistance),         // Pure down
-                        (moveDistance, -moveDistance), // Diagonal down-right
-                        (moveDistance, moveDistance)   // Diagonal up-right
-                    ]
+                    // Calculate direction to exit for smarter pathing
+                    let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width
+                    let exitY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
+                    let toExitX = exitX - position.x
+                    let toExitY = exitY - position.y
+                    let preferDown = toExitY < 0
+                    
+                    // Try directions in priority order based on where exit is
+                    var alternatives: [(CGFloat, CGFloat)] = []
+                    
+                    if preferDown {
+                        // Exit is below - prefer going down and right
+                        alternatives = [
+                            (moveDistance, -moveDistance),  // Down-right diagonal
+                            (0, -moveDistance),             // Pure down
+                            (moveDistance, 0),              // Pure right
+                            (moveDistance, -moveDistance * 2), // Steep down-right
+                            (-moveDistance, -moveDistance), // Down-left diagonal
+                            (0, -moveDistance * 2),         // Double down
+                            (moveDistance * 2, 0),          // Double right
+                            (-moveDistance, 0),             // Left (escape)
+                            (0, moveDistance),              // Up (escape)
+                        ]
+                    } else {
+                        // Exit is above or level - prefer going up and right
+                        alternatives = [
+                            (moveDistance, moveDistance),   // Up-right diagonal
+                            (0, moveDistance),              // Pure up
+                            (moveDistance, 0),              // Pure right
+                            (moveDistance, moveDistance * 2), // Steep up-right
+                            (-moveDistance, moveDistance),  // Up-left diagonal
+                            (0, moveDistance * 2),          // Double up
+                            (moveDistance * 2, 0),          // Double right
+                            (-moveDistance, 0),             // Left (escape)
+                            (0, -moveDistance),             // Down (escape)
+                        ]
+                    }
                     
                     var foundPath = false
                     for (dx, dy) in alternatives {
@@ -246,9 +291,28 @@ class Enemy: SKNode {
                     }
                     
                     if !foundPath {
-                        // Still stuck - try to push away from the blocking cell
+                        // Still stuck - try sliding along the tower edge
                         let currentGrid = position.toGridPosition()
-                        if let escapeDir = flowField.getDirection(at: currentGrid) {
+                        
+                        // Check which adjacent cells are free
+                        let cellSize = GameConstants.cellSize
+                        let cellCenterX = GameConstants.playFieldOrigin.x + CGFloat(newGridPos.x) * cellSize + cellSize / 2
+                        let cellCenterY = GameConstants.playFieldOrigin.y + CGFloat(newGridPos.y) * cellSize + cellSize / 2
+                        
+                        // Push away from the blocked cell center
+                        let pushX = position.x - cellCenterX
+                        let pushY = position.y - cellCenterY
+                        let pushMag = sqrt(pushX * pushX + pushY * pushY)
+                        
+                        if pushMag > 0 {
+                            // Slide perpendicular to the push direction, biased toward exit
+                            let slideX = preferDown ? moveDistance : moveDistance
+                            let slideY = preferDown ? -moveDistance * 0.5 : moveDistance * 0.5
+                            newPosition = CGPoint(
+                                x: position.x + slideX + (pushX / pushMag) * moveDistance * 0.3,
+                                y: position.y + slideY + (pushY / pushMag) * moveDistance * 0.3
+                            )
+                        } else if let escapeDir = flowField.getDirection(at: currentGrid) {
                             newPosition = CGPoint(
                                 x: position.x + escapeDir.dx * moveDistance * 0.5,
                                 y: position.y + escapeDir.dy * moveDistance * 0.5

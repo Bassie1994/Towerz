@@ -21,6 +21,9 @@ final class BuildMenuNode: SKNode {
     private let menuWidth: CGFloat = 1200
     private let menuHeight: CGFloat = 65
     
+    private let moneyLabel: SKLabelNode
+    private let moneyIcon: SKLabelNode
+    
     // MARK: - Initialization
     
     override init() {
@@ -29,6 +32,21 @@ final class BuildMenuNode: SKNode {
         menuBackground.fillColor = SKColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 0.95)
         menuBackground.strokeColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
         menuBackground.lineWidth = 2
+        
+        // Money display
+        moneyIcon = SKLabelNode(fontNamed: "Helvetica-Bold")
+        moneyIcon.fontSize = 18
+        moneyIcon.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
+        moneyIcon.text = "💰"
+        moneyIcon.verticalAlignmentMode = .center
+        moneyIcon.horizontalAlignmentMode = .right
+        
+        moneyLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        moneyLabel.fontSize = 16
+        moneyLabel.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
+        moneyLabel.text = "$500"
+        moneyLabel.verticalAlignmentMode = .center
+        moneyLabel.horizontalAlignmentMode = .left
         
         super.init()
         
@@ -41,8 +59,8 @@ final class BuildMenuNode: SKNode {
     }
     
     private func setupMenu() {
-        // Position menu below HUD (at y=665, leaving room for HUD at 725)
-        menuBackground.position = CGPoint(x: 667, y: 665)
+        // Position menu below HUD (at y=650, leaving room for HUD at 710)
+        menuBackground.position = CGPoint(x: 667, y: 650)
         addChild(menuBackground)
         
         // Title on left
@@ -67,6 +85,17 @@ final class BuildMenuNode: SKNode {
             
             xOffset += buttonSpacing
         }
+        
+        // Money display on right side of menu bar
+        moneyIcon.position = CGPoint(x: menuWidth/2 - 80, y: 0)
+        menuBackground.addChild(moneyIcon)
+        
+        moneyLabel.position = CGPoint(x: menuWidth/2 - 55, y: 0)
+        menuBackground.addChild(moneyLabel)
+    }
+    
+    func updateMoney(_ amount: Int) {
+        moneyLabel.text = "$\(amount)"
     }
     
     // MARK: - Updates

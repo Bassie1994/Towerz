@@ -207,27 +207,6 @@ final class GameScene: SKScene {
         label.position = CGPoint(x: 0, y: -55)
         baseNode.addChild(label)
         
-        // Pulsing effect
-        let pulse = SKAction.sequence([
-            SKAction.scale(to: 1.05, duration: 0.8),
-            SKAction.scale(to: 1.0, duration: 0.8)
-        ])
-        baseBg.run(SKAction.repeatForever(pulse))
-        
-        // Arrow indicator pointing to base
-        let arrow = SKLabelNode(fontNamed: "Helvetica-Bold")
-        arrow.fontSize = 24
-        arrow.fontColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
-        arrow.text = "→→→"
-        arrow.position = CGPoint(x: -80, y: 0)
-        baseNode.addChild(arrow)
-        
-        let arrowPulse = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.3, duration: 0.5),
-            SKAction.fadeAlpha(to: 1.0, duration: 0.5)
-        ])
-        arrow.run(SKAction.repeatForever(arrowPulse))
-        
         gameLayer.addChild(baseNode)
     }
     
@@ -324,6 +303,10 @@ final class GameScene: SKScene {
         for tower in towers {
             tower.update(currentTime: gameTime)
         }
+        
+        // Update booze power
+        BoozeManager.shared.update(currentTime: gameTime)
+        hudNode.updateBooze(currentTime: gameTime)
         
         // Update UI
         updateUI()
@@ -696,6 +679,9 @@ final class GameScene: SKScene {
         lastUpdateTime = 0
         gameSpeed = 1.0
         
+        // Reset booze power
+        BoozeManager.shared.reset()
+        
         // Reset managers
         gameManager = GameManager()
         gameManager.setup(scene: self)
@@ -741,6 +727,12 @@ extension GameScene: HUDNodeDelegate {
     
     func hudDidTapFastForward() {
         gameSpeed = hudNode.getSpeedMultiplier()
+    }
+    
+    func hudDidTapBooze() {
+        if BoozeManager.shared.canActivate(currentTime: gameTime) {
+            BoozeManager.shared.activate(currentTime: gameTime)
+        }
     }
     
     func hudDidDropInTrash() {
@@ -989,6 +981,7 @@ extension GameScene: EconomyManagerDelegate {
     func moneyDidChange(newAmount: Int) {
         hudNode.updateMoney(newAmount)
         buildMenuNode.updateAffordability(money: newAmount)
+        buildMenuNode.updateMoney(newAmount)
     }
     
     func purchaseFailed(reason: String) {

@@ -7,6 +7,7 @@ protocol HUDNodeDelegate: AnyObject {
     func hudDidTapAutoStart()
     func hudDidTapFastForward()
     func hudDidDropInTrash()
+    func hudDidTapBooze()
 }
 
 /// Heads-Up Display showing game state
@@ -35,6 +36,12 @@ final class HUDNode: SKNode {
     private(set) var isTrashHighlighted = false
     private(set) var isAutoStartEnabled = false
     private var isWaveActive = false
+    
+    // Booze power
+    private let boozeButton: SKShapeNode
+    private let boozeLabel: SKLabelNode
+    private let boozeCooldownRing: SKShapeNode
+    private let boozeActiveRing: SKShapeNode
     
     // MARK: - Initialization
     
@@ -127,6 +134,33 @@ final class HUDNode: SKNode {
         trashLabel.verticalAlignmentMode = .center
         trashLabel.horizontalAlignmentMode = .center
         
+        // Booze power button
+        boozeButton = SKShapeNode(circleOfRadius: 35)
+        boozeButton.fillColor = SKColor(red: 0.4, green: 0.25, blue: 0.1, alpha: 0.9)
+        boozeButton.strokeColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
+        boozeButton.lineWidth = 3
+        boozeButton.name = "boozeButton"
+        
+        boozeLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        boozeLabel.fontSize = 28
+        boozeLabel.fontColor = .white
+        boozeLabel.text = "🍺"
+        boozeLabel.verticalAlignmentMode = .center
+        boozeLabel.horizontalAlignmentMode = .center
+        
+        // Cooldown ring (transparent clock effect)
+        boozeCooldownRing = SKShapeNode(circleOfRadius: 38)
+        boozeCooldownRing.fillColor = .clear
+        boozeCooldownRing.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5)
+        boozeCooldownRing.lineWidth = 4
+        
+        // Active ring (glowing when booze is active)
+        boozeActiveRing = SKShapeNode(circleOfRadius: 42)
+        boozeActiveRing.fillColor = .clear
+        boozeActiveRing.strokeColor = SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 0.8)
+        boozeActiveRing.lineWidth = 3
+        boozeActiveRing.isHidden = true
+        
         super.init()
         
         setupHUD()
@@ -138,19 +172,19 @@ final class HUDNode: SKNode {
     }
     
     private func setupHUD() {
-        // Position background at top
-        hudBackground.position = CGPoint(x: 667, y: 725)
+        // Position background at top (lowered for safe area)
+        hudBackground.position = CGPoint(x: 667, y: 710)
         addChild(hudBackground)
         
         // Lives (left side)
-        livesIcon.position = CGPoint(x: 50, y: 725)
+        livesIcon.position = CGPoint(x: 50, y: 710)
         addChild(livesIcon)
         
-        livesLabel.position = CGPoint(x: 70, y: 725)
+        livesLabel.position = CGPoint(x: 70, y: 710)
         addChild(livesLabel)
         
         // Money (next to lives)
-        moneyIcon.position = CGPoint(x: 160, y: 725)
+        moneyIcon.position = CGPoint(x: 160, y: 710)
         addChild(moneyIcon)
         
         // Add coin symbol
@@ -162,26 +196,26 @@ final class HUDNode: SKNode {
         coinSymbol.verticalAlignmentMode = .center
         moneyIcon.addChild(coinSymbol)
         
-        moneyLabel.position = CGPoint(x: 180, y: 725)
+        moneyLabel.position = CGPoint(x: 180, y: 710)
         addChild(moneyLabel)
         
         // Wave info (center) - larger and more visible
-        waveLabel.position = CGPoint(x: 500, y: 725)
+        waveLabel.position = CGPoint(x: 500, y: 710)
         waveLabel.fontSize = 18
         addChild(waveLabel)
         
         // Start wave button - BIGGER and more prominent
-        startWaveButton.position = CGPoint(x: 700, y: 725)
+        startWaveButton.position = CGPoint(x: 700, y: 710)
         startWaveButton.addChild(startWaveLabel)
         addChild(startWaveButton)
         
         // Speed button
-        speedButton.position = CGPoint(x: 850, y: 725)
+        speedButton.position = CGPoint(x: 850, y: 710)
         speedButton.addChild(speedLabel)
         addChild(speedButton)
         
         // Pause button 
-        pauseButton.position = CGPoint(x: 950, y: 725)
+        pauseButton.position = CGPoint(x: 950, y: 710)
         
         // Pause icon (two vertical bars)
         let bar1 = SKShapeNode(rectOf: CGSize(width: 4, height: 15))
@@ -211,8 +245,33 @@ final class HUDNode: SKNode {
         // Control panel (bottom-left)
         setupControlPanel()
         
+        // Booze power button (left side, below spawn area)
+        let boozeX: CGFloat = 180
+        let boozeY: CGFloat = 565
+        
+        boozeCooldownRing.position = CGPoint(x: boozeX, y: boozeY)
+        boozeCooldownRing.zPosition = 99
+        addChild(boozeCooldownRing)
+        
+        boozeActiveRing.position = CGPoint(x: boozeX, y: boozeY)
+        boozeActiveRing.zPosition = 99
+        addChild(boozeActiveRing)
+        
+        boozeButton.position = CGPoint(x: boozeX, y: boozeY)
+        boozeButton.zPosition = 100
+        boozeButton.addChild(boozeLabel)
+        addChild(boozeButton)
+        
+        // Label under booze button
+        let boozeTitleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        boozeTitleLabel.fontSize = 10
+        boozeTitleLabel.fontColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
+        boozeTitleLabel.text = "BOOZE"
+        boozeTitleLabel.position = CGPoint(x: boozeX, y: boozeY - 50)
+        addChild(boozeTitleLabel)
+        
         // Trash zone (top-right corner, near HUD)
-        trashZone.position = CGPoint(x: 1280, y: 665)
+        trashZone.position = CGPoint(x: 1280, y: 650)
         trashZone.zPosition = 100  // Above other elements
         trashZone.addChild(trashLabel)
         addChild(trashZone)
@@ -222,7 +281,7 @@ final class HUDNode: SKNode {
         sellLabel.fontSize = 10
         sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
         sellLabel.text = "SELL"
-        sellLabel.position = CGPoint(x: 1280, y: 615)
+        sellLabel.position = CGPoint(x: 1280, y: 600)
         addChild(sellLabel)
         
         // Add border/frame around trash zone for visibility
@@ -230,7 +289,7 @@ final class HUDNode: SKNode {
         trashFrame.fillColor = .clear
         trashFrame.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
         trashFrame.lineWidth = 2
-        trashFrame.position = CGPoint(x: 1280, y: 665)
+        trashFrame.position = CGPoint(x: 1280, y: 650)
         trashFrame.zPosition = 99
         addChild(trashFrame)
         
@@ -367,6 +426,66 @@ final class HUDNode: SKNode {
         }
     }
     
+    func updateBooze(currentTime: TimeInterval) {
+        let booze = BoozeManager.shared
+        
+        // Update active ring visibility
+        boozeActiveRing.isHidden = !booze.isActive
+        
+        // Update button appearance based on state
+        if booze.isActive {
+            // Active - show golden glow and remaining time
+            boozeButton.fillColor = SKColor(red: 0.8, green: 0.6, blue: 0.1, alpha: 1.0)
+            boozeButton.strokeColor = SKColor(red: 1.0, green: 0.9, blue: 0.3, alpha: 1.0)
+            
+            // Pulsing active ring
+            if boozeActiveRing.action(forKey: "pulse") == nil {
+                let pulse = SKAction.sequence([
+                    SKAction.scale(to: 1.1, duration: 0.3),
+                    SKAction.scale(to: 1.0, duration: 0.3)
+                ])
+                boozeActiveRing.run(SKAction.repeatForever(pulse), withKey: "pulse")
+            }
+            
+            // Update cooldown ring to show remaining active time
+            let remaining = booze.getRemainingActiveTime(currentTime: currentTime)
+            let progress = CGFloat(remaining / booze.boozeDuration)
+            updateCooldownRing(progress: progress, color: SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 0.8))
+            
+        } else if booze.canActivate(currentTime: currentTime) {
+            // Ready to use
+            boozeButton.fillColor = SKColor(red: 0.4, green: 0.25, blue: 0.1, alpha: 0.9)
+            boozeButton.strokeColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
+            boozeActiveRing.removeAction(forKey: "pulse")
+            
+            // Full cooldown ring
+            updateCooldownRing(progress: 1.0, color: SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.8))
+            
+        } else {
+            // On cooldown
+            boozeButton.fillColor = SKColor(red: 0.3, green: 0.2, blue: 0.1, alpha: 0.6)
+            boozeButton.strokeColor = SKColor(red: 0.5, green: 0.3, blue: 0.15, alpha: 0.8)
+            boozeActiveRing.removeAction(forKey: "pulse")
+            
+            // Show cooldown progress
+            let progress = booze.getCooldownProgress(currentTime: currentTime)
+            updateCooldownRing(progress: progress, color: SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.6))
+        }
+    }
+    
+    private func updateCooldownRing(progress: CGFloat, color: SKColor) {
+        // Create a partial circle path based on progress
+        let radius: CGFloat = 38
+        let startAngle: CGFloat = .pi / 2  // Start at top
+        let endAngle = startAngle - (2 * .pi * progress)
+        
+        let path = CGMutablePath()
+        path.addArc(center: .zero, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
+        
+        boozeCooldownRing.path = path
+        boozeCooldownRing.strokeColor = color
+    }
+    
     private func updateAutoStartButton() {
         if isAutoStartEnabled {
             startWaveLabel.text = "⚡ AUTO"
@@ -450,6 +569,14 @@ final class HUDNode: SKNode {
                     return true
                 }
             }
+        }
+        
+        // Check booze button
+        let boozeDistance = sqrt(pow(location.x - boozeButton.position.x, 2) + pow(location.y - boozeButton.position.y, 2))
+        if boozeDistance <= 40 {  // Touch radius slightly larger than button
+            delegate?.hudDidTapBooze()
+            animateButtonPress(boozeButton)
+            return true
         }
         
         // Check trash zone

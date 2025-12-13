@@ -7,8 +7,8 @@ enum GameConstants {
     static let gridHeight = 11  // Reduced by 1 row
     static let cellSize: CGFloat = 48
     
-    // Playfield bounds
-    static let playFieldOrigin = CGPoint(x: 100, y: 50)
+    // Playfield bounds (adjusted for UI padding)
+    static let playFieldOrigin = CGPoint(x: 100, y: 90)
     static let playFieldSize = CGSize(
         width: CGFloat(gridWidth) * cellSize,
         height: CGFloat(gridHeight) * cellSize
