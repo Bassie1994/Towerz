@@ -708,7 +708,7 @@ extension GameScene: HUDNodeDelegate {
     }
     
     func hudDidTapStartWave() {
-        gameManager.startWave(currentTime: lastUpdateTime)
+        gameManager.startWave(currentTime: gameTime)
     }
     
     func hudDidTapFastForward() {
