@@ -719,6 +719,10 @@ extension GameScene: HUDNodeDelegate {
         gameManager.startWave(currentTime: gameTime)
     }
     
+    func hudDidTapAutoStart() {
+        // Auto-start toggled - nothing extra needed, HUD handles visual
+    }
+    
     func hudDidTapFastForward() {
         gameSpeed = hudNode.getSpeedMultiplier()
     }
@@ -941,6 +945,18 @@ extension GameScene: WaveManagerDelegate {
             SKAction.removeFromParent()
         ])
         label.run(animation)
+        
+        // Auto-start next wave if enabled
+        if hudNode.isAutoStartEnabled {
+            // Small delay before starting next wave
+            let autoStartAction = SKAction.sequence([
+                SKAction.wait(forDuration: 1.5),
+                SKAction.run { [weak self] in
+                    self?.hudDidTapStartWave()
+                }
+            ])
+            run(autoStartAction, withKey: "autoStart")
+        }
     }
     
     func allWavesCompleted() {

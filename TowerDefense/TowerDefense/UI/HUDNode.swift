@@ -4,6 +4,7 @@ import SpriteKit
 protocol HUDNodeDelegate: AnyObject {
     func hudDidTapPause()
     func hudDidTapStartWave()
+    func hudDidTapAutoStart()
     func hudDidTapFastForward()
     func hudDidDropInTrash()
 }
@@ -32,6 +33,8 @@ final class HUDNode: SKNode {
     
     private var speedMultiplier: CGFloat = 1.0  // 1x, 2x, or 4x
     private(set) var isTrashHighlighted = false
+    private(set) var isAutoStartEnabled = false
+    private var isWaveActive = false
     
     // MARK: - Initialization
     
@@ -341,17 +344,42 @@ final class HUDNode: SKNode {
     }
     
     func updateWave(_ current: Int, total: Int, active: Bool) {
+        isWaveActive = active
+        
         if active {
             waveLabel.text = "Wave \(current)/\(total)"
-            startWaveButton.isHidden = true
+            // During wave: show auto-start toggle button
+            startWaveButton.isHidden = false
+            updateAutoStartButton()
         } else if current >= total {
             waveLabel.text = "Victory!"
             startWaveButton.isHidden = true
+            isAutoStartEnabled = false
         } else {
             waveLabel.text = "Wave \(current)/\(total)"
             startWaveButton.isHidden = false
-            startWaveLabel.text = current == 0 ? "Start Wave 1" : "Next Wave"
+            if isAutoStartEnabled {
+                updateAutoStartButton()
+            } else {
+                startWaveLabel.text = current == 0 ? "Start Wave 1" : "Next Wave"
+                startWaveButton.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
+            }
         }
+    }
+    
+    private func updateAutoStartButton() {
+        if isAutoStartEnabled {
+            startWaveLabel.text = "AUTO ▶"
+            startWaveButton.fillColor = SKColor(red: 0.6, green: 0.4, blue: 0.8, alpha: 1.0)  // Purple for auto
+        } else if isWaveActive {
+            startWaveLabel.text = "Auto?"
+            startWaveButton.fillColor = SKColor(red: 0.4, green: 0.4, blue: 0.5, alpha: 1.0)  // Gray during wave
+        }
+    }
+    
+    func toggleAutoStart() {
+        isAutoStartEnabled = !isAutoStartEnabled
+        updateAutoStartButton()
     }
     
     func setStartWaveEnabled(_ enabled: Bool) {
@@ -369,7 +397,12 @@ final class HUDNode: SKNode {
             // Start button in control panel
             if let startBtn = controlPanel.childNode(withName: "ctrlStartBtn") as? SKShapeNode {
                 if startBtn.contains(localPos) {
-                    delegate?.hudDidTapStartWave()
+                    if isWaveActive {
+                        toggleAutoStart()
+                        delegate?.hudDidTapAutoStart()
+                    } else {
+                        delegate?.hudDidTapStartWave()
+                    }
                     animateButtonPress(startBtn)
                     return true
                 }
