@@ -86,12 +86,7 @@ final class BuildMenuNode: SKNode {
             xOffset += buttonSpacing
         }
         
-        // Money display - right after last tower button (xOffset is now past the last button)
-        moneyIcon.position = CGPoint(x: xOffset - 30, y: 0)
-        menuBackground.addChild(moneyIcon)
-        
-        moneyLabel.position = CGPoint(x: xOffset + 5, y: 0)
-        menuBackground.addChild(moneyLabel)
+        // Money display removed from build menu - now in HUD at right side of screen
     }
     
     func updateMoney(_ amount: Int) {

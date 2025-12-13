@@ -253,6 +253,17 @@ final class GameScene: SKScene {
         BoozeManager.shared.update(currentTime: gameTime)
         hudNode.updateBooze(currentTime: gameTime)
         
+        // Update lava power and deal damage
+        LavaManager.shared.update(currentTime: gameTime, enemies: enemies)
+        if LavaManager.shared.isActive {
+            let lavaDPS = LavaManager.shared.lavaDamagePerSecond
+            let scaledDamage = lavaDPS * CGFloat(scaledDeltaTime)
+            for enemy in enemies where enemy.isAlive && LavaManager.shared.isInLavaArea(enemy) {
+                enemy.takeDamage(scaledDamage)
+            }
+        }
+        hudNode.updateLava(currentTime: gameTime)
+        
         // Update UI
         updateUI()
     }
@@ -347,6 +358,23 @@ final class GameScene: SKScene {
         
         // Check if in menu area
         if buildMenuNode.isInMenuArea(location) {
+            return
+        }
+        
+        // Check for lava placement mode
+        if hudNode.isLavaPlacementMode {
+            // Check if click is in playfield
+            let playFieldRect = CGRect(
+                origin: GameConstants.playFieldOrigin,
+                size: GameConstants.playFieldSize
+            )
+            if playFieldRect.contains(location) {
+                hudDidTapLava(at: location)
+                hudNode.cancelLavaPlacement()
+            } else {
+                // Cancel placement if clicked outside
+                hudNode.cancelLavaPlacement()
+            }
             return
         }
         
@@ -624,8 +652,9 @@ final class GameScene: SKScene {
         lastUpdateTime = 0
         gameSpeed = 1.0
         
-        // Reset booze power
+        // Reset powers
         BoozeManager.shared.reset()
+        LavaManager.shared.reset()
         
         // Reset managers
         gameManager = GameManager()
@@ -689,6 +718,46 @@ extension GameScene: HUDNodeDelegate {
         } else if selectedTowerType != nil {
             exitPlacementMode()
         }
+    }
+    
+    func hudDidTapRestart() {
+        restartGame()
+    }
+    
+    func hudDidTapLava(at position: CGPoint) {
+        // Activate lava at the specified position
+        if LavaManager.shared.canActivate(currentTime: gameTime) {
+            LavaManager.shared.activate(currentTime: gameTime, position: position)
+            spawnLavaEffect(at: position)
+        }
+    }
+    
+    private func spawnLavaEffect(at position: CGPoint) {
+        let lavaRadius: CGFloat = 80
+        
+        // Create lava visual
+        let lavaNode = SKShapeNode(circleOfRadius: lavaRadius)
+        lavaNode.fillColor = SKColor(red: 1.0, green: 0.3, blue: 0.0, alpha: 0.6)
+        lavaNode.strokeColor = SKColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 0.8)
+        lavaNode.lineWidth = 3
+        lavaNode.position = position
+        lavaNode.zPosition = GameConstants.ZPosition.effects.rawValue
+        lavaNode.name = "lavaEffect"
+        effectsLayer.addChild(lavaNode)
+        
+        // Bubbling animation
+        let bubble = SKAction.sequence([
+            SKAction.scale(to: 1.1, duration: 0.3),
+            SKAction.scale(to: 0.95, duration: 0.3)
+        ])
+        lavaNode.run(SKAction.repeatForever(bubble))
+        
+        // Remove after duration
+        lavaNode.run(SKAction.sequence([
+            SKAction.wait(forDuration: LavaManager.shared.lavaDuration),
+            SKAction.fadeOut(withDuration: 0.5),
+            SKAction.removeFromParent()
+        ]))
     }
 }
 

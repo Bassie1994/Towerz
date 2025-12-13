@@ -31,9 +31,9 @@ class Enemy: SKNode {
     var slowEndTime: TimeInterval = 0
     var slowMultiplier: CGFloat = 1.0
     
-    // Drunk movement (Booze effect)
+    // Drunk movement (Booze effect) - 1.5 cell amplitude swerving
     var drunkPhase: CGFloat = CGFloat.random(in: 0...(.pi * 2))
-    var drunkAmplitude: CGFloat = CGFloat.random(in: 0.5...1.0)  // Stronger sway
+    var drunkAmplitude: CGFloat = CGFloat.random(in: 0.8...1.2)  // Very strong sway
     
     // Visual components
     let bodyNode: SKShapeNode
@@ -45,9 +45,13 @@ class Enemy: SKNode {
     var currentDirection: CGVector = CGVector(dx: 1, dy: 0)
     var separationForce: CGVector = .zero
     
-    // Stuck detection
+    // Stuck detection and recovery
     private var lastPosition: CGPoint = .zero
-    private var stuckCounter: Int = 0
+    private var stuckTime: TimeInterval = 0
+    private var lastMoveTime: TimeInterval = 0
+    private var isInRecoveryMode: Bool = false
+    private var recoveryCellsRemaining: Int = 0
+    private var recoveryTargetCenter: CGPoint = .zero
     
     // Size
     let enemySize: CGFloat = 30
@@ -152,6 +156,29 @@ class Enemy: SKNode {
         // Update slow status
         updateSlowStatus(currentTime: currentTime)
         
+        // Calculate actual speed first (needed for recovery mode)
+        let actualSpeed = moveSpeed * slowMultiplier
+        
+        // Check if in recovery mode (stuck for 7+ seconds, following cell centers)
+        if let recoveryPos = handleRecoveryMode(deltaTime: deltaTime, actualSpeed: actualSpeed) {
+            position = recoveryPos
+            
+            // Clamp to playfield bounds
+            let minY = GameConstants.playFieldOrigin.y + enemySize / 2
+            let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - enemySize / 2
+            let minX = GameConstants.playFieldOrigin.x + enemySize / 2
+            let maxX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - enemySize / 2
+            position.y = max(minY, min(maxY, position.y))
+            position.x = max(minX, min(maxX, position.x))
+            
+            lastPosition = position
+            
+            if hasReachedExit() {
+                reachExit()
+            }
+            return
+        }
+        
         // Calculate movement
         var direction = calculateMovementDirection()
         
@@ -178,27 +205,25 @@ class Enemy: SKNode {
             combinedDirection = CGVector(dx: 1, dy: 0)
         }
         
-        // Apply drunk movement if booze is active
+        // Apply drunk movement if booze is active - 1.5 cell amplitude swerving!
         if BoozeManager.shared.isActive {
             // Base 5-degree deviation (wrong direction)
-            let baseDeviation: CGFloat = 5.0 * .pi / 180.0  // 5 degrees in radians
+            let baseDeviation: CGFloat = 5.0 * .pi / 180.0
             let currentAngle = atan2(combinedDirection.dy, combinedDirection.dx)
             let deviatedAngle = currentAngle + baseDeviation
             
-            // Apply the base deviation
-            combinedDirection = CGVector(
-                dx: cos(deviatedAngle),
-                dy: sin(deviatedAngle)
-            )
+            // Very strong swerving - up to 60 degrees (1.5 cell width at typical distances)
+            drunkPhase += CGFloat(deltaTime) * 5.0  // Oscillation speed
             
-            // Strong swerving motion that can correct the deviation
-            drunkPhase += CGFloat(deltaTime) * 6.0  // Faster oscillation
+            // Primary sway: huge amplitude (±60 degrees max)
+            let maxSwayAngle: CGFloat = 60.0 * .pi / 180.0  // 60 degrees in radians
+            let swayAngle = sin(drunkPhase) * maxSwayAngle * drunkAmplitude
             
-            // Large amplitude sway (±30 degrees)
-            let swayAngle = sin(drunkPhase) * drunkAmplitude * 0.5  // Up to ~17 degrees sway
-            let secondarySway = cos(drunkPhase * 1.7) * drunkAmplitude * 0.3
+            // Secondary wobble for more chaotic movement
+            let secondarySway = cos(drunkPhase * 2.3) * maxSwayAngle * 0.4 * drunkAmplitude
+            let tertiarySway = sin(drunkPhase * 0.7) * maxSwayAngle * 0.2
             
-            let swayedAngle = deviatedAngle + swayAngle + secondarySway
+            let swayedAngle = deviatedAngle + swayAngle + secondarySway + tertiarySway
             combinedDirection = CGVector(
                 dx: cos(swayedAngle),
                 dy: sin(swayedAngle)
@@ -219,10 +244,7 @@ class Enemy: SKNode {
             currentDirection = CGVector(dx: 1, dy: 0)
         }
         
-        // Calculate actual speed (with slow effect)
-        let actualSpeed = moveSpeed * slowMultiplier
-        
-        // Move
+        // Move (actualSpeed already calculated at start of update)
         let movement = CGVector(
             dx: currentDirection.dx * actualSpeed * CGFloat(deltaTime),
             dy: currentDirection.dy * actualSpeed * CGFloat(deltaTime)
@@ -349,43 +371,33 @@ class Enemy: SKNode {
         position.y = max(minY, min(maxY, position.y))
         position.x = max(minX, min(maxX, position.x))
         
-        // Stuck detection - if barely moved, try more aggressive escaping
+        // Time-based stuck detection (7 seconds triggers recovery mode)
         let movedDistance = position.distance(to: lastPosition)
-        if movedDistance < actualSpeed * CGFloat(deltaTime) * 0.1 {
-            stuckCounter += 1
+        let cellSize = GameConstants.cellSize
+        
+        if movedDistance < cellSize * 0.1 {
+            // Barely moved - accumulate stuck time
+            stuckTime += deltaTime
             
-            if stuckCounter > 10 {
-                // Aggressively push toward exit
-                let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width
-                let exitY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
-                let toExitDir = CGVector(dx: exitX - position.x, dy: exitY - position.y).normalized()
+            if stuckTime >= 7.0 && !isInRecoveryMode {
+                // Enter recovery mode - snap to current cell center and follow path centers
+                isInRecoveryMode = true
+                recoveryCellsRemaining = 6
                 
-                // Try a bigger jump in the general direction of exit
-                let jumpDistance = GameConstants.cellSize * 0.5
-                var testPos = CGPoint(
-                    x: position.x + toExitDir.dx * jumpDistance,
-                    y: position.y + toExitDir.dy * jumpDistance
+                // Find current cell center
+                let currentGrid = position.toGridPosition()
+                recoveryTargetCenter = CGPoint(
+                    x: GameConstants.playFieldOrigin.x + CGFloat(currentGrid.x) * cellSize + cellSize / 2,
+                    y: GameConstants.playFieldOrigin.y + CGFloat(currentGrid.y) * cellSize + cellSize / 2
                 )
-                
-                // Clamp test position
-                testPos.x = max(minX, min(maxX, testPos.x))
-                testPos.y = max(minY, min(maxY, testPos.y))
-                
-                // Check if test position is walkable
-                let testGrid = testPos.toGridPosition()
-                if let flowField = delegate?.getFlowField(),
-                   flowField.getDirection(at: testGrid) != nil || testGrid.isInExitZone() {
-                    position = testPos
-                    stuckCounter = 0
-                } else if stuckCounter > 30 {
-                    // Really stuck - teleport slightly toward exit
-                    position.x += CGFloat.random(in: -10...20)
-                    position.y += CGFloat.random(in: -20...20)
-                    stuckCounter = 0
-                }
+                stuckTime = 0
             }
         } else {
-            stuckCounter = max(0, stuckCounter - 1)
+            // Moving normally
+            if movedDistance > cellSize * 0.3 {
+                stuckTime = 0  // Reset if moved significantly
+            }
+            lastMoveTime = currentTime
         }
         lastPosition = position
         
@@ -393,6 +405,54 @@ class Enemy: SKNode {
         if hasReachedExit() {
             reachExit()
         }
+    }
+    
+    /// Handle recovery mode movement - follow cell centers
+    private func handleRecoveryMode(deltaTime: TimeInterval, actualSpeed: CGFloat) -> CGPoint? {
+        guard isInRecoveryMode else { return nil }
+        
+        let cellSize = GameConstants.cellSize
+        let distToTarget = position.distance(to: recoveryTargetCenter)
+        
+        if distToTarget < cellSize * 0.3 {
+            // Reached current target center
+            recoveryCellsRemaining -= 1
+            
+            if recoveryCellsRemaining <= 0 {
+                // Exit recovery mode
+                isInRecoveryMode = false
+                return nil
+            }
+            
+            // Find next cell center using flow field
+            let currentGrid = recoveryTargetCenter.toGridPosition()
+            if let flowField = delegate?.getFlowField(),
+               let dir = flowField.getDirection(at: currentGrid) {
+                let nextGrid = GridPosition(
+                    x: currentGrid.x + Int(round(dir.dx)),
+                    y: currentGrid.y + Int(round(dir.dy))
+                )
+                recoveryTargetCenter = CGPoint(
+                    x: GameConstants.playFieldOrigin.x + CGFloat(nextGrid.x) * cellSize + cellSize / 2,
+                    y: GameConstants.playFieldOrigin.y + CGFloat(nextGrid.y) * cellSize + cellSize / 2
+                )
+            } else {
+                // No flow field direction, exit recovery
+                isInRecoveryMode = false
+                return nil
+            }
+        }
+        
+        // Move toward target center
+        let toTarget = CGVector(
+            dx: recoveryTargetCenter.x - position.x,
+            dy: recoveryTargetCenter.y - position.y
+        ).normalized()
+        
+        return CGPoint(
+            x: position.x + toTarget.dx * actualSpeed * CGFloat(deltaTime),
+            y: position.y + toTarget.dy * actualSpeed * CGFloat(deltaTime)
+        )
     }
     
     /// Override in subclasses for different movement behavior

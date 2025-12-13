@@ -55,6 +55,7 @@
 		006000013 /* HighscoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000012 /* HighscoreManager.swift */; };
 		006000015 /* DarkHumorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000014 /* DarkHumorManager.swift */; };
 		006000017 /* BoozeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000016 /* BoozeManager.swift */; };
+		006000019 /* LavaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000018 /* LavaManager.swift */; };
 		
 		/* UI */
 		007000001 /* HUDNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007000000 /* HUDNode.swift */; };
@@ -118,6 +119,7 @@
 		006000012 /* HighscoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighscoreManager.swift; sourceTree = "<group>"; };
 		006000014 /* DarkHumorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkHumorManager.swift; sourceTree = "<group>"; };
 		006000016 /* BoozeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoozeManager.swift; sourceTree = "<group>"; };
+		006000018 /* LavaManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LavaManager.swift; sourceTree = "<group>"; };
 		006000006 /* TargetingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetingSystem.swift; sourceTree = "<group>"; };
 		
 		/* UI */
@@ -252,6 +254,7 @@
 				006000012 /* HighscoreManager.swift */,
 				006000014 /* DarkHumorManager.swift */,
 				006000016 /* BoozeManager.swift */,
+				006000018 /* LavaManager.swift */,
 			);
 			path = Systems;
 			sourceTree = "<group>";
@@ -391,6 +394,7 @@
 				006000013 /* HighscoreManager.swift in Sources */,
 				006000015 /* DarkHumorManager.swift in Sources */,
 				006000017 /* BoozeManager.swift in Sources */,
+				006000019 /* LavaManager.swift in Sources */,
 				007000001 /* HUDNode.swift in Sources */,
 				007000003 /* BuildMenuNode.swift in Sources */,
 				007000005 /* TowerInfoNode.swift in Sources */,
