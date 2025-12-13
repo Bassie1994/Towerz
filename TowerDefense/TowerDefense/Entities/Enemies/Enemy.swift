@@ -138,26 +138,51 @@ class Enemy: SKNode {
     func update(deltaTime: TimeInterval, currentTime: TimeInterval, enemies: [Enemy]) {
         guard isAlive else { return }
         
+        // Safety check for valid delta time
+        guard deltaTime > 0 && deltaTime < 1.0 else { return }
+        
         // Update slow status
         updateSlowStatus(currentTime: currentTime)
         
         // Calculate movement
-        let direction = calculateMovementDirection()
+        var direction = calculateMovementDirection()
+        
+        // Safety: ensure direction is valid
+        if direction.dx.isNaN || direction.dy.isNaN || 
+           (direction.dx == 0 && direction.dy == 0) {
+            direction = CGVector(dx: 1, dy: 0)
+        }
         
         // Apply separation from other enemies
         let separation = calculateSeparation(from: enemies)
         
         // Combine forces
-        let finalDirection = CGVector(
+        var combinedDirection = CGVector(
             dx: direction.dx + separation.dx * 0.3,
             dy: direction.dy + separation.dy * 0.3
-        ).normalized()
+        )
+        
+        // Safety: ensure combined direction is valid before normalizing
+        let magnitude = sqrt(combinedDirection.dx * combinedDirection.dx + combinedDirection.dy * combinedDirection.dy)
+        if magnitude > 0 {
+            combinedDirection = CGVector(dx: combinedDirection.dx / magnitude, dy: combinedDirection.dy / magnitude)
+        } else {
+            combinedDirection = CGVector(dx: 1, dy: 0)
+        }
         
         // Smooth direction change to prevent jittering
         currentDirection = CGVector(
-            dx: currentDirection.dx * 0.7 + finalDirection.dx * 0.3,
-            dy: currentDirection.dy * 0.7 + finalDirection.dy * 0.3
-        ).normalized()
+            dx: currentDirection.dx * 0.7 + combinedDirection.dx * 0.3,
+            dy: currentDirection.dy * 0.7 + combinedDirection.dy * 0.3
+        )
+        
+        // Normalize current direction safely
+        let currentMag = sqrt(currentDirection.dx * currentDirection.dx + currentDirection.dy * currentDirection.dy)
+        if currentMag > 0 {
+            currentDirection = CGVector(dx: currentDirection.dx / currentMag, dy: currentDirection.dy / currentMag)
+        } else {
+            currentDirection = CGVector(dx: 1, dy: 0)
+        }
         
         // Calculate actual speed (with slow effect)
         let actualSpeed = moveSpeed * slowMultiplier
@@ -186,12 +211,7 @@ class Enemy: SKNode {
     
     /// Override in subclasses for different movement behavior
     func calculateMovementDirection() -> CGVector {
-        // Try direct line-of-sight to exit first (straighter paths)
-        if let directDirection = getDirectPathToExit() {
-            return directDirection
-        }
-        
-        // Fall back to flow field for navigation around obstacles
+        // Use flow field for navigation (line-of-sight disabled for stability)
         if let flowField = delegate?.getFlowField(),
            let direction = flowField.getInterpolatedDirection(at: position) {
             return direction
@@ -223,6 +243,14 @@ class Enemy: SKNode {
         let startGrid = position.toGridPosition()
         let endGrid = target.toGridPosition()
         
+        // Safety: ensure valid grid positions
+        guard startGrid.x >= 0 && startGrid.x < GameConstants.gridWidth &&
+              startGrid.y >= 0 && startGrid.y < GameConstants.gridHeight &&
+              endGrid.x >= 0 && endGrid.x < GameConstants.gridWidth &&
+              endGrid.y >= 0 && endGrid.y < GameConstants.gridHeight else {
+            return false
+        }
+        
         // Use Bresenham-style line check
         let dx = abs(endGrid.x - startGrid.x)
         let dy = abs(endGrid.y - startGrid.y)
@@ -233,9 +261,21 @@ class Enemy: SKNode {
         var y = startGrid.y
         var err = dx - dy
         
+        // Safety: limit iterations to prevent infinite loops
+        var iterations = 0
+        let maxIterations = GameConstants.gridWidth + GameConstants.gridHeight + 10
+        
         // Check each cell along the line
-        while true {
-            // Skip spawn zone check
+        while iterations < maxIterations {
+            iterations += 1
+            
+            // Bounds check
+            guard x >= 0 && x < GameConstants.gridWidth &&
+                  y >= 0 && y < GameConstants.gridHeight else {
+                return false
+            }
+            
+            // Skip spawn/exit zone check
             let gridPos = GridPosition(x: x, y: y)
             if !gridPos.isInSpawnZone() && !gridPos.isInExitZone() {
                 // Check if this cell is blocked by a tower

@@ -73,7 +73,7 @@ extension CGVector {
     
     func normalized() -> CGVector {
         let len = length
-        guard len > 0 else { return .zero }
+        guard len > 0 else { return CGVector(dx: 1, dy: 0) }  // Default right direction
         return CGVector(dx: dx / len, dy: dy / len)
     }
     
