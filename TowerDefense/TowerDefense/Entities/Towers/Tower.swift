@@ -33,6 +33,7 @@ class Tower: SKNode {
     // Buff state (from buff towers)
     var damageMultiplier: CGFloat = 1.0
     var fireRateMultiplier: CGFloat = 1.0
+    var rangeMultiplier: CGFloat = 1.0
     var isBuffed: Bool = false
     
     // Combat state
@@ -87,14 +88,16 @@ class Tower: SKNode {
         rangeIndicator.isHidden = true
         rangeIndicator.zPosition = GameConstants.ZPosition.rangeIndicator.rawValue
         
-        // Create upgrade indicators
+        // Create upgrade indicators (3 for 3 upgrade levels) - inside the tower
         var indicators: [SKShapeNode] = []
-        for i in 0..<2 {
+        for i in 0..<3 {
             let indicator = SKShapeNode(circleOfRadius: 4)
-            indicator.fillColor = .darkGray
+            indicator.fillColor = SKColor.black.withAlphaComponent(0.6)  // Dark unfilled
             indicator.strokeColor = .white
-            indicator.lineWidth = 1
-            indicator.position = CGPoint(x: -8 + CGFloat(i) * 16, y: -towerSize / 2 - 8)
+            indicator.lineWidth = 1.5
+            // Position 3 indicators inside tower at bottom, evenly spaced
+            indicator.position = CGPoint(x: -12 + CGFloat(i) * 12, y: -towerSize / 2 + 10)
+            indicator.zPosition = 5  // Above tower base
             indicators.append(indicator)
         }
         upgradeIndicators = indicators
@@ -260,9 +263,11 @@ class Tower: SKNode {
         let newPath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)
         rangeIndicator.path = newPath
         
-        // Update visual indicator
+        // Update visual indicator with bright contrasting color
         if upgradeLevel <= upgradeIndicators.count {
-            upgradeIndicators[upgradeLevel - 1].fillColor = .yellow
+            upgradeIndicators[upgradeLevel - 1].fillColor = .white  // Bright white for contrast
+            upgradeIndicators[upgradeLevel - 1].strokeColor = SKColor(red: 1.0, green: 0.85, blue: 0, alpha: 1.0)  // Gold outline
+            upgradeIndicators[upgradeLevel - 1].lineWidth = 2
         }
         
         // Upgrade animation
@@ -320,28 +325,104 @@ class Tower: SKNode {
     
     // MARK: - Buff Management
     
-    func applyBuff(damageMultiplier: CGFloat, fireRateMultiplier: CGFloat) {
+    func applyBuff(damageMultiplier: CGFloat, fireRateMultiplier: CGFloat, rangeMultiplier: CGFloat) {
         self.damageMultiplier = damageMultiplier
         self.fireRateMultiplier = fireRateMultiplier
+        self.rangeMultiplier = rangeMultiplier
         self.isBuffed = true
+        
+        // Update range indicator to show buffed range
+        updateRangeIndicatorForBuff()
+        
+        // Visual: Add golden glow to tower base
+        updateBuffVisual()
     }
     
     func removeBuff() {
         self.damageMultiplier = 1.0
         self.fireRateMultiplier = 1.0
+        self.rangeMultiplier = 1.0
         self.isBuffed = false
+        
+        // Reset range indicator to base range
+        updateRangeIndicatorForBuff()
+        
+        // Reset visual
+        updateBuffVisual()
+    }
+    
+    /// Update range indicator to reflect current buff state
+    func updateRangeIndicatorForBuff() {
+        let effectiveRange = range * rangeMultiplier
+        let newPath = CGPath(ellipseIn: CGRect(x: -effectiveRange, y: -effectiveRange, width: effectiveRange * 2, height: effectiveRange * 2), transform: nil)
+        rangeIndicator.path = newPath
+        
+        // Change color when buffed
+        if isBuffed {
+            rangeIndicator.strokeColor = SKColor.buffEffect.withAlphaComponent(0.6)
+            rangeIndicator.fillColor = SKColor.buffEffect.withAlphaComponent(0.2)
+        } else {
+            rangeIndicator.strokeColor = SKColor.white.withAlphaComponent(0.3)
+            rangeIndicator.fillColor = SKColor.white.withAlphaComponent(0.1)
+        }
+    }
+    
+    /// Update tower visual to show buff state
+    private func updateBuffVisual() {
+        if isBuffed {
+            // Golden/buff color glow on base
+            baseNode.strokeColor = SKColor.buffEffect
+            baseNode.lineWidth = 3
+            
+            // Add subtle glow effect
+            if baseNode.childNode(withName: "buffGlow") == nil {
+                let glow = SKShapeNode(rectOf: CGSize(width: towerSize + 6, height: towerSize + 6), cornerRadius: 6)
+                glow.fillColor = .clear
+                glow.strokeColor = SKColor.buffEffect.withAlphaComponent(0.6)
+                glow.lineWidth = 2
+                glow.name = "buffGlow"
+                glow.zPosition = -1
+                baseNode.addChild(glow)
+                
+                // Pulse animation
+                let pulse = SKAction.sequence([
+                    SKAction.fadeAlpha(to: 0.3, duration: 0.5),
+                    SKAction.fadeAlpha(to: 0.8, duration: 0.5)
+                ])
+                glow.run(SKAction.repeatForever(pulse), withKey: "buffPulse")
+            }
+        } else {
+            // Reset to normal
+            baseNode.strokeColor = isSelected ? .yellow : .white
+            baseNode.lineWidth = isSelected ? 3 : 2
+            
+            // Remove glow
+            baseNode.childNode(withName: "buffGlow")?.removeFromParent()
+        }
     }
     
     // MARK: - Info
     
+    /// Get effective range (including buff)
+    func getEffectiveRange() -> CGFloat {
+        return range * rangeMultiplier
+    }
+    
     func getStats() -> [String: String] {
-        return [
+        var stats = [
             "Type": towerType.displayName,
             "Damage": String(format: "%.0f", damage * damageMultiplier),
-            "Range": String(format: "%.0f", range),
+            "Range": String(format: "%.0f", getEffectiveRange()),
             "Fire Rate": String(format: "%.1f/s", fireRate * fireRateMultiplier),
             "Level": "\(upgradeLevel + 1)/\(maxUpgradeLevel + 1)",
             "Sell Value": "\(sellValue)"
         ]
+        
+        // Add buff indicator if buffed
+        if isBuffed {
+            stats["Buffed"] = "✓ +\(Int((rangeMultiplier - 1) * 100))% range"
+        }
+        
+        return stats
     }
 }

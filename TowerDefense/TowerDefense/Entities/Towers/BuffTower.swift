@@ -120,6 +120,8 @@ final class BuffTower: Tower {
         
         let effectiveDamageBuff = 1.0 + damageBuffPercent * (1.0 + CGFloat(upgradeLevel) * 0.5)
         let effectiveFireRateBuff = 1.0 + fireRateBuffPercent * (1.0 + CGFloat(upgradeLevel) * 0.5)
+        // Range buff: same scaling as damage/fire rate buffs
+        let effectiveRangeBuff = 1.0 + (damageBuffPercent * 0.5) * (1.0 + CGFloat(upgradeLevel) * 0.5)  // Half the damage buff for range
         
         var newBuffedTowers = Set<UUID>()
         
@@ -133,7 +135,8 @@ final class BuffTower: Tower {
                 // In range - apply buff
                 tower.applyBuff(
                     damageMultiplier: effectiveDamageBuff,
-                    fireRateMultiplier: effectiveFireRateBuff
+                    fireRateMultiplier: effectiveFireRateBuff,
+                    rangeMultiplier: effectiveRangeBuff
                 )
                 newBuffedTowers.insert(tower.id)
             } else if buffedTowers.contains(tower.id) {
@@ -204,11 +207,13 @@ final class BuffTower: Tower {
     override func getStats() -> [String: String] {
         let effectiveDamageBuff = damageBuffPercent * (1.0 + CGFloat(upgradeLevel) * 0.5)
         let effectiveFireRateBuff = fireRateBuffPercent * (1.0 + CGFloat(upgradeLevel) * 0.5)
+        let effectiveRangeBuff = (damageBuffPercent * 0.5) * (1.0 + CGFloat(upgradeLevel) * 0.5)
         
         return [
             "Type": towerType.displayName,
             "Damage Buff": "+\(Int(effectiveDamageBuff * 100))%",
             "ROF Buff": "+\(Int(effectiveFireRateBuff * 100))%",
+            "Range Buff": "+\(Int(effectiveRangeBuff * 100))%",
             "Range": String(format: "%.0f", range),
             "Buffing": "\(buffedTowers.count) towers",
             "Level": "\(upgradeLevel + 1)/\(maxUpgradeLevel + 1)",

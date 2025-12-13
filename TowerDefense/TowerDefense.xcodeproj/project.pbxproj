@@ -38,7 +38,7 @@
 		005000005 /* CannonTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000004 /* CannonTower.swift */; };
 		005000007 /* SlowTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000006 /* SlowTower.swift */; };
 		005000009 /* BuffTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000008 /* BuffTower.swift */; };
-		005000011 /* ShotgunTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000010 /* ShotgunTower.swift */; };
+		005000011 /* MineTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000010 /* MineTower.swift */; };
 		005000013 /* SplashTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000012 /* SplashTower.swift */; };
 		005000015 /* Projectile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000014 /* Projectile.swift */; };
 		005000017 /* LaserTower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000016 /* LaserTower.swift */; };
@@ -54,6 +54,8 @@
 		006000007 /* TargetingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000006 /* TargetingSystem.swift */; };
 		006000013 /* HighscoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000012 /* HighscoreManager.swift */; };
 		006000015 /* DarkHumorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000014 /* DarkHumorManager.swift */; };
+		006000017 /* BoozeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000016 /* BoozeManager.swift */; };
+		006000019 /* LavaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000018 /* LavaManager.swift */; };
 		
 		/* UI */
 		007000001 /* HUDNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007000000 /* HUDNode.swift */; };
@@ -101,7 +103,7 @@
 		005000004 /* CannonTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CannonTower.swift; sourceTree = "<group>"; };
 		005000006 /* SlowTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlowTower.swift; sourceTree = "<group>"; };
 		005000008 /* BuffTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuffTower.swift; sourceTree = "<group>"; };
-		005000010 /* ShotgunTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotgunTower.swift; sourceTree = "<group>"; };
+		005000010 /* MineTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MineTower.swift; sourceTree = "<group>"; };
 		005000012 /* SplashTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashTower.swift; sourceTree = "<group>"; };
 		005000014 /* Projectile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Projectile.swift; sourceTree = "<group>"; };
 		005000016 /* LaserTower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaserTower.swift; sourceTree = "<group>"; };
@@ -116,6 +118,8 @@
 		006000004 /* PlacementValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementValidator.swift; sourceTree = "<group>"; };
 		006000012 /* HighscoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighscoreManager.swift; sourceTree = "<group>"; };
 		006000014 /* DarkHumorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkHumorManager.swift; sourceTree = "<group>"; };
+		006000016 /* BoozeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoozeManager.swift; sourceTree = "<group>"; };
+		006000018 /* LavaManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LavaManager.swift; sourceTree = "<group>"; };
 		006000006 /* TargetingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetingSystem.swift; sourceTree = "<group>"; };
 		
 		/* UI */
@@ -249,6 +253,8 @@
 				006000010 /* LevelManager.swift */,
 				006000012 /* HighscoreManager.swift */,
 				006000014 /* DarkHumorManager.swift */,
+				006000016 /* BoozeManager.swift */,
+				006000018 /* LavaManager.swift */,
 			);
 			path = Systems;
 			sourceTree = "<group>";
@@ -387,6 +393,8 @@
 				006000007 /* TargetingSystem.swift in Sources */,
 				006000013 /* HighscoreManager.swift in Sources */,
 				006000015 /* DarkHumorManager.swift in Sources */,
+				006000017 /* BoozeManager.swift in Sources */,
+				006000019 /* LavaManager.swift in Sources */,
 				007000001 /* HUDNode.swift in Sources */,
 				007000003 /* BuildMenuNode.swift in Sources */,
 				007000005 /* TowerInfoNode.swift in Sources */,

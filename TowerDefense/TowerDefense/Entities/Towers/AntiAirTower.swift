@@ -7,9 +7,9 @@ import SpriteKit
 final class AntiAirTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 6,       // Halved - base tower
+        damage: 12,      // 2x damage - harder hits
         range: 200,      // Good range for air coverage
-        fireRate: 3.0    // Fast firing
+        fireRate: 1.5    // /2 fire rate - slower but stronger
     )
     
     let flyingDamageMultiplier: CGFloat = 2.5  // 250% damage to flying
@@ -228,42 +228,58 @@ class AntiAirMissile: SKNode {
     let missileSpeed: CGFloat = 500
     
     private let missileNode: SKShapeNode
+    private let thrusterNode: SKShapeNode
     private var hasHit = false
+    private var lastTrailTime: TimeInterval = 0
     
     init(from startPosition: CGPoint, to target: Enemy, damage: CGFloat) {
         self.damage = damage
         self.target = target
         
-        // Create missile shape
+        // Create missile shape - more detailed
         missileNode = SKShapeNode()
         let path = CGMutablePath()
-        path.move(to: CGPoint(x: 0, y: 8))
-        path.addLine(to: CGPoint(x: -3, y: -4))
-        path.addLine(to: CGPoint(x: 3, y: -4))
+        path.move(to: CGPoint(x: 0, y: 10))
+        path.addLine(to: CGPoint(x: -4, y: -2))
+        path.addLine(to: CGPoint(x: -2, y: -2))
+        path.addLine(to: CGPoint(x: -2, y: -6))
+        path.addLine(to: CGPoint(x: 2, y: -6))
+        path.addLine(to: CGPoint(x: 2, y: -2))
+        path.addLine(to: CGPoint(x: 4, y: -2))
         path.closeSubpath()
         missileNode.path = path
-        missileNode.fillColor = .red
-        missileNode.strokeColor = .orange
+        missileNode.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 1.0)
+        missileNode.strokeColor = .darkGray
         missileNode.lineWidth = 1
+        
+        // Thruster glow
+        thrusterNode = SKShapeNode(circleOfRadius: 4)
+        thrusterNode.fillColor = .orange
+        thrusterNode.strokeColor = .yellow
+        thrusterNode.lineWidth = 1
+        thrusterNode.position = CGPoint(x: 0, y: -8)
         
         super.init()
         
         position = startPosition
         zPosition = GameConstants.ZPosition.projectile.rawValue
         addChild(missileNode)
+        missileNode.addChild(thrusterNode)
         
-        // Start tracking
-        let trackAction = SKAction.customAction(withDuration: 5.0) { [weak self] _, _ in
-            self?.updateTracking()
-        }
-        run(trackAction, withKey: "track")
+        // Thruster flicker animation
+        let flicker = SKAction.sequence([
+            SKAction.scale(to: 1.3, duration: 0.05),
+            SKAction.scale(to: 0.8, duration: 0.05)
+        ])
+        thrusterNode.run(SKAction.repeatForever(flicker))
     }
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func updateTracking() {
+    /// Call this every frame from the scene's update loop
+    func update(currentTime: TimeInterval) {
         guard !hasHit else { return }
         
         guard let target = target, target.isAlive else {
@@ -272,7 +288,7 @@ class AntiAirMissile: SKNode {
             return
         }
         
-        // Calculate direction to target
+        // Calculate direction to target's CURRENT position (tracking!)
         let direction = CGVector(
             dx: target.position.x - position.x,
             dy: target.position.y - position.y
@@ -286,7 +302,7 @@ class AntiAirMissile: SKNode {
             return
         }
         
-        // Home toward target
+        // Home toward target with smooth rotation
         let normalizedDir = CGVector(dx: direction.dx / distance, dy: direction.dy / distance)
         let moveSpeed = missileSpeed / 60.0
         
@@ -295,24 +311,32 @@ class AntiAirMissile: SKNode {
             y: position.y + normalizedDir.dy * moveSpeed
         )
         
-        // Rotate to face direction
-        zRotation = atan2(normalizedDir.dy, normalizedDir.dx) - .pi / 2
+        // Smooth rotation to face direction
+        let targetRotation = atan2(normalizedDir.dy, normalizedDir.dx) - .pi / 2
+        let rotationDiff = targetRotation - zRotation
+        zRotation += rotationDiff * 0.3  // Smooth turning
         
-        // Trail
-        createTrail()
+        // Trail every few frames
+        if currentTime - lastTrailTime > 0.02 {
+            createTrail()
+            lastTrailTime = currentTime
+        }
     }
     
     private func createTrail() {
-        let trail = SKShapeNode(circleOfRadius: 2)
+        let trail = SKShapeNode(circleOfRadius: 3)
         trail.fillColor = .orange
         trail.strokeColor = .clear
-        trail.alpha = 0.7
+        trail.alpha = 0.8
         trail.position = position
         trail.zPosition = zPosition - 1
         parent?.addChild(trail)
         
         let fade = SKAction.sequence([
-            SKAction.fadeOut(withDuration: 0.15),
+            SKAction.group([
+                SKAction.fadeOut(withDuration: 0.2),
+                SKAction.scale(to: 0.3, duration: 0.2)
+            ]),
             SKAction.removeFromParent()
         ])
         trail.run(fade)
@@ -327,25 +351,44 @@ class AntiAirMissile: SKNode {
     }
     
     private func explode() {
-        removeAction(forKey: "track")
-        
         // Explosion effect
-        let explosion = SKShapeNode(circleOfRadius: 15)
+        let explosion = SKShapeNode(circleOfRadius: 20)
         explosion.fillColor = .orange
         explosion.strokeColor = .yellow
-        explosion.lineWidth = 2
+        explosion.lineWidth = 3
         explosion.position = position
         explosion.zPosition = GameConstants.ZPosition.effects.rawValue
         parent?.addChild(explosion)
         
         let animation = SKAction.sequence([
             SKAction.group([
-                SKAction.scale(to: 2.0, duration: 0.15),
-                SKAction.fadeOut(withDuration: 0.15)
+                SKAction.scale(to: 2.5, duration: 0.2),
+                SKAction.fadeOut(withDuration: 0.2)
             ]),
             SKAction.removeFromParent()
         ])
         explosion.run(animation)
+        
+        // Debris
+        for _ in 0..<6 {
+            let debris = SKShapeNode(circleOfRadius: 2)
+            debris.fillColor = [.orange, .yellow, .red].randomElement()!
+            debris.strokeColor = .clear
+            debris.position = position
+            debris.zPosition = GameConstants.ZPosition.effects.rawValue
+            parent?.addChild(debris)
+            
+            let angle = CGFloat.random(in: 0...(2 * .pi))
+            let dist = CGFloat.random(in: 20...40)
+            let debrisAnim = SKAction.sequence([
+                SKAction.group([
+                    SKAction.move(to: CGPoint(x: position.x + cos(angle) * dist, y: position.y + sin(angle) * dist), duration: 0.25),
+                    SKAction.fadeOut(withDuration: 0.25)
+                ]),
+                SKAction.removeFromParent()
+            ])
+            debris.run(debrisAnim)
+        }
         
         removeFromParent()
     }

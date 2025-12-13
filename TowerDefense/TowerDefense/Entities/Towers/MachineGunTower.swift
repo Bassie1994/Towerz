@@ -7,9 +7,9 @@ import SpriteKit
 final class MachineGunTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 2,      // Halved - base tower
+        damage: 4,      // 2x damage, slower but harder hits
         range: 150,
-        fireRate: 8.0   // 8 shots per second
+        fireRate: 4.0   // /2 fire rate - 4 shots per second
     )
     
     init(gridPosition: GridPosition) {

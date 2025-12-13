@@ -127,8 +127,6 @@ final class GameScene: SKScene {
         // Draw exit zone in bottom-right corner only
         drawExitZone()
         
-        // Add prominent BASE castle indicator in bottom-right
-        drawBaseIndicator()
     }
     
     private func drawExitZone() {
@@ -155,80 +153,6 @@ final class GameScene: SKScene {
         labelNode.text = "EXIT"
         labelNode.position = CGPoint(x: 0, y: 0)
         zone.addChild(labelNode)
-    }
-    
-    private func drawBaseIndicator() {
-        let baseNode = SKNode()
-        baseNode.zPosition = GameConstants.ZPosition.ui.rawValue - 10
-        
-        // Position in bottom-right of exit zone
-        let baseX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - GameConstants.cellSize * 1.5
-        let baseY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
-        baseNode.position = CGPoint(x: baseX, y: baseY)
-        
-        // Castle/Base icon background
-        let baseSize: CGFloat = 80
-        let baseBg = SKShapeNode(rectOf: CGSize(width: baseSize, height: baseSize), cornerRadius: 10)
-        baseBg.fillColor = SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 0.8)
-        baseBg.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 1.0)
-        baseBg.lineWidth = 3
-        baseNode.addChild(baseBg)
-        
-        // Castle towers
-        let towerWidth: CGFloat = 15
-        let towerHeight: CGFloat = 30
-        for xOffset in [-25, 25] as [CGFloat] {
-            let tower = SKShapeNode(rectOf: CGSize(width: towerWidth, height: towerHeight))
-            tower.fillColor = SKColor(red: 0.5, green: 0.15, blue: 0.15, alpha: 1.0)
-            tower.strokeColor = .clear
-            tower.position = CGPoint(x: CGFloat(xOffset), y: 15)
-            baseNode.addChild(tower)
-            
-            // Tower top (crenellations)
-            let top = SKShapeNode(rectOf: CGSize(width: towerWidth + 4, height: 5))
-            top.fillColor = SKColor(red: 0.4, green: 0.1, blue: 0.1, alpha: 1.0)
-            top.strokeColor = .clear
-            top.position = CGPoint(x: CGFloat(xOffset), y: 32)
-            baseNode.addChild(top)
-        }
-        
-        // Main gate
-        let gate = SKShapeNode(rectOf: CGSize(width: 25, height: 35))
-        gate.fillColor = SKColor(red: 0.3, green: 0.1, blue: 0.1, alpha: 1.0)
-        gate.strokeColor = .clear
-        gate.position = CGPoint(x: 0, y: 0)
-        baseNode.addChild(gate)
-        
-        // "BASE" label
-        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
-        label.fontSize = 14
-        label.fontColor = .white
-        label.text = "🏰 BASE"
-        label.position = CGPoint(x: 0, y: -55)
-        baseNode.addChild(label)
-        
-        // Pulsing effect
-        let pulse = SKAction.sequence([
-            SKAction.scale(to: 1.05, duration: 0.8),
-            SKAction.scale(to: 1.0, duration: 0.8)
-        ])
-        baseBg.run(SKAction.repeatForever(pulse))
-        
-        // Arrow indicator pointing to base
-        let arrow = SKLabelNode(fontNamed: "Helvetica-Bold")
-        arrow.fontSize = 24
-        arrow.fontColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
-        arrow.text = "→→→"
-        arrow.position = CGPoint(x: -80, y: 0)
-        baseNode.addChild(arrow)
-        
-        let arrowPulse = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.3, duration: 0.5),
-            SKAction.fadeAlpha(to: 1.0, duration: 0.5)
-        ])
-        arrow.run(SKAction.repeatForever(arrowPulse))
-        
-        gameLayer.addChild(baseNode)
     }
     
     private func drawGrid() {
@@ -324,6 +248,28 @@ final class GameScene: SKScene {
         for tower in towers {
             tower.update(currentTime: gameTime)
         }
+        
+        // Update AA missiles (they need to track moving targets)
+        for child in gameLayer.children {
+            if let missile = child as? AntiAirMissile {
+                missile.update(currentTime: gameTime)
+            }
+        }
+        
+        // Update booze power
+        BoozeManager.shared.update(currentTime: gameTime)
+        hudNode.updateBooze(currentTime: gameTime)
+        
+        // Update lava power and deal damage
+        LavaManager.shared.update(currentTime: gameTime, enemies: enemies)
+        if LavaManager.shared.isActive {
+            let lavaDPS = LavaManager.shared.lavaDamagePerSecond
+            let scaledDamage = lavaDPS * CGFloat(scaledDeltaTime)
+            for enemy in enemies where enemy.isAlive && LavaManager.shared.isInLavaArea(enemy) {
+                enemy.takeDamage(scaledDamage)
+            }
+        }
+        hudNode.updateLava(currentTime: gameTime)
         
         // Update UI
         updateUI()
@@ -422,6 +368,23 @@ final class GameScene: SKScene {
             return
         }
         
+        // Check for lava placement mode
+        if hudNode.isLavaPlacementMode {
+            // Check if click is in playfield
+            let playFieldRect = CGRect(
+                origin: GameConstants.playFieldOrigin,
+                size: GameConstants.playFieldSize
+            )
+            if playFieldRect.contains(location) {
+                hudDidTapLava(at: location)
+                hudNode.cancelLavaPlacement()
+            } else {
+                // Cancel placement if clicked outside
+                hudNode.cancelLavaPlacement()
+            }
+            return
+        }
+        
         // If not in placement mode, check for tower selection
         if selectedTowerType == nil {
             if let tower = getTowerAt(location) {
@@ -481,12 +444,8 @@ final class GameScene: SKScene {
         towers.removeAll { $0 === wallTower }
         
         // Don't unblock grid - we're replacing with another tower
-        // Create new tower
-        let newTower = createTower(type: targetType, at: gridPos)
-        newTower.position = gridPos.toWorldPosition()
-        newTower.delegate = self
-        towers.append(newTower)
-        towerLayer.addChild(newTower)
+        // Create new tower - createTower already adds to towers array and towerLayer
+        _ = createTower(type: targetType, at: gridPos)
         
         // AudioManager.shared.playSound(.towerPlace)
         updateUI()
@@ -498,11 +457,35 @@ final class GameScene: SKScene {
         let gridPos = gameManager.placementValidator.snapToGrid(worldPosition: location)
         let result = gameManager.canPlaceTower(at: gridPos, type: towerType)
         
+        // Calculate buff multiplier at this position
+        let buffMultiplier = getBuffRangeMultiplierAt(position: gridPos.toWorldPosition())
+        
         placementPreviewNode.updatePosition(
             gridPosition: gridPos,
             isValid: result.isValid,
-            invalidReason: result.reason
+            invalidReason: result.reason,
+            buffRangeMultiplier: buffMultiplier
         )
+    }
+    
+    /// Get the range multiplier from nearby buff towers at a given position
+    func getBuffRangeMultiplierAt(position: CGPoint) -> CGFloat {
+        var bestMultiplier: CGFloat = 1.0
+        
+        for tower in towers {
+            guard let buffTower = tower as? BuffTower else { continue }
+            
+            let distance = position.distance(to: buffTower.position)
+            if distance <= buffTower.range {
+                // Calculate effective buff multiplier based on buff tower's upgrade level
+                // Range buff is roughly equivalent to damage buff: 15% + 10% per level
+                let buffPercent = 0.15 + CGFloat(buffTower.upgradeLevel) * 0.10
+                let multiplier = 1.0 + buffPercent
+                bestMultiplier = max(bestMultiplier, multiplier)
+            }
+        }
+        
+        return bestMultiplier
     }
     
     private func attemptPlacement(at location: CGPoint, type: TowerType) {
@@ -581,8 +564,8 @@ final class GameScene: SKScene {
             tower = SlowTower(gridPosition: gridPosition)
         case .buff:
             tower = BuffTower(gridPosition: gridPosition)
-        case .shotgun:
-            tower = ShotgunTower(gridPosition: gridPosition)
+        case .mine:
+            tower = MineTower(gridPosition: gridPosition)
         case .splash:
             tower = SplashTower(gridPosition: gridPosition)
         case .laser:
@@ -608,6 +591,11 @@ final class GameScene: SKScene {
         // Handle buff tower cleanup
         if let buffTower = tower as? BuffTower {
             buffTower.removeAllBuffs()
+        }
+        
+        // Handle mine tower cleanup
+        if let mineTower = tower as? MineTower {
+            mineTower.removeAllMines()
         }
         
         towers.removeAll { $0.id == tower.id }
@@ -696,6 +684,10 @@ final class GameScene: SKScene {
         lastUpdateTime = 0
         gameSpeed = 1.0
         
+        // Reset powers
+        BoozeManager.shared.reset()
+        LavaManager.shared.reset()
+        
         // Reset managers
         gameManager = GameManager()
         gameManager.setup(scene: self)
@@ -743,6 +735,12 @@ extension GameScene: HUDNodeDelegate {
         gameSpeed = hudNode.getSpeedMultiplier()
     }
     
+    func hudDidTapBooze() {
+        if BoozeManager.shared.canActivate(currentTime: gameTime) {
+            BoozeManager.shared.activate(currentTime: gameTime)
+        }
+    }
+    
     func hudDidDropInTrash() {
         // Sell selected tower or cancel placement
         if let tower = towerInfoNode.selectedTower {
@@ -752,6 +750,193 @@ extension GameScene: HUDNodeDelegate {
         } else if selectedTowerType != nil {
             exitPlacementMode()
         }
+    }
+    
+    func hudDidTapRestart() {
+        restartGame()
+    }
+    
+    func hudDidTapLava(at position: CGPoint) {
+        // Activate lava at the specified position
+        if LavaManager.shared.canActivate(currentTime: gameTime) {
+            LavaManager.shared.activate(currentTime: gameTime, position: position)
+            spawnLavaEffect(at: position)
+        }
+    }
+    
+    func hudDidTapSave() {
+        saveGame()
+    }
+    
+    func hudDidTapLoad() {
+        loadGame()
+    }
+    
+    private func saveGame() {
+        // Create save data
+        var saveData: [String: Any] = [:]
+        
+        // Save game state
+        saveData["wave"] = gameManager.waveManager.currentWave
+        saveData["money"] = gameManager.economyManager.money
+        saveData["lives"] = gameManager.lives
+        saveData["gameTime"] = gameTime
+        
+        // Save tower positions and types
+        var towerData: [[String: Any]] = []
+        for tower in towers {
+            var td: [String: Any] = [:]
+            td["type"] = tower.towerType.rawValue
+            td["gridX"] = tower.gridPosition.x
+            td["gridY"] = tower.gridPosition.y
+            td["upgradeLevel"] = tower.upgradeLevel
+            td["totalInvested"] = tower.totalInvested
+            towerData.append(td)
+        }
+        saveData["towers"] = towerData
+        
+        // Encode and save
+        do {
+            let data = try JSONSerialization.data(withJSONObject: saveData)
+            UserDefaults.standard.set(data, forKey: "GameSave")
+            UserDefaults.standard.synchronize()
+            print("Game saved successfully")
+        } catch {
+            print("Failed to save game: \(error)")
+        }
+    }
+    
+    private func loadGame() {
+        guard let data = UserDefaults.standard.data(forKey: "GameSave") else {
+            print("No save data found")
+            return
+        }
+        
+        do {
+            guard let saveData = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return
+            }
+            
+            // Clear current game
+            for enemy in enemies {
+                enemy.removeFromParent()
+            }
+            enemies.removeAll()
+            
+            for tower in towers {
+                if let mineTower = tower as? MineTower {
+                    mineTower.removeAllMines()
+                }
+                tower.removeFromParent()
+            }
+            towers.removeAll()
+            
+            // Reset managers
+            MineTower.currentMineCount = 0
+            BoozeManager.shared.reset()
+            LavaManager.shared.reset()
+            
+            // Clear effects
+            effectsLayer.removeAllChildren()
+            
+            // Load game state
+            if let wave = saveData["wave"] as? Int {
+                gameManager.waveManager.setWave(wave)
+            }
+            if let money = saveData["money"] as? Int {
+                gameManager.economyManager.setMoney(money)
+            }
+            if let lives = saveData["lives"] as? Int {
+                gameManager.setLives(lives)
+            }
+            if let savedGameTime = saveData["gameTime"] as? Double {
+                gameTime = savedGameTime
+            }
+            
+            // Load towers
+            if let towerDataArray = saveData["towers"] as? [[String: Any]] {
+                for td in towerDataArray {
+                    guard let typeRaw = td["type"] as? String,
+                          let type = TowerType(rawValue: typeRaw),
+                          let gridX = td["gridX"] as? Int,
+                          let gridY = td["gridY"] as? Int else { continue }
+                    
+                    let gridPos = GridPosition(x: gridX, y: gridY)
+                    
+                    // Block the grid cell
+                    gameManager.pathfindingGrid.blockCell(at: gridPos)
+                    
+                    // Create tower (using createTower would add it to array twice)
+                    let tower: Tower
+                    switch type {
+                    case .wall: tower = WallTower(gridPosition: gridPos)
+                    case .machineGun: tower = MachineGunTower(gridPosition: gridPos)
+                    case .cannon: tower = CannonTower(gridPosition: gridPos)
+                    case .slow: tower = SlowTower(gridPosition: gridPos)
+                    case .buff: tower = BuffTower(gridPosition: gridPos)
+                    case .mine: tower = MineTower(gridPosition: gridPos)
+                    case .splash: tower = SplashTower(gridPosition: gridPos)
+                    case .laser: tower = LaserTower(gridPosition: gridPos)
+                    case .antiAir: tower = AntiAirTower(gridPosition: gridPos)
+                    }
+                    
+                    tower.delegate = self
+                    tower.position = gridPos.toWorldPosition()
+                    
+                    // Apply upgrades
+                    if let upgradeLevel = td["upgradeLevel"] as? Int {
+                        for _ in 0..<upgradeLevel {
+                            _ = tower.upgrade()
+                        }
+                    }
+                    if let totalInvested = td["totalInvested"] as? Int {
+                        tower.totalInvested = totalInvested
+                    }
+                    
+                    towers.append(tower)
+                    towerLayer.addChild(tower)
+                }
+            }
+            
+            // Recalculate pathfinding
+            notifyPathfindingChanged()
+            
+            // Update UI
+            updateUI()
+            
+            print("Game loaded successfully")
+            
+        } catch {
+            print("Failed to load game: \(error)")
+        }
+    }
+    
+    private func spawnLavaEffect(at position: CGPoint) {
+        let lavaRadius: CGFloat = 80
+        
+        // Create lava visual
+        let lavaNode = SKShapeNode(circleOfRadius: lavaRadius)
+        lavaNode.fillColor = SKColor(red: 1.0, green: 0.3, blue: 0.0, alpha: 0.6)
+        lavaNode.strokeColor = SKColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 0.8)
+        lavaNode.lineWidth = 3
+        lavaNode.position = position
+        lavaNode.zPosition = GameConstants.ZPosition.effects.rawValue
+        lavaNode.name = "lavaEffect"
+        effectsLayer.addChild(lavaNode)
+        
+        // Bubbling animation
+        let bubble = SKAction.sequence([
+            SKAction.scale(to: 1.1, duration: 0.3),
+            SKAction.scale(to: 0.95, duration: 0.3)
+        ])
+        lavaNode.run(SKAction.repeatForever(bubble))
+        
+        // Remove after duration
+        lavaNode.run(SKAction.sequence([
+            SKAction.wait(forDuration: LavaManager.shared.lavaDuration),
+            SKAction.fadeOut(withDuration: 0.5),
+            SKAction.removeFromParent()
+        ]))
     }
 }
 
@@ -989,6 +1174,7 @@ extension GameScene: EconomyManagerDelegate {
     func moneyDidChange(newAmount: Int) {
         hudNode.updateMoney(newAmount)
         buildMenuNode.updateAffordability(money: newAmount)
+        buildMenuNode.updateMoney(newAmount)
     }
     
     func purchaseFailed(reason: String) {

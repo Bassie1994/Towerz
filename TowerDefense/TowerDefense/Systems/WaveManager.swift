@@ -43,6 +43,14 @@ final class WaveManager {
     
     // MARK: - Wave Control
     
+    /// Set current wave (for loading saves)
+    func setWave(_ wave: Int) {
+        currentWave = max(0, min(wave, totalWaves))
+        isWaveActive = false
+        spawnQueue.removeAll()
+        aliveEnemyCount = 0
+    }
+    
     func startNextWave(currentTime: TimeInterval) {
         guard !isWaveActive else { return }
         guard currentWave < totalWaves else {
@@ -239,9 +247,6 @@ struct WaveConfig: Codable {
         
         // Base enemy count that scales
         let (totalEnemies, enemyLevel) = getWaveStats(number: number)
-        
-        // Enemy level scales with wave
-        let enemyLevel = max(1, (number - 1) / 5 + 1)  // Level up every 5 waves
         
         // Spawn interval gets faster as waves progress (but not too fast)
         let baseInterval = max(0.3, 1.0 - Double(number) * 0.015)

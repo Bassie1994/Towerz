@@ -80,6 +80,12 @@ final class GameManager {
     
     // MARK: - Lives
     
+    /// Set lives directly (for loading saves)
+    func setLives(_ newLives: Int) {
+        lives = max(0, newLives)
+        scene?.hudNode.updateLives(lives)
+    }
+    
     func loseLife() {
         lives -= 1
         scene?.hudNode.updateLives(lives)
