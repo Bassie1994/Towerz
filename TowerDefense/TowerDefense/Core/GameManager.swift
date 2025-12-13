@@ -11,6 +11,10 @@ final class GameManager {
     private(set) var gameState: GameState = .preparing
     private(set) var lives: Int = GameConstants.startingLives
     
+    // Stats tracking
+    private(set) var totalEnemiesKilled: Int = 0
+    private(set) var totalMoneyEarned: Int = 0
+    
     // Sub-systems
     let economyManager: EconomyManager
     let waveManager: WaveManager
@@ -43,6 +47,8 @@ final class GameManager {
     func startGame() {
         gameState = .preparing
         lives = GameConstants.startingLives
+        totalEnemiesKilled = 0
+        totalMoneyEarned = 0
         scene?.updateUI()
     }
     
@@ -135,7 +141,9 @@ final class GameManager {
     // MARK: - Enemy Events
     
     func enemyKilled(_ enemy: Enemy) {
-        economyManager.rewardForKill(enemy: enemy)
+        totalEnemiesKilled += 1
+        let reward = economyManager.rewardForKill(enemy: enemy)
+        totalMoneyEarned += reward
         waveManager.enemyKilled()
     }
     

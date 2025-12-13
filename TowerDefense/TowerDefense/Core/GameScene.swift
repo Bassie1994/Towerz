@@ -92,6 +92,7 @@ final class GameScene: SKScene {
         // Tower Info Panel
         towerInfoNode = TowerInfoNode()
         towerInfoNode.delegate = self
+        towerInfoNode.zPosition = 500  // Highest priority, above all other UI
         uiLayer.addChild(towerInfoNode)
         
         // Placement Preview
@@ -394,13 +395,20 @@ final class GameScene: SKScene {
             return
         }
         
-        // Check HUD
-        if hudNode.handleTouch(at: location) {
-            return
+        // Check tower info panel FIRST (highest priority popup)
+        print("GameScene touch at: \(location), towerInfo hidden: \(towerInfoNode.isHidden)")
+        if !towerInfoNode.isHidden {
+            let containsTouch = towerInfoNode.containsTouchPoint(location)
+            print("GameScene: towerInfo containsTouch: \(containsTouch)")
+            if containsTouch {
+                let handled = towerInfoNode.handleTouch(at: location)
+                print("GameScene: towerInfo handled touch: \(handled)")
+                return
+            }
         }
         
-        // Check tower info panel
-        if towerInfoNode.handleTouch(at: location) {
+        // Check HUD
+        if hudNode.handleTouch(at: location) {
             return
         }
         
@@ -614,7 +622,7 @@ final class GameScene: SKScene {
     
     func spawnEnemy(type: EnemyType, level: Int) {
         // Safety: limit max enemies on screen to prevent memory issues
-        guard enemies.count < 500 else { return }
+        guard enemies.count < 150 else { return }
         
         let enemy: Enemy
         
@@ -652,12 +660,20 @@ final class GameScene: SKScene {
     
     func handleGameOver() {
         // AudioManager.shared.playSound(.gameOver)
-        hudNode.showGameOver()
+        hudNode.showGameOver(
+            wave: gameManager.waveManager.currentWave,
+            enemiesKilled: gameManager.totalEnemiesKilled,
+            livesRemaining: gameManager.lives
+        )
     }
     
     func handleVictory() {
         // AudioManager.shared.playSound(.victory)
-        hudNode.showVictory()
+        hudNode.showVictory(
+            wave: gameManager.waveManager.currentWave,
+            enemiesKilled: gameManager.totalEnemiesKilled,
+            livesRemaining: gameManager.lives
+        )
     }
     
     private func restartGame() {
@@ -719,8 +735,12 @@ extension GameScene: HUDNodeDelegate {
         gameManager.startWave(currentTime: gameTime)
     }
     
+    func hudDidTapAutoStart() {
+        // Auto-start toggled - nothing extra needed, HUD handles visual
+    }
+    
     func hudDidTapFastForward() {
-        gameSpeed = hudNode.isFastForwardEnabled() ? 2.0 : 1.0
+        gameSpeed = hudNode.getSpeedMultiplier()
     }
     
     func hudDidDropInTrash() {
@@ -763,6 +783,7 @@ extension GameScene: TowerInfoNodeDelegate {
     }
     
     func towerInfoDidTapSell(_ tower: Tower) {
+        towerInfoNode.hide()
         gameManager.sellTower(tower)
         updateUI()
     }
@@ -941,6 +962,18 @@ extension GameScene: WaveManagerDelegate {
             SKAction.removeFromParent()
         ])
         label.run(animation)
+        
+        // Auto-start next wave if enabled
+        if hudNode.isAutoStartEnabled {
+            // Small delay before starting next wave
+            let autoStartAction = SKAction.sequence([
+                SKAction.wait(forDuration: 1.5),
+                SKAction.run { [weak self] in
+                    self?.hudDidTapStartWave()
+                }
+            ])
+            run(autoStartAction, withKey: "autoStart")
+        }
     }
     
     func allWavesCompleted() {

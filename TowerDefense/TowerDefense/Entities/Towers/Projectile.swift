@@ -151,20 +151,25 @@ class Projectile: SKNode {
         // Update rotation
         zRotation = atan2(normalizedDirection.dy, normalizedDirection.dx)
         
-        // Trail effect
-        createTrail()
+        // Trail effect - reduced for performance (only every 3rd frame)
+        trailCounter += 1
+        if trailCounter % 3 == 0 {
+            createTrail()
+        }
     }
+    
+    private var trailCounter = 0
     
     private func createTrail() {
         let trail = SKShapeNode(circleOfRadius: 2)
-        trail.fillColor = projectileNode.fillColor.withAlphaComponent(0.5)
+        trail.fillColor = projectileNode.fillColor.withAlphaComponent(0.4)
         trail.strokeColor = .clear
         trail.position = position
         trail.zPosition = zPosition - 1
         parent?.addChild(trail)
         
         let fade = SKAction.sequence([
-            SKAction.fadeOut(withDuration: 0.1),
+            SKAction.fadeOut(withDuration: 0.08),
             SKAction.removeFromParent()
         ])
         trail.run(fade)

@@ -28,7 +28,7 @@ class Tower: SKNode {
     
     // Upgrade state
     var upgradeLevel: Int = 0
-    let maxUpgradeLevel: Int = 2
+    let maxUpgradeLevel: Int = 3  // 3 upgrades possible (levels 1-4)
     
     // Buff state (from buff towers)
     var damageMultiplier: CGFloat = 1.0
@@ -223,8 +223,8 @@ class Tower: SKNode {
     
     func getUpgradeCost() -> Int? {
         guard upgradeLevel < maxUpgradeLevel else { return nil }
-        // Upgrade costs 40% of base cost - making upgrades very cost effective
-        // Level 1->2: 40% of base, Level 2->3: 50% of base
+        // Upgrade costs scale: 40%, 50%, 60% of base cost
+        // Level 1→2: 40%, Level 2→3: 50%, Level 3→4: 60%
         let costPercent = 0.40 + Double(upgradeLevel) * 0.10
         return Int(Double(towerType.baseCost) * costPercent)
     }
@@ -244,9 +244,9 @@ class Tower: SKNode {
         
         // BUFFED upgrade scaling - makes upgrades more valuable than buying new towers
         // Each upgrade gives 35% damage, 15% range, 25% fire rate
-        // This means level 3 tower has: 170% damage, 130% range, 150% fire rate
-        // At 90% total cost (40% + 50% = 90% for both upgrades)
-        // Buying TWO towers would cost 200% but only give 200% base stats
+        // Level 4 tower has: 205% damage, 145% range, 175% fire rate
+        // At 150% total cost (40% + 50% + 60% = 150% for all upgrades)
+        // Much more efficient than buying multiple towers!
         // So upgrading one tower is more efficient!
         let upgradeDamageMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.35)  // +35% per level
         let upgradeRangeMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.15)   // +15% per level

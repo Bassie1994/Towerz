@@ -7,7 +7,7 @@ final class InfantryEnemy: Enemy {
     
     // Infantry stats per level
     static let baseStats: (health: CGFloat, speed: CGFloat, armor: CGFloat, reward: Int) = (
-        health: 100,
+        health: 200,    // 2x HP
         speed: 100,     // Increased from 80
         armor: 0,
         reward: 2       // Reduced from 10 (factor 5)
@@ -38,33 +38,12 @@ final class InfantryEnemy: Enemy {
     }
     
     private func setupAppearance() {
-        // Add infantry-specific visual (boots/legs indicator)
-        let leg1 = SKShapeNode(rectOf: CGSize(width: 4, height: 8))
-        leg1.fillColor = enemyType.color.withAlphaComponent(0.8)
-        leg1.strokeColor = .clear
-        leg1.position = CGPoint(x: -6, y: -enemySize / 2 - 2)
-        bodyNode.addChild(leg1)
-        
-        let leg2 = SKShapeNode(rectOf: CGSize(width: 4, height: 8))
-        leg2.fillColor = enemyType.color.withAlphaComponent(0.8)
-        leg2.strokeColor = .clear
-        leg2.position = CGPoint(x: 6, y: -enemySize / 2 - 2)
-        bodyNode.addChild(leg2)
-        
-        // Animate legs
-        let walkAnimation = SKAction.sequence([
-            SKAction.run {
-                leg1.position.y = -self.enemySize / 2 - 4
-                leg2.position.y = -self.enemySize / 2
-            },
-            SKAction.wait(forDuration: 0.15),
-            SKAction.run {
-                leg1.position.y = -self.enemySize / 2
-                leg2.position.y = -self.enemySize / 2 - 4
-            },
-            SKAction.wait(forDuration: 0.15)
-        ])
-        bodyNode.run(SKAction.repeatForever(walkAnimation), withKey: "walk")
+        // Simplified infantry visual - no animation for better performance
+        let marker = SKShapeNode(rectOf: CGSize(width: 8, height: 4))
+        marker.fillColor = enemyType.color.withAlphaComponent(0.6)
+        marker.strokeColor = .clear
+        marker.position = CGPoint(x: 0, y: -enemySize / 2 - 2)
+        bodyNode.addChild(marker)
     }
     
     override func calculateMovementDirection() -> CGVector {

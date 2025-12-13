@@ -4,6 +4,7 @@ import SpriteKit
 protocol HUDNodeDelegate: AnyObject {
     func hudDidTapPause()
     func hudDidTapStartWave()
+    func hudDidTapAutoStart()
     func hudDidTapFastForward()
     func hudDidDropInTrash()
 }
@@ -30,8 +31,10 @@ final class HUDNode: SKNode {
     private let trashZone: SKShapeNode
     private let trashLabel: SKLabelNode
     
-    private var isFastForward = false
+    private var speedMultiplier: CGFloat = 1.0  // 1x, 2x, or 4x
     private(set) var isTrashHighlighted = false
+    private(set) var isAutoStartEnabled = false
+    private var isWaveActive = false
     
     // MARK: - Initialization
     
@@ -208,26 +211,26 @@ final class HUDNode: SKNode {
         // Control panel (bottom-left)
         setupControlPanel()
         
-        // Trash zone (bottom-right corner, visible and accessible)
-        trashZone.position = CGPoint(x: 1260, y: 80)
+        // Trash zone (top-right corner, near HUD)
+        trashZone.position = CGPoint(x: 1280, y: 665)
         trashZone.zPosition = 100  // Above other elements
         trashZone.addChild(trashLabel)
         addChild(trashZone)
         
         // Add "SELL" text below trash
         let sellLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        sellLabel.fontSize = 12
+        sellLabel.fontSize = 10
         sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
         sellLabel.text = "SELL"
-        sellLabel.position = CGPoint(x: 1260, y: 25)
+        sellLabel.position = CGPoint(x: 1280, y: 615)
         addChild(sellLabel)
         
         // Add border/frame around trash zone for visibility
-        let trashFrame = SKShapeNode(rectOf: CGSize(width: 90, height: 90), cornerRadius: 12)
+        let trashFrame = SKShapeNode(rectOf: CGSize(width: 70, height: 70), cornerRadius: 10)
         trashFrame.fillColor = .clear
         trashFrame.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
         trashFrame.lineWidth = 2
-        trashFrame.position = CGPoint(x: 1260, y: 80)
+        trashFrame.position = CGPoint(x: 1280, y: 665)
         trashFrame.zPosition = 99
         addChild(trashFrame)
         
@@ -341,17 +344,66 @@ final class HUDNode: SKNode {
     }
     
     func updateWave(_ current: Int, total: Int, active: Bool) {
+        isWaveActive = active
+        
         if active {
             waveLabel.text = "Wave \(current)/\(total)"
-            startWaveButton.isHidden = true
+            // During wave: show auto-start toggle button
+            startWaveButton.isHidden = false
+            updateAutoStartButton()
         } else if current >= total {
             waveLabel.text = "Victory!"
             startWaveButton.isHidden = true
+            isAutoStartEnabled = false
         } else {
             waveLabel.text = "Wave \(current)/\(total)"
             startWaveButton.isHidden = false
-            startWaveLabel.text = current == 0 ? "Start Wave 1" : "Next Wave"
+            if isAutoStartEnabled {
+                updateAutoStartButton()
+            } else {
+                startWaveLabel.text = current == 0 ? "Start Wave 1" : "Next Wave"
+                startWaveButton.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
+            }
         }
+    }
+    
+    private func updateAutoStartButton() {
+        if isAutoStartEnabled {
+            startWaveLabel.text = "⚡ AUTO"
+            startWaveButton.fillColor = SKColor(red: 0.6, green: 0.4, blue: 0.8, alpha: 1.0)  // Purple for auto
+            
+            // Add pulsing animation to show autoplay is active
+            startWaveButton.removeAction(forKey: "autoPulse")
+            let pulse = SKAction.sequence([
+                SKAction.group([
+                    SKAction.scale(to: 1.1, duration: 0.5),
+                    SKAction.run { self.startWaveButton.strokeColor = .yellow }
+                ]),
+                SKAction.group([
+                    SKAction.scale(to: 1.0, duration: 0.5),
+                    SKAction.run { self.startWaveButton.strokeColor = .white }
+                ])
+            ])
+            startWaveButton.run(SKAction.repeatForever(pulse), withKey: "autoPulse")
+        } else if isWaveActive {
+            startWaveLabel.text = "Auto?"
+            startWaveButton.fillColor = SKColor(red: 0.4, green: 0.4, blue: 0.5, alpha: 1.0)  // Gray during wave
+            startWaveButton.removeAction(forKey: "autoPulse")
+            startWaveButton.setScale(1.0)
+            startWaveButton.strokeColor = .white
+        }
+    }
+    
+    func toggleAutoStart() {
+        isAutoStartEnabled = !isAutoStartEnabled
+        updateAutoStartButton()
+    }
+    
+    /// Stop autoplay animation when disabled
+    func stopAutoPlayAnimation() {
+        startWaveButton.removeAction(forKey: "autoPulse")
+        startWaveButton.setScale(1.0)
+        startWaveButton.strokeColor = .white
     }
     
     func setStartWaveEnabled(_ enabled: Bool) {
@@ -369,7 +421,12 @@ final class HUDNode: SKNode {
             // Start button in control panel
             if let startBtn = controlPanel.childNode(withName: "ctrlStartBtn") as? SKShapeNode {
                 if startBtn.contains(localPos) {
-                    delegate?.hudDidTapStartWave()
+                    if isWaveActive {
+                        toggleAutoStart()
+                        delegate?.hudDidTapAutoStart()
+                    } else {
+                        delegate?.hudDidTapStartWave()
+                    }
                     animateButtonPress(startBtn)
                     return true
                 }
@@ -388,10 +445,6 @@ final class HUDNode: SKNode {
             if let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode {
                 if speedBtn.contains(localPos) {
                     toggleFastForward()
-                    // Update control panel speed label
-                    if let lbl = speedBtn.childNode(withName: "ctrlSpeedLbl") as? SKLabelNode {
-                        lbl.text = isFastForward ? "2x" : "1x"
-                    }
                     delegate?.hudDidTapFastForward()
                     animateButtonPress(speedBtn)
                     return true
@@ -409,18 +462,36 @@ final class HUDNode: SKNode {
     }
     
     private func toggleFastForward() {
-        isFastForward = !isFastForward
-        speedLabel.text = isFastForward ? "2x" : "1x"
-        speedButton.fillColor = isFastForward ?
-            SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0) :
-            SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
+        // Cycle through 1x → 2x → 4x → 1x
+        if speedMultiplier == 1.0 {
+            speedMultiplier = 2.0
+        } else if speedMultiplier == 2.0 {
+            speedMultiplier = 4.0
+        } else {
+            speedMultiplier = 1.0
+        }
         
-        // Sync control panel speed button color
+        // Update label
+        speedLabel.text = "\(Int(speedMultiplier))x"
+        
+        // Update button color based on speed
+        let buttonColor: SKColor
+        switch speedMultiplier {
+        case 2.0:
+            buttonColor = SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0)
+        case 4.0:
+            buttonColor = SKColor(red: 0.8, green: 0.3, blue: 0.2, alpha: 1.0)
+        default:
+            buttonColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
+        }
+        speedButton.fillColor = buttonColor
+        
+        // Sync control panel speed button
         if let controlPanel = childNode(withName: "controlPanel"),
-           let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode {
-            speedBtn.fillColor = isFastForward ?
-                SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0) :
-                SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 1.0)
+           let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode,
+           let lbl = speedBtn.childNode(withName: "ctrlSpeedLbl") as? SKLabelNode {
+            speedBtn.fillColor = buttonColor
+            lbl.text = "\(Int(speedMultiplier))x"
         }
     }
     
@@ -432,14 +503,25 @@ final class HUDNode: SKNode {
         button.run(press)
     }
     
-    func isFastForwardEnabled() -> Bool {
-        return isFastForward
+    func getSpeedMultiplier() -> CGFloat {
+        return speedMultiplier
     }
     
     // MARK: - Game Over / Victory
     
-    func showGameOver() {
-        let overlay = SKShapeNode(rectOf: CGSize(width: 400, height: 200), cornerRadius: 10)
+    func showGameOver(wave: Int, enemiesKilled: Int, livesRemaining: Int) {
+        // Calculate and save score
+        let score = HighscoreManager.calculateScore(
+            wave: wave,
+            enemiesKilled: enemiesKilled,
+            moneyEarned: 0,
+            livesRemaining: livesRemaining,
+            isVictory: false
+        )
+        let rank = HighscoreManager.shared.addScore(score: score, wave: wave, enemiesKilled: enemiesKilled)
+        
+        // Create larger overlay for highscores
+        let overlay = SKShapeNode(rectOf: CGSize(width: 500, height: 450), cornerRadius: 10)
         overlay.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.95)
         overlay.strokeColor = .healthBarRed
         overlay.lineWidth = 3
@@ -447,25 +529,72 @@ final class HUDNode: SKNode {
         overlay.zPosition = GameConstants.ZPosition.menu.rawValue
         overlay.name = "gameOverOverlay"
         
+        var yPos: CGFloat = 180
+        
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
         title.fontSize = 36
         title.fontColor = .healthBarRed
         title.text = "GAME OVER"
-        title.position = CGPoint(x: 0, y: 40)
+        title.position = CGPoint(x: 0, y: yPos)
         overlay.addChild(title)
+        yPos -= 35
         
-        let subtitle = SKLabelNode(fontNamed: "Helvetica")
-        subtitle.fontSize = 18
-        subtitle.fontColor = .white
-        subtitle.text = "The enemies broke through!"
-        subtitle.position = CGPoint(x: 0, y: 0)
-        overlay.addChild(subtitle)
+        // Dark humor joke
+        let joke = SKLabelNode(fontNamed: "Helvetica")
+        joke.fontSize = 14
+        joke.fontColor = SKColor(white: 0.7, alpha: 1.0)
+        joke.text = DarkHumorManager.shared.getGameOverJoke()
+        joke.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(joke)
+        yPos -= 30
+        
+        // Score display
+        let scoreLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        scoreLabel.fontSize = 20
+        scoreLabel.fontColor = .white
+        scoreLabel.text = "Score: \(score)"
+        scoreLabel.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(scoreLabel)
+        yPos -= 25
+        
+        // Stats
+        let statsLabel = SKLabelNode(fontNamed: "Helvetica")
+        statsLabel.fontSize = 14
+        statsLabel.fontColor = .gray
+        statsLabel.text = "Wave \(wave) • \(enemiesKilled) kills"
+        statsLabel.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(statsLabel)
+        yPos -= 30
+        
+        // New highscore?
+        if let rank = rank {
+            let newHSLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+            newHSLabel.fontSize = 18
+            newHSLabel.fontColor = SKColor(red: 1, green: 0.8, blue: 0.2, alpha: 1)
+            newHSLabel.text = rank == 1 ? "🏆 NEW HIGH SCORE! 🏆" : "📍 #\(rank) on leaderboard!"
+            newHSLabel.position = CGPoint(x: 0, y: yPos)
+            overlay.addChild(newHSLabel)
+            yPos -= 30
+        }
+        yPos -= 10
+        
+        // Highscores header
+        let hsHeader = SKLabelNode(fontNamed: "Helvetica-Bold")
+        hsHeader.fontSize = 16
+        hsHeader.fontColor = .white
+        hsHeader.text = "═══ TOP 10 ═══"
+        hsHeader.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(hsHeader)
+        yPos -= 22
+        
+        // Display highscores
+        addHighscoreList(to: overlay, startY: yPos, currentScore: score)
         
         let restartLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         restartLabel.fontSize = 16
         restartLabel.fontColor = .gray
         restartLabel.text = "Tap to restart"
-        restartLabel.position = CGPoint(x: 0, y: -50)
+        restartLabel.position = CGPoint(x: 0, y: -200)
         overlay.addChild(restartLabel)
         
         addChild(overlay)
@@ -475,8 +604,19 @@ final class HUDNode: SKNode {
         overlay.run(SKAction.scale(to: 1.0, duration: 0.3))
     }
     
-    func showVictory() {
-        let overlay = SKShapeNode(rectOf: CGSize(width: 400, height: 200), cornerRadius: 10)
+    func showVictory(wave: Int, enemiesKilled: Int, livesRemaining: Int) {
+        // Calculate and save score
+        let score = HighscoreManager.calculateScore(
+            wave: wave,
+            enemiesKilled: enemiesKilled,
+            moneyEarned: 0,
+            livesRemaining: livesRemaining,
+            isVictory: true
+        )
+        let rank = HighscoreManager.shared.addScore(score: score, wave: wave, enemiesKilled: enemiesKilled)
+        
+        // Create larger overlay for highscores
+        let overlay = SKShapeNode(rectOf: CGSize(width: 500, height: 450), cornerRadius: 10)
         overlay.fillColor = SKColor(red: 0.1, green: 0.15, blue: 0.1, alpha: 0.95)
         overlay.strokeColor = .healthBarGreen
         overlay.lineWidth = 3
@@ -484,25 +624,72 @@ final class HUDNode: SKNode {
         overlay.zPosition = GameConstants.ZPosition.menu.rawValue
         overlay.name = "victoryOverlay"
         
+        var yPos: CGFloat = 180
+        
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
         title.fontSize = 36
         title.fontColor = .healthBarGreen
-        title.text = "VICTORY!"
-        title.position = CGPoint(x: 0, y: 40)
+        title.text = "🎉 VICTORY! 🎉"
+        title.position = CGPoint(x: 0, y: yPos)
         overlay.addChild(title)
+        yPos -= 35
         
-        let subtitle = SKLabelNode(fontNamed: "Helvetica")
-        subtitle.fontSize = 18
-        subtitle.fontColor = .white
-        subtitle.text = "All waves defeated!"
-        subtitle.position = CGPoint(x: 0, y: 0)
-        overlay.addChild(subtitle)
+        // Dark humor joke
+        let joke = SKLabelNode(fontNamed: "Helvetica")
+        joke.fontSize = 14
+        joke.fontColor = SKColor(white: 0.7, alpha: 1.0)
+        joke.text = DarkHumorManager.shared.getVictoryJoke()
+        joke.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(joke)
+        yPos -= 30
+        
+        // Score display
+        let scoreLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        scoreLabel.fontSize = 20
+        scoreLabel.fontColor = .white
+        scoreLabel.text = "Score: \(score)"
+        scoreLabel.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(scoreLabel)
+        yPos -= 25
+        
+        // Stats
+        let statsLabel = SKLabelNode(fontNamed: "Helvetica")
+        statsLabel.fontSize = 14
+        statsLabel.fontColor = .gray
+        statsLabel.text = "All \(wave) waves • \(enemiesKilled) kills • \(livesRemaining) lives"
+        statsLabel.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(statsLabel)
+        yPos -= 30
+        
+        // New highscore?
+        if let rank = rank {
+            let newHSLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+            newHSLabel.fontSize = 18
+            newHSLabel.fontColor = SKColor(red: 1, green: 0.8, blue: 0.2, alpha: 1)
+            newHSLabel.text = rank == 1 ? "🏆 NEW HIGH SCORE! 🏆" : "📍 #\(rank) on leaderboard!"
+            newHSLabel.position = CGPoint(x: 0, y: yPos)
+            overlay.addChild(newHSLabel)
+            yPos -= 30
+        }
+        yPos -= 10
+        
+        // Highscores header
+        let hsHeader = SKLabelNode(fontNamed: "Helvetica-Bold")
+        hsHeader.fontSize = 16
+        hsHeader.fontColor = .white
+        hsHeader.text = "═══ TOP 10 ═══"
+        hsHeader.position = CGPoint(x: 0, y: yPos)
+        overlay.addChild(hsHeader)
+        yPos -= 22
+        
+        // Display highscores
+        addHighscoreList(to: overlay, startY: yPos, currentScore: score)
         
         let restartLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         restartLabel.fontSize = 16
         restartLabel.fontColor = .gray
         restartLabel.text = "Tap to play again"
-        restartLabel.position = CGPoint(x: 0, y: -50)
+        restartLabel.position = CGPoint(x: 0, y: -200)
         overlay.addChild(restartLabel)
         
         addChild(overlay)
@@ -510,6 +697,41 @@ final class HUDNode: SKNode {
         // Animate in
         overlay.setScale(0.1)
         overlay.run(SKAction.scale(to: 1.0, duration: 0.3))
+    }
+    
+    private func addHighscoreList(to overlay: SKNode, startY: CGFloat, currentScore: Int) {
+        var yPos = startY
+        let lineHeight: CGFloat = 18
+        let highscores = HighscoreManager.shared.highscores
+        
+        for (index, entry) in highscores.prefix(10).enumerated() {
+            let isCurrentScore = entry.score == currentScore
+            
+            let rankLabel = SKLabelNode(fontNamed: isCurrentScore ? "Helvetica-Bold" : "Helvetica")
+            rankLabel.fontSize = 13
+            rankLabel.fontColor = isCurrentScore ? SKColor(red: 1, green: 0.8, blue: 0.2, alpha: 1) : .lightGray
+            
+            let medal = index == 0 ? "🥇" : (index == 1 ? "🥈" : (index == 2 ? "🥉" : "  "))
+            rankLabel.text = "\(medal) #\(index + 1)  \(entry.score) pts  (W\(entry.wave), \(entry.enemiesKilled) kills)"
+            rankLabel.horizontalAlignmentMode = .center
+            rankLabel.position = CGPoint(x: 0, y: yPos)
+            overlay.addChild(rankLabel)
+            yPos -= lineHeight
+        }
+        
+        // Fill empty slots
+        if highscores.count < 10 {
+            for i in highscores.count..<10 {
+                let emptyLabel = SKLabelNode(fontNamed: "Helvetica")
+                emptyLabel.fontSize = 13
+                emptyLabel.fontColor = SKColor(white: 0.4, alpha: 1)
+                emptyLabel.text = "   #\(i + 1)  ---"
+                emptyLabel.horizontalAlignmentMode = .center
+                emptyLabel.position = CGPoint(x: 0, y: yPos)
+                overlay.addChild(emptyLabel)
+                yPos -= lineHeight
+            }
+        }
     }
     
     // MARK: - Trash Zone

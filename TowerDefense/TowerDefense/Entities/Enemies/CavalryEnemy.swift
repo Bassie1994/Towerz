@@ -7,7 +7,7 @@ final class CavalryEnemy: Enemy {
     
     // Cavalry stats per level - TANKY but SLOW
     static let baseStats: (health: CGFloat, speed: CGFloat, armor: CGFloat, reward: Int) = (
-        health: 300,    // Increased from 180 - very tanky
+        health: 600,    // 2x HP - very tanky
         speed: 50,      // Reduced from 120 - slow moving
         armor: 30,
         reward: 4       // Reduced from 20 (factor 5)

@@ -124,37 +124,25 @@ final class TowerInfoNode: SKNode {
         updateContent()
         
         // Position near tower but ensure on screen
-        var panelX = tower.position.x + 80
+        var panelX = tower.position.x + 100
         var panelY = tower.position.y
         
-        // Keep on screen
-        panelX = max(panelWidth / 2 + 10, min(1334 - panelWidth / 2 - 110, panelX))
-        panelY = max(panelHeight / 2 + 60, min(700 - panelHeight / 2, panelY))
+        // Keep on screen (accounting for reduced grid size)
+        panelX = max(panelWidth / 2 + 10, min(1200 - panelWidth / 2, panelX))
+        panelY = max(panelHeight / 2 + 80, min(550 - panelHeight / 2, panelY))
         
         position = CGPoint(x: panelX, y: panelY)
-        
+        setScale(1.0)  // Ensure scale is 1.0 for correct touch detection
+        alpha = 1.0
         isHidden = false
         
-        // Animate in
-        setScale(0.8)
-        alpha = 0
-        run(SKAction.group([
-            SKAction.scale(to: 1.0, duration: 0.15),
-            SKAction.fadeIn(withDuration: 0.15)
-        ]))
+        print("TowerInfoNode shown at: \(position), panelSize: \(panelWidth)x\(panelHeight)")
     }
     
     func hide() {
         selectedTower?.setSelected(false)
         selectedTower = nil
-        
-        run(SKAction.sequence([
-            SKAction.group([
-                SKAction.scale(to: 0.8, duration: 0.1),
-                SKAction.fadeOut(withDuration: 0.1)
-            ]),
-            SKAction.run { self.isHidden = true }
-        ]))
+        isHidden = true  // Hide immediately for correct touch handling
         
         delegate?.towerInfoDidClose()
     }
@@ -210,18 +198,54 @@ final class TowerInfoNode: SKNode {
     // MARK: - Touch Handling
     
     func handleTouch(at location: CGPoint) -> Bool {
-        guard !isHidden, let tower = selectedTower else { return false }
+        guard !isHidden, let tower = selectedTower else { 
+            print("TowerInfo handleTouch: hidden or no tower")
+            return false 
+        }
         
-        let localPoint = convert(location, to: panelBackground)
+        // Convert scene location to local coordinates
+        let localPoint = CGPoint(x: location.x - position.x, y: location.y - position.y)
         
-        // Check close button
-        if closeButton.contains(localPoint) {
+        print("TowerInfo handleTouch - scene: \(location), local: \(localPoint), pos: \(position)")
+        
+        // Flash the panel to show touch was received (visual debug)
+        let flash = SKAction.sequence([
+            SKAction.colorize(with: .yellow, colorBlendFactor: 0.3, duration: 0.1),
+            SKAction.colorize(withColorBlendFactor: 0, duration: 0.1)
+        ])
+        panelBackground.run(flash)
+        
+        // Button dimensions (must match init)
+        let upgradeSize = CGSize(width: 80, height: 35)
+        let sellSize = CGSize(width: 80, height: 35)
+        let closeRadius: CGFloat = 12
+        
+        // Button positions (must match init) - with panelHeight = 280, panelWidth = 200
+        let upgradePos = CGPoint(x: -45, y: -panelHeight / 2 + 50)  // (-45, -90)
+        let sellPos = CGPoint(x: 45, y: -panelHeight / 2 + 50)      // (45, -90)
+        let closePos = CGPoint(x: panelWidth / 2 - 20, y: panelHeight / 2 - 20)  // (80, 120)
+        
+        // Add touch padding
+        let padding: CGFloat = 15
+        
+        // Check close button (circular, use distance check)
+        let distToClose = sqrt(pow(localPoint.x - closePos.x, 2) + pow(localPoint.y - closePos.y, 2))
+        if distToClose <= closeRadius + padding {
+            print("Close button tapped! dist: \(distToClose)")
+            animateButton(closeButton)
             hide()
             return true
         }
         
-        // Check upgrade button
-        if upgradeButton.contains(localPoint) {
+        // Check upgrade button (rectangular)
+        let upgradeBounds = CGRect(
+            x: upgradePos.x - upgradeSize.width / 2 - padding,
+            y: upgradePos.y - upgradeSize.height / 2 - padding,
+            width: upgradeSize.width + padding * 2,
+            height: upgradeSize.height + padding * 2
+        )
+        if upgradeBounds.contains(localPoint) {
+            print("Upgrade button tapped! localPoint: \(localPoint), bounds: \(upgradeBounds)")
             if tower.towerType == .wall {
                 delegate?.towerInfoDidTapConvert(tower)
                 animateButton(upgradeButton)
@@ -232,18 +256,34 @@ final class TowerInfoNode: SKNode {
                 updateContent()
                 return true
             }
+            return true
         }
         
-        // Check sell button
-        if sellButton.contains(localPoint) {
+        // Check sell button (rectangular)
+        let sellBounds = CGRect(
+            x: sellPos.x - sellSize.width / 2 - padding,
+            y: sellPos.y - sellSize.height / 2 - padding,
+            width: sellSize.width + padding * 2,
+            height: sellSize.height + padding * 2
+        )
+        if sellBounds.contains(localPoint) {
+            print("Sell button tapped! localPoint: \(localPoint), bounds: \(sellBounds)")
             delegate?.towerInfoDidTapSell(tower)
             animateButton(sellButton)
             hide()
             return true
         }
         
-        // Check if touch is within panel (consume touch)
-        if panelBackground.contains(localPoint) {
+        // Check if touch is within panel (consume it)
+        let panelBounds = CGRect(
+            x: -panelWidth / 2 - padding,
+            y: -panelHeight / 2 - padding,
+            width: panelWidth + padding * 2,
+            height: panelHeight + padding * 2
+        )
+        if panelBounds.contains(localPoint) {
+            print("Panel touched but no button hit - local: \(localPoint)")
+            print("upgradeBounds: \(upgradeBounds), sellBounds: \(sellBounds)")
             return true
         }
         
@@ -251,16 +291,36 @@ final class TowerInfoNode: SKNode {
     }
     
     private func animateButton(_ button: SKShapeNode) {
+        // More visible animation feedback
+        let originalColor = button.fillColor
         let press = SKAction.sequence([
-            SKAction.scale(to: 0.9, duration: 0.05),
-            SKAction.scale(to: 1.0, duration: 0.05)
+            SKAction.group([
+                SKAction.scale(to: 0.85, duration: 0.05),
+                SKAction.run { button.fillColor = .white }
+            ]),
+            SKAction.wait(forDuration: 0.1),
+            SKAction.group([
+                SKAction.scale(to: 1.0, duration: 0.1),
+                SKAction.run { button.fillColor = originalColor }
+            ])
         ])
         button.run(press)
     }
     
     func containsTouchPoint(_ location: CGPoint) -> Bool {
-        guard !isHidden else { return false }
-        let localPoint = convert(location, to: panelBackground)
-        return panelBackground.contains(localPoint)
+        guard !isHidden else { 
+            print("TowerInfo containsTouchPoint: hidden, returning false")
+            return false 
+        }
+        let localPoint = CGPoint(x: location.x - position.x, y: location.y - position.y)
+        let panelBounds = CGRect(
+            x: -panelWidth / 2,
+            y: -panelHeight / 2,
+            width: panelWidth,
+            height: panelHeight
+        )
+        let contains = panelBounds.contains(localPoint)
+        print("TowerInfo containsTouchPoint: scene=\(location), pos=\(position), local=\(localPoint), bounds=\(panelBounds), contains=\(contains)")
+        return contains
     }
 }

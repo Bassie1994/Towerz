@@ -3,8 +3,8 @@ import SpriteKit
 // MARK: - Game Constants
 enum GameConstants {
     // Field dimensions (in grid cells)
-    static let gridWidth = 26
-    static let gridHeight = 14
+    static let gridWidth = 24   // Reduced by 2 columns
+    static let gridHeight = 11  // Reduced by 1 row
     static let cellSize: CGFloat = 48
     
     // Playfield bounds
@@ -115,15 +115,15 @@ enum TowerType: String, CaseIterable {
     
     var baseCost: Int {
         switch self {
-        case .wall: return 10       // Very cheap - just for blocking
-        case .machineGun: return 50
-        case .cannon: return 80
-        case .slow: return 60
-        case .buff: return 100
-        case .shotgun: return 70
-        case .splash: return 90
-        case .laser: return 120
-        case .antiAir: return 75
+        case .wall: return 5        // Halved - very cheap blocking
+        case .machineGun: return 25 // Halved
+        case .cannon: return 40     // Halved
+        case .slow: return 30       // Halved
+        case .buff: return 50       // Halved
+        case .shotgun: return 35    // Halved
+        case .splash: return 45     // Halved
+        case .laser: return 60      // Halved
+        case .antiAir: return 38    // Halved
         }
     }
 }

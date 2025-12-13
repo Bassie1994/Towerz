@@ -52,6 +52,8 @@
 		006000003 /* EconomyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000002 /* EconomyManager.swift */; };
 		006000005 /* PlacementValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000004 /* PlacementValidator.swift */; };
 		006000007 /* TargetingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000006 /* TargetingSystem.swift */; };
+		006000013 /* HighscoreManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000012 /* HighscoreManager.swift */; };
+		006000015 /* DarkHumorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006000014 /* DarkHumorManager.swift */; };
 		
 		/* UI */
 		007000001 /* HUDNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 007000000 /* HUDNode.swift */; };
@@ -112,6 +114,8 @@
 		006000010 /* LevelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelManager.swift; sourceTree = "<group>"; };
 		006000002 /* EconomyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EconomyManager.swift; sourceTree = "<group>"; };
 		006000004 /* PlacementValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementValidator.swift; sourceTree = "<group>"; };
+		006000012 /* HighscoreManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighscoreManager.swift; sourceTree = "<group>"; };
+		006000014 /* DarkHumorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkHumorManager.swift; sourceTree = "<group>"; };
 		006000006 /* TargetingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetingSystem.swift; sourceTree = "<group>"; };
 		
 		/* UI */
@@ -243,6 +247,8 @@
 				006000006 /* TargetingSystem.swift */,
 				006000008 /* AudioManager.swift */,
 				006000010 /* LevelManager.swift */,
+				006000012 /* HighscoreManager.swift */,
+				006000014 /* DarkHumorManager.swift */,
 			);
 			path = Systems;
 			sourceTree = "<group>";
@@ -379,6 +385,8 @@
 				006000003 /* EconomyManager.swift in Sources */,
 				006000005 /* PlacementValidator.swift in Sources */,
 				006000007 /* TargetingSystem.swift in Sources */,
+				006000013 /* HighscoreManager.swift in Sources */,
+				006000015 /* DarkHumorManager.swift in Sources */,
 				007000001 /* HUDNode.swift in Sources */,
 				007000003 /* BuildMenuNode.swift in Sources */,
 				007000005 /* TowerInfoNode.swift in Sources */,

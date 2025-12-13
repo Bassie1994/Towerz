@@ -7,7 +7,7 @@ import SpriteKit
 final class CannonTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 30,     // Nerfed from 60
+        damage: 15,     // Halved - base tower
         range: 70,      // Reduced from 180 - short range
         fireRate: 0.8   // 0.8 shots per second
     )

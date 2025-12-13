@@ -193,15 +193,81 @@ class Enemy: SKNode {
             dy: currentDirection.dy * actualSpeed * CGFloat(deltaTime)
         )
         
-        position = CGPoint(
+        // Calculate new position
+        var newPosition = CGPoint(
             x: position.x + movement.dx,
             y: position.y + movement.dy
         )
         
-        // Clamp to playfield bounds (vertical only)
+        // Collision detection with towers/blocked cells
+        let newGridPos = newPosition.toGridPosition()
+        if newGridPos.x >= 0 && newGridPos.x < GameConstants.gridWidth &&
+           newGridPos.y >= 0 && newGridPos.y < GameConstants.gridHeight {
+            
+            // Check if new position is blocked
+            if let flowField = delegate?.getFlowField() {
+                let isBlocked = flowField.getDirection(at: newGridPos) == nil && 
+                                !newGridPos.isInSpawnZone() && 
+                                !newGridPos.isInExitZone()
+                
+                if isBlocked {
+                    // Try multiple alternatives to find a way around
+                    let moveDistance = actualSpeed * CGFloat(deltaTime)
+                    
+                    // Try 8 different directions to find a valid path
+                    let alternatives: [(CGFloat, CGFloat)] = [
+                        (movement.dx, 0),           // Horizontal only
+                        (0, movement.dy),           // Vertical only
+                        (moveDistance, 0),          // Pure right
+                        (-moveDistance, 0),         // Pure left
+                        (0, moveDistance),          // Pure up
+                        (0, -moveDistance),         // Pure down
+                        (moveDistance, -moveDistance), // Diagonal down-right
+                        (moveDistance, moveDistance)   // Diagonal up-right
+                    ]
+                    
+                    var foundPath = false
+                    for (dx, dy) in alternatives {
+                        let testPos = CGPoint(x: position.x + dx, y: position.y + dy)
+                        let testGrid = testPos.toGridPosition()
+                        
+                        // Check bounds
+                        guard testGrid.x >= 0 && testGrid.x < GameConstants.gridWidth &&
+                              testGrid.y >= 0 && testGrid.y < GameConstants.gridHeight else { continue }
+                        
+                        let testBlocked = flowField.getDirection(at: testGrid) == nil &&
+                                         !testGrid.isInSpawnZone() && !testGrid.isInExitZone()
+                        
+                        if !testBlocked {
+                            newPosition = testPos
+                            foundPath = true
+                            break
+                        }
+                    }
+                    
+                    if !foundPath {
+                        // Still stuck - try to push away from the blocking cell
+                        let currentGrid = position.toGridPosition()
+                        if let escapeDir = flowField.getDirection(at: currentGrid) {
+                            newPosition = CGPoint(
+                                x: position.x + escapeDir.dx * moveDistance * 0.5,
+                                y: position.y + escapeDir.dy * moveDistance * 0.5
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        position = newPosition
+        
+        // Clamp to playfield bounds
         let minY = GameConstants.playFieldOrigin.y + enemySize / 2
         let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - enemySize / 2
+        let minX = GameConstants.playFieldOrigin.x + enemySize / 2
+        let maxX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - enemySize / 2
         position.y = max(minY, min(maxY, position.y))
+        position.x = max(minX, min(maxX, position.x))
         
         // Check if reached exit
         if hasReachedExit() {
@@ -307,11 +373,12 @@ class Enemy: SKNode {
     
     private func calculateSeparation(from enemies: [Enemy]) -> CGVector {
         var separation = CGVector.zero
-        let separationRadius: CGFloat = enemySize * 1.5
+        let separationRadius: CGFloat = enemySize * 1.2  // Reduced radius
+        let radiusSquared = separationRadius * separationRadius
         
-        // Optimization: only check nearby enemies (limit to 10 closest checks)
+        // Optimization: limit checks to 5 for better performance
         var checksPerformed = 0
-        let maxChecks = 10
+        let maxChecks = 5
         
         for other in enemies {
             guard checksPerformed < maxChecks else { break }
@@ -321,18 +388,22 @@ class Enemy: SKNode {
             let dx = position.x - other.position.x
             let dy = position.y - other.position.y
             let distSquared = dx * dx + dy * dy
-            let radiusSquared = separationRadius * separationRadius
             
-            if distSquared < radiusSquared && distSquared > 0 {
+            if distSquared < radiusSquared && distSquared > 1 {
                 checksPerformed += 1
-                let distance = sqrt(distSquared)
-                let strength = (separationRadius - distance) / separationRadius
-                separation.dx += (dx / distance) * strength
-                separation.dy += (dy / distance) * strength
+                // Approximate separation without sqrt for performance
+                let invDist = 1.0 / (distSquared + 10)  // +10 to avoid division issues
+                separation.dx += dx * invDist * 50
+                separation.dy += dy * invDist * 50
             }
         }
         
-        return separation.normalized()
+        // Simple normalization
+        let len = sqrt(separation.dx * separation.dx + separation.dy * separation.dy)
+        if len > 0.1 {
+            return CGVector(dx: separation.dx / len, dy: separation.dy / len)
+        }
+        return .zero
     }
     
     private func hasReachedExit() -> Bool {
