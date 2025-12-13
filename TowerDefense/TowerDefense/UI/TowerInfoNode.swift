@@ -124,37 +124,25 @@ final class TowerInfoNode: SKNode {
         updateContent()
         
         // Position near tower but ensure on screen
-        var panelX = tower.position.x + 80
+        var panelX = tower.position.x + 100
         var panelY = tower.position.y
         
-        // Keep on screen
-        panelX = max(panelWidth / 2 + 10, min(1334 - panelWidth / 2 - 110, panelX))
-        panelY = max(panelHeight / 2 + 60, min(700 - panelHeight / 2, panelY))
+        // Keep on screen (accounting for reduced grid size)
+        panelX = max(panelWidth / 2 + 10, min(1200 - panelWidth / 2, panelX))
+        panelY = max(panelHeight / 2 + 80, min(550 - panelHeight / 2, panelY))
         
         position = CGPoint(x: panelX, y: panelY)
-        
+        setScale(1.0)  // Ensure scale is 1.0 for correct touch detection
+        alpha = 1.0
         isHidden = false
         
-        // Animate in
-        setScale(0.8)
-        alpha = 0
-        run(SKAction.group([
-            SKAction.scale(to: 1.0, duration: 0.15),
-            SKAction.fadeIn(withDuration: 0.15)
-        ]))
+        print("TowerInfoNode shown at: \(position), panelSize: \(panelWidth)x\(panelHeight)")
     }
     
     func hide() {
         selectedTower?.setSelected(false)
         selectedTower = nil
-        
-        run(SKAction.sequence([
-            SKAction.group([
-                SKAction.scale(to: 0.8, duration: 0.1),
-                SKAction.fadeOut(withDuration: 0.1)
-            ]),
-            SKAction.run { self.isHidden = true }
-        ]))
+        isHidden = true  // Hide immediately for correct touch handling
         
         delegate?.towerInfoDidClose()
     }
@@ -210,30 +198,24 @@ final class TowerInfoNode: SKNode {
     // MARK: - Touch Handling
     
     func handleTouch(at location: CGPoint) -> Bool {
-        guard !isHidden, let tower = selectedTower else { return false }
+        guard !isHidden, let tower = selectedTower else { 
+            return false 
+        }
         
-        // Convert scene location to local coordinates (relative to this node)
-        // Since panelBackground is at (0,0) relative to self, we just need to offset by our position
+        // Convert scene location to local coordinates
         let localPoint = CGPoint(x: location.x - position.x, y: location.y - position.y)
         
-        // Check if touch is within panel first
-        let panelBounds = CGRect(
-            x: -panelWidth / 2,
-            y: -panelHeight / 2,
-            width: panelWidth,
-            height: panelHeight
-        )
-        
-        guard panelBounds.contains(localPoint) else { return false }
+        print("TowerInfo touch - scene: \(location), local: \(localPoint), pos: \(position)")
         
         // Check close button (top-right of panel)
         let closeButtonBounds = CGRect(
-            x: panelWidth / 2 - 32,
-            y: panelHeight / 2 - 32,
-            width: 24,
-            height: 24
+            x: panelWidth / 2 - 35,
+            y: panelHeight / 2 - 35,
+            width: 30,
+            height: 30
         )
         if closeButtonBounds.contains(localPoint) {
+            print("Close button tapped!")
             animateButton(closeButton)
             hide()
             return true
@@ -241,12 +223,13 @@ final class TowerInfoNode: SKNode {
         
         // Check upgrade button (bottom-left)
         let upgradeBounds = CGRect(
-            x: -85,
-            y: -panelHeight / 2 + 32,
-            width: 80,
-            height: 35
+            x: -90,
+            y: -panelHeight / 2 + 30,
+            width: 90,
+            height: 40
         )
         if upgradeBounds.contains(localPoint) {
+            print("Upgrade button tapped!")
             if tower.towerType == .wall {
                 delegate?.towerInfoDidTapConvert(tower)
                 animateButton(upgradeButton)
@@ -257,25 +240,37 @@ final class TowerInfoNode: SKNode {
                 updateContent()
                 return true
             }
-            return true  // Consume touch even if can't upgrade
+            return true
         }
         
         // Check sell button (bottom-right)
         let sellBounds = CGRect(
-            x: 5,
-            y: -panelHeight / 2 + 32,
-            width: 80,
-            height: 35
+            x: 0,
+            y: -panelHeight / 2 + 30,
+            width: 90,
+            height: 40
         )
         if sellBounds.contains(localPoint) {
+            print("Sell button tapped!")
             delegate?.towerInfoDidTapSell(tower)
             animateButton(sellButton)
             hide()
             return true
         }
         
-        // Touch is within panel, consume it
-        return true
+        // Check if touch is within panel (consume it)
+        let panelBounds = CGRect(
+            x: -panelWidth / 2,
+            y: -panelHeight / 2,
+            width: panelWidth,
+            height: panelHeight
+        )
+        if panelBounds.contains(localPoint) {
+            print("Panel touched but no button hit")
+            return true
+        }
+        
+        return false
     }
     
     private func animateButton(_ button: SKShapeNode) {

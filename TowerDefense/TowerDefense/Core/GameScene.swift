@@ -394,13 +394,14 @@ final class GameScene: SKScene {
             return
         }
         
-        // Check HUD
-        if hudNode.handleTouch(at: location) {
+        // Check tower info panel FIRST (highest priority popup)
+        if !towerInfoNode.isHidden && towerInfoNode.containsTouchPoint(location) {
+            _ = towerInfoNode.handleTouch(at: location)
             return
         }
         
-        // Check tower info panel
-        if towerInfoNode.handleTouch(at: location) {
+        // Check HUD
+        if hudNode.handleTouch(at: location) {
             return
         }
         
