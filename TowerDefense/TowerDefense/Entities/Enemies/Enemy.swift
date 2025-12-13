@@ -309,16 +309,26 @@ class Enemy: SKNode {
         var separation = CGVector.zero
         let separationRadius: CGFloat = enemySize * 1.5
         
+        // Optimization: only check nearby enemies (limit to 10 closest checks)
+        var checksPerformed = 0
+        let maxChecks = 10
+        
         for other in enemies {
+            guard checksPerformed < maxChecks else { break }
             guard other.id != self.id && other.isAlive else { continue }
             
-            let distance = position.distance(to: other.position)
-            if distance < separationRadius && distance > 0 {
+            // Quick distance check first (avoid sqrt)
+            let dx = position.x - other.position.x
+            let dy = position.y - other.position.y
+            let distSquared = dx * dx + dy * dy
+            let radiusSquared = separationRadius * separationRadius
+            
+            if distSquared < radiusSquared && distSquared > 0 {
+                checksPerformed += 1
+                let distance = sqrt(distSquared)
                 let strength = (separationRadius - distance) / separationRadius
-                let dx = (position.x - other.position.x) / distance
-                let dy = (position.y - other.position.y) / distance
-                separation.dx += dx * strength
-                separation.dy += dy * strength
+                separation.dx += (dx / distance) * strength
+                separation.dy += (dy / distance) * strength
             }
         }
         

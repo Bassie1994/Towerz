@@ -712,6 +712,10 @@ extension GameScene: HUDNodeDelegate {
     }
     
     func hudDidTapStartWave() {
+        // Ensure gameTime has started (at least a small value)
+        if gameTime < 0.1 {
+            gameTime = 0.1
+        }
         gameManager.startWave(currentTime: gameTime)
     }
     
