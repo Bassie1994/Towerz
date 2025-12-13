@@ -182,7 +182,7 @@ final class FlyingEnemy: Enemy {
         ).normalized()
         
         // Move with slow effect
-        let actualSpeed = speed * slowMultiplier
+        let actualSpeed = moveSpeed * slowMultiplier
         let movement = CGVector(
             dx: currentDirection.dx * actualSpeed * CGFloat(deltaTime),
             dy: currentDirection.dy * actualSpeed * CGFloat(deltaTime)

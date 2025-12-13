@@ -186,13 +186,83 @@ class Enemy: SKNode {
     
     /// Override in subclasses for different movement behavior
     func calculateMovementDirection() -> CGVector {
-        // Default: use flow field
+        // Try direct line-of-sight to exit first (straighter paths)
+        if let directDirection = getDirectPathToExit() {
+            return directDirection
+        }
+        
+        // Fall back to flow field for navigation around obstacles
         if let flowField = delegate?.getFlowField(),
            let direction = flowField.getInterpolatedDirection(at: position) {
             return direction
         }
-        // Fallback: move right
-        return CGVector(dx: 1, dy: 0)
+        
+        // Fallback: move toward bottom-right
+        return CGVector(dx: 1, dy: -1).normalized()
+    }
+    
+    /// Check if there's a clear line to the exit - returns direction if clear
+    private func getDirectPathToExit() -> CGVector? {
+        // Target is bottom-right corner
+        let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - GameConstants.cellSize
+        let exitY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
+        let targetPoint = CGPoint(x: exitX, y: exitY)
+        
+        // Check if we have line of sight (no blocked cells in the way)
+        if hasLineOfSight(to: targetPoint) {
+            let dx = targetPoint.x - position.x
+            let dy = targetPoint.y - position.y
+            return CGVector(dx: dx, dy: dy).normalized()
+        }
+        
+        return nil
+    }
+    
+    /// Check if there's a clear path (no towers) between current position and target
+    private func hasLineOfSight(to target: CGPoint) -> Bool {
+        let startGrid = position.toGridPosition()
+        let endGrid = target.toGridPosition()
+        
+        // Use Bresenham-style line check
+        let dx = abs(endGrid.x - startGrid.x)
+        let dy = abs(endGrid.y - startGrid.y)
+        let sx = startGrid.x < endGrid.x ? 1 : -1
+        let sy = startGrid.y < endGrid.y ? 1 : -1
+        
+        var x = startGrid.x
+        var y = startGrid.y
+        var err = dx - dy
+        
+        // Check each cell along the line
+        while true {
+            // Skip spawn zone check
+            let gridPos = GridPosition(x: x, y: y)
+            if !gridPos.isInSpawnZone() && !gridPos.isInExitZone() {
+                // Check if this cell is blocked by a tower
+                if let flowField = delegate?.getFlowField() {
+                    if flowField.getDirection(at: gridPos) == nil {
+                        return false  // Blocked cell
+                    }
+                }
+            }
+            
+            // Reached end
+            if x == endGrid.x && y == endGrid.y {
+                break
+            }
+            
+            let e2 = 2 * err
+            if e2 > -dy {
+                err -= dy
+                x += sx
+            }
+            if e2 < dx {
+                err += dx
+                y += sy
+            }
+        }
+        
+        return true
     }
     
     private func calculateSeparation(from enemies: [Enemy]) -> CGVector {

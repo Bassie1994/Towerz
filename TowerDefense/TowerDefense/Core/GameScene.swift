@@ -31,6 +31,7 @@ final class GameScene: SKScene {
     private var selectedTowerType: TowerType?
     private var lastUpdateTime: TimeInterval = 0
     private var gameSpeed: CGFloat = 1.0
+    private var gameTime: TimeInterval = 0  // Accumulated game time (respects speed)
     
     // Grid visualization
     private var gridNode: SKNode?
@@ -295,26 +296,32 @@ final class GameScene: SKScene {
     // MARK: - Update Loop
     
     override func update(_ currentTime: TimeInterval) {
-        // Calculate delta time
-        let deltaTime = lastUpdateTime > 0 ? (currentTime - lastUpdateTime) * Double(gameSpeed) : 0
+        // Calculate real delta time first (not scaled)
+        let realDeltaTime = lastUpdateTime > 0 ? (currentTime - lastUpdateTime) : 0
         lastUpdateTime = currentTime
+        
+        // Scale delta by game speed
+        let scaledDeltaTime = realDeltaTime * Double(gameSpeed)
+        
+        // Accumulate game time (respects speed changes properly)
+        gameTime += scaledDeltaTime
         
         guard gameManager.isGameActive() else { return }
         
-        // Update wave manager
-        gameManager.waveManager.update(currentTime: currentTime * Double(gameSpeed))
+        // Update wave manager with accumulated game time
+        gameManager.waveManager.update(currentTime: gameTime)
         
-        // Update enemies
+        // Update enemies with scaled delta
         for enemy in enemies where enemy.isAlive {
-            enemy.update(deltaTime: deltaTime, currentTime: currentTime, enemies: enemies)
+            enemy.update(deltaTime: scaledDeltaTime, currentTime: gameTime, enemies: enemies)
         }
         
         // Clean up dead enemies
         enemies.removeAll { !$0.isAlive && $0.parent == nil }
         
-        // Update towers
+        // Update towers with game time
         for tower in towers {
-            tower.update(currentTime: currentTime * Double(gameSpeed))
+            tower.update(currentTime: gameTime)
         }
         
         // Update UI
@@ -663,6 +670,11 @@ final class GameScene: SKScene {
                 gameManager.pathfindingGrid.unblockCell(GridPosition(x: x, y: y))
             }
         }
+        
+        // Reset timing
+        gameTime = 0
+        lastUpdateTime = 0
+        gameSpeed = 1.0
         
         // Reset managers
         gameManager = GameManager()
