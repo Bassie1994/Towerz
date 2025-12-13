@@ -846,7 +846,6 @@ extension GameScene: HUDNodeDelegate {
             towers.removeAll()
             
             // Reset managers
-            MineTower.currentMineCount = 0
             BoozeManager.shared.reset()
             LavaManager.shared.reset()
             
