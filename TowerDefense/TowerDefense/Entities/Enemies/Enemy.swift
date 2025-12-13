@@ -373,11 +373,12 @@ class Enemy: SKNode {
     
     private func calculateSeparation(from enemies: [Enemy]) -> CGVector {
         var separation = CGVector.zero
-        let separationRadius: CGFloat = enemySize * 1.5
+        let separationRadius: CGFloat = enemySize * 1.2  // Reduced radius
+        let radiusSquared = separationRadius * separationRadius
         
-        // Optimization: only check nearby enemies (limit to 10 closest checks)
+        // Optimization: limit checks to 5 for better performance
         var checksPerformed = 0
-        let maxChecks = 10
+        let maxChecks = 5
         
         for other in enemies {
             guard checksPerformed < maxChecks else { break }
@@ -387,18 +388,22 @@ class Enemy: SKNode {
             let dx = position.x - other.position.x
             let dy = position.y - other.position.y
             let distSquared = dx * dx + dy * dy
-            let radiusSquared = separationRadius * separationRadius
             
-            if distSquared < radiusSquared && distSquared > 0 {
+            if distSquared < radiusSquared && distSquared > 1 {
                 checksPerformed += 1
-                let distance = sqrt(distSquared)
-                let strength = (separationRadius - distance) / separationRadius
-                separation.dx += (dx / distance) * strength
-                separation.dy += (dy / distance) * strength
+                // Approximate separation without sqrt for performance
+                let invDist = 1.0 / (distSquared + 10)  // +10 to avoid division issues
+                separation.dx += dx * invDist * 50
+                separation.dy += dy * invDist * 50
             }
         }
         
-        return separation.normalized()
+        // Simple normalization
+        let len = sqrt(separation.dx * separation.dx + separation.dy * separation.dy)
+        if len > 0.1 {
+            return CGVector(dx: separation.dx / len, dy: separation.dy / len)
+        }
+        return .zero
     }
     
     private func hasReachedExit() -> Bool {

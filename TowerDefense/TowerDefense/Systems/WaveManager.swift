@@ -95,9 +95,9 @@ final class WaveManager {
         // Safety: don't spawn if time is invalid
         guard timeSinceWaveStart >= 0 && timeSinceWaveStart < 10000 else { return }
         
-        // Spawn enemies from queue - LIMIT to max 5 per frame to prevent mass spawning
+        // Spawn enemies from queue - LIMIT to max 3 per frame for performance
         var spawnedThisFrame = 0
-        let maxSpawnsPerFrame = 5
+        let maxSpawnsPerFrame = 3
         
         while let next = spawnQueue.first, 
               next.delay <= timeSinceWaveStart,
@@ -224,7 +224,8 @@ struct WaveConfig: Codable {
             baseCount = wave30Base * pow(1.10, Double(number - 30))
         }
         
-        let totalEnemies = min(Int(baseCount), 200)
+        // Cap max enemies per wave for performance (reduced from 200)
+        let totalEnemies = min(Int(baseCount), 100)
         let enemyLevel = max(1, (number - 1) / 5 + 1)
         
         return (totalEnemies, enemyLevel)

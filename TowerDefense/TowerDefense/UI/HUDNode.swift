@@ -369,17 +369,41 @@ final class HUDNode: SKNode {
     
     private func updateAutoStartButton() {
         if isAutoStartEnabled {
-            startWaveLabel.text = "AUTO ▶"
+            startWaveLabel.text = "⚡ AUTO"
             startWaveButton.fillColor = SKColor(red: 0.6, green: 0.4, blue: 0.8, alpha: 1.0)  // Purple for auto
+            
+            // Add pulsing animation to show autoplay is active
+            startWaveButton.removeAction(forKey: "autoPulse")
+            let pulse = SKAction.sequence([
+                SKAction.group([
+                    SKAction.scale(to: 1.1, duration: 0.5),
+                    SKAction.run { self.startWaveButton.strokeColor = .yellow }
+                ]),
+                SKAction.group([
+                    SKAction.scale(to: 1.0, duration: 0.5),
+                    SKAction.run { self.startWaveButton.strokeColor = .white }
+                ])
+            ])
+            startWaveButton.run(SKAction.repeatForever(pulse), withKey: "autoPulse")
         } else if isWaveActive {
             startWaveLabel.text = "Auto?"
             startWaveButton.fillColor = SKColor(red: 0.4, green: 0.4, blue: 0.5, alpha: 1.0)  // Gray during wave
+            startWaveButton.removeAction(forKey: "autoPulse")
+            startWaveButton.setScale(1.0)
+            startWaveButton.strokeColor = .white
         }
     }
     
     func toggleAutoStart() {
         isAutoStartEnabled = !isAutoStartEnabled
         updateAutoStartButton()
+    }
+    
+    /// Stop autoplay animation when disabled
+    func stopAutoPlayAnimation() {
+        startWaveButton.removeAction(forKey: "autoPulse")
+        startWaveButton.setScale(1.0)
+        startWaveButton.strokeColor = .white
     }
     
     func setStartWaveEnabled(_ enabled: Bool) {

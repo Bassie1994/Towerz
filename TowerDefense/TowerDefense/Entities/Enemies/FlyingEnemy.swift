@@ -48,67 +48,19 @@ final class FlyingEnemy: Enemy {
     }
     
     private func setupAppearance() {
-        // Flying units are visually elevated
+        // Simplified flying visual - no complex animations for performance
         bodyNode.position.y = 8
         healthBarBackground.position.y += 8
         healthBarFill.position.y += 8
         slowIndicator.position.y = 8
         
-        // Add ground shadow to show they're flying
-        shadowNode = SKShapeNode(ellipseOf: CGSize(width: enemySize * 0.7, height: enemySize * 0.25))
-        shadowNode?.fillColor = SKColor.black.withAlphaComponent(0.25)
+        // Simple static shadow
+        shadowNode = SKShapeNode(ellipseOf: CGSize(width: enemySize * 0.5, height: enemySize * 0.2))
+        shadowNode?.fillColor = SKColor.black.withAlphaComponent(0.2)
         shadowNode?.strokeColor = .clear
-        shadowNode?.position = CGPoint(x: 8, y: -12)  // Offset shadow
+        shadowNode?.position = CGPoint(x: 5, y: -15)
         shadowNode?.zPosition = -2
         addChild(shadowNode!)
-        
-        // Enhanced wing flapping
-        if let wing1 = bodyNode.children.first(where: { ($0 as? SKShapeNode)?.position.x == -12 }) as? SKShapeNode,
-           let wing2 = bodyNode.children.first(where: { ($0 as? SKShapeNode)?.position.x == 12 }) as? SKShapeNode {
-            
-            // Fast wing flapping
-            let flapUp = SKAction.group([
-                SKAction.rotate(toAngle: 0.6, duration: 0.08),
-                SKAction.moveBy(x: 0, y: 3, duration: 0.08)
-            ])
-            let flapDown = SKAction.group([
-                SKAction.rotate(toAngle: 0.1, duration: 0.08),
-                SKAction.moveBy(x: 0, y: -3, duration: 0.08)
-            ])
-            let flap = SKAction.sequence([flapUp, flapDown])
-            wing1.run(SKAction.repeatForever(flap), withKey: "flap")
-            
-            let flapUp2 = SKAction.group([
-                SKAction.rotate(toAngle: -0.6, duration: 0.08),
-                SKAction.moveBy(x: 0, y: 3, duration: 0.08)
-            ])
-            let flapDown2 = SKAction.group([
-                SKAction.rotate(toAngle: -0.1, duration: 0.08),
-                SKAction.moveBy(x: 0, y: -3, duration: 0.08)
-            ])
-            let flap2 = SKAction.sequence([flapUp2, flapDown2])
-            wing2.run(SKAction.repeatForever(flap2), withKey: "flap")
-        }
-        
-        // Hovering body animation
-        let bodyHover = SKAction.sequence([
-            SKAction.moveBy(x: 0, y: 4, duration: 0.4),
-            SKAction.moveBy(x: 0, y: -4, duration: 0.4)
-        ])
-        bodyNode.run(SKAction.repeatForever(bodyHover), withKey: "hover")
-        
-        // Shadow movement (opposite to body for 3D effect)
-        let shadowMove = SKAction.sequence([
-            SKAction.group([
-                SKAction.moveBy(x: 2, y: -2, duration: 0.4),
-                SKAction.scale(to: 0.85, duration: 0.4)
-            ]),
-            SKAction.group([
-                SKAction.moveBy(x: -2, y: 2, duration: 0.4),
-                SKAction.scale(to: 1.0, duration: 0.4)
-            ])
-        ])
-        shadowNode?.run(SKAction.repeatForever(shadowMove))
     }
     
     override func calculateMovementDirection() -> CGVector {

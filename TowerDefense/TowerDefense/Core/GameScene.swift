@@ -614,7 +614,7 @@ final class GameScene: SKScene {
     
     func spawnEnemy(type: EnemyType, level: Int) {
         // Safety: limit max enemies on screen to prevent memory issues
-        guard enemies.count < 500 else { return }
+        guard enemies.count < 150 else { return }
         
         let enemy: Enemy
         
