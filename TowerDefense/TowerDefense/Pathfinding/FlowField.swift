@@ -74,7 +74,7 @@ final class FlowField {
                 
                 // Skip exit positions (no direction needed)
                 if pos.isInExitZone() {
-                    directionField[x][y] = CGVector(dx: 1, dy: 0) // Move right to exit
+                    directionField[x][y] = CGVector(dx: 1, dy: -1).normalized() // Move to bottom-right
                     continue
                 }
                 

@@ -216,8 +216,12 @@ class Enemy: SKNode {
     }
     
     private func hasReachedExit() -> Bool {
+        // Exit is in bottom-right corner
         let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
-        return position.x >= exitX
+        let exitY = GameConstants.playFieldOrigin.y + CGFloat(4) * GameConstants.cellSize  // Top of exit zone (4 rows)
+        
+        // Must be in both the right columns AND bottom rows
+        return position.x >= exitX && position.y < exitY
     }
     
     // MARK: - Slow Effect

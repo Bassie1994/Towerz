@@ -122,16 +122,37 @@ final class GameScene: SKScene {
             label: "SPAWN"
         )
         
-        // Draw exit zone with prominent BASE indicator
-        drawZone(
-            startX: GameConstants.gridWidth - GameConstants.exitZoneWidth,
-            endX: GameConstants.gridWidth,
-            color: SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.3),
-            label: "EXIT"
-        )
+        // Draw exit zone in bottom-right corner only
+        drawExitZone()
         
         // Add prominent BASE castle indicator in bottom-right
         drawBaseIndicator()
+    }
+    
+    private func drawExitZone() {
+        // Exit zone is bottom-right: last 2 columns, bottom 4 rows
+        let width = CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
+        let height = CGFloat(4) * GameConstants.cellSize  // 4 rows
+        let color = SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.4)
+        
+        let zone = SKShapeNode(rectOf: CGSize(width: width, height: height))
+        zone.fillColor = color
+        zone.strokeColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        zone.lineWidth = 3
+        zone.position = CGPoint(
+            x: GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - width / 2,
+            y: GameConstants.playFieldOrigin.y + height / 2
+        )
+        zone.zPosition = GameConstants.ZPosition.grid.rawValue - 1
+        gameLayer.addChild(zone)
+        
+        // Label
+        let labelNode = SKLabelNode(fontNamed: "Helvetica-Bold")
+        labelNode.fontSize = 16
+        labelNode.fontColor = .white
+        labelNode.text = "EXIT"
+        labelNode.position = CGPoint(x: 0, y: 0)
+        zone.addChild(labelNode)
     }
     
     private func drawBaseIndicator() {

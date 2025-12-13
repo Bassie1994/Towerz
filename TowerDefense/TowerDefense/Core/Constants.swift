@@ -20,7 +20,7 @@ enum GameConstants {
     
     // Starting resources
     static let startingLives = 20
-    static let startingMoney = 200
+    static let startingMoney = 500
     
     // Z-positions for layering
     enum ZPosition: CGFloat {

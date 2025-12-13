@@ -113,14 +113,29 @@ final class FlyingEnemy: Enemy {
     
     override func calculateMovementDirection() -> CGVector {
         // Flying units IGNORE pathfinding completely
-        // They fly in a direct line toward the exit with slight wobble
+        // They fly in a direct line toward the exit (bottom-right) with slight wobble
+        
+        // Target is bottom-right exit zone
+        let targetX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - GameConstants.cellSize
+        let targetY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2  // Center of exit zone
+        
+        let dx = targetX - position.x
+        let dy = targetY - position.y
+        let distance = sqrt(dx * dx + dy * dy)
         
         // Update wobble phase
         wobblePhase += 0.08
-        let wobble = sin(wobblePhase) * 0.15
+        let wobble = sin(wobblePhase) * 0.1
         
-        // Direct path to exit (right side)
-        return CGVector(dx: 1, dy: wobble).normalized()
+        // Normalize direction + add wobble perpendicular to movement
+        if distance > 0 {
+            let normDx = dx / distance
+            let normDy = dy / distance
+            // Add wobble perpendicular to direction
+            return CGVector(dx: normDx - wobble * normDy, dy: normDy + wobble * normDx).normalized()
+        }
+        
+        return CGVector(dx: 1, dy: -0.5).normalized()  // Fallback: down-right
     }
     
     override func update(deltaTime: TimeInterval, currentTime: TimeInterval, enemies: [Enemy]) {
@@ -183,9 +198,10 @@ final class FlyingEnemy: Enemy {
         let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - enemySize
         position.y = max(minY, min(maxY, position.y))
         
-        // Check exit
+        // Check exit (bottom-right corner)
         let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
-        if position.x >= exitX {
+        let exitY = GameConstants.playFieldOrigin.y + CGFloat(4) * GameConstants.cellSize
+        if position.x >= exitX && position.y < exitY {
             isAlive = false
             // AudioManager.shared.playSound(.enemyReachExit)
             let exitAnimation = SKAction.sequence([
