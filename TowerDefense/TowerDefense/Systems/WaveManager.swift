@@ -240,9 +240,6 @@ struct WaveConfig: Codable {
         // Base enemy count that scales
         let (totalEnemies, enemyLevel) = getWaveStats(number: number)
         
-        // Enemy level scales with wave
-        let enemyLevel = max(1, (number - 1) / 5 + 1)  // Level up every 5 waves
-        
         // Spawn interval gets faster as waves progress (but not too fast)
         let baseInterval = max(0.3, 1.0 - Double(number) * 0.015)
         
