@@ -864,7 +864,7 @@ extension GameScene: HUDNodeDelegate {
                     let gridPos = GridPosition(x: gridX, y: gridY)
                     
                     // Block the grid cell
-                    gameManager.pathfindingGrid.blockCell(at: gridPos)
+                    gameManager.pathfindingGrid.blockCell(gridPos)
                     
                     // Create tower (using createTower would add it to array twice)
                     let tower: Tower
@@ -1012,7 +1012,7 @@ extension GameScene: TowerInfoNodeDelegate {
         panel.addChild(title)
         
         // Tower buttons - excluding wall
-        let convertibleTypes: [TowerType] = [.machineGun, .cannon, .slow, .buff, .shotgun, .splash, .laser, .antiAir]
+        let convertibleTypes: [TowerType] = [.machineGun, .cannon, .slow, .buff, .mine, .splash, .laser, .antiAir]
         let buttonWidth: CGFloat = 170
         let buttonHeight: CGFloat = 45
         let startY: CGFloat = panelHeight / 2 - 80
