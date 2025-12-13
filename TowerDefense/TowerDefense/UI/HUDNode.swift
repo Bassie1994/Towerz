@@ -205,7 +205,8 @@ final class HUDNode: SKNode {
         heart.verticalAlignmentMode = .center
         livesIcon.addChild(heart)
         
-        // Control panel removed - using top HUD buttons instead
+        // Control panel (bottom-left)
+        setupControlPanel()
         
         // Trash zone (top-right, next to HUD)
         trashZone.position = CGPoint(x: 1050, y: 725)
@@ -225,6 +226,69 @@ final class HUDNode: SKNode {
         updateLives(GameConstants.startingLives)
         updateMoney(GameConstants.startingMoney)
         updateWave(0, total: 10, active: false)
+    }
+    
+    private func setupControlPanel() {
+        // Floating control panel in bottom-left corner
+        let panelWidth: CGFloat = 180
+        let panelHeight: CGFloat = 50
+        
+        let controlPanel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 8)
+        controlPanel.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.9)
+        controlPanel.strokeColor = SKColor(red: 0.3, green: 0.5, blue: 0.3, alpha: 1.0)
+        controlPanel.lineWidth = 2
+        controlPanel.position = CGPoint(x: 100, y: 40)
+        controlPanel.name = "controlPanel"
+        addChild(controlPanel)
+        
+        // Start button
+        let startBtn = SKShapeNode(rectOf: CGSize(width: 50, height: 35), cornerRadius: 5)
+        startBtn.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
+        startBtn.strokeColor = .white
+        startBtn.lineWidth = 1
+        startBtn.position = CGPoint(x: -55, y: 0)
+        startBtn.name = "ctrlStartBtn"
+        controlPanel.addChild(startBtn)
+        
+        let startLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
+        startLbl.fontSize = 10
+        startLbl.fontColor = .white
+        startLbl.text = "▶ START"
+        startLbl.verticalAlignmentMode = .center
+        startBtn.addChild(startLbl)
+        
+        // Pause button
+        let pauseBtn = SKShapeNode(rectOf: CGSize(width: 40, height: 35), cornerRadius: 5)
+        pauseBtn.fillColor = SKColor(red: 0.5, green: 0.5, blue: 0.2, alpha: 1.0)
+        pauseBtn.strokeColor = .white
+        pauseBtn.lineWidth = 1
+        pauseBtn.position = CGPoint(x: 5, y: 0)
+        pauseBtn.name = "ctrlPauseBtn"
+        controlPanel.addChild(pauseBtn)
+        
+        let pauseLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
+        pauseLbl.fontSize = 14
+        pauseLbl.fontColor = .white
+        pauseLbl.text = "⏸"
+        pauseLbl.verticalAlignmentMode = .center
+        pauseBtn.addChild(pauseLbl)
+        
+        // Speed button
+        let speedBtn = SKShapeNode(rectOf: CGSize(width: 40, height: 35), cornerRadius: 5)
+        speedBtn.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 1.0)
+        speedBtn.strokeColor = .white
+        speedBtn.lineWidth = 1
+        speedBtn.position = CGPoint(x: 55, y: 0)
+        speedBtn.name = "ctrlSpeedBtn"
+        controlPanel.addChild(speedBtn)
+        
+        let speedLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
+        speedLbl.fontSize = 12
+        speedLbl.fontColor = .white
+        speedLbl.text = "1x"
+        speedLbl.verticalAlignmentMode = .center
+        speedLbl.name = "ctrlSpeedLbl"
+        speedBtn.addChild(speedLbl)
     }
     
     // MARK: - Updates
@@ -280,27 +344,41 @@ final class HUDNode: SKNode {
     // MARK: - Touch Handling
     
     func handleTouch(at location: CGPoint) -> Bool {
-        // Check pause button
-        if location.distance(to: pauseButton.position) < 30 {
-            delegate?.hudDidTapPause()
-            animateButtonPress(pauseButton)
-            return true
-        }
-        
-        // Check start wave button
-        if !startWaveButton.isHidden {
-            if location.distance(to: startWaveButton.position) < 70 {
-                delegate?.hudDidTapStartWave()
-                animateButtonPress(startWaveButton)
-                return true
+        // Check control panel buttons (bottom-left)
+        if let controlPanel = childNode(withName: "controlPanel") {
+            let localPos = convert(location, to: controlPanel)
+            
+            // Start button in control panel
+            if let startBtn = controlPanel.childNode(withName: "ctrlStartBtn") as? SKShapeNode {
+                if startBtn.contains(localPos) {
+                    delegate?.hudDidTapStartWave()
+                    animateButtonPress(startBtn)
+                    return true
+                }
             }
-        }
-        
-        // Check speed button
-        if location.distance(to: speedButton.position) < 35 {
-            toggleFastForward()
-            delegate?.hudDidTapFastForward()
-            return true
+            
+            // Pause button in control panel
+            if let pauseBtn = controlPanel.childNode(withName: "ctrlPauseBtn") as? SKShapeNode {
+                if pauseBtn.contains(localPos) {
+                    delegate?.hudDidTapPause()
+                    animateButtonPress(pauseBtn)
+                    return true
+                }
+            }
+            
+            // Speed button in control panel
+            if let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode {
+                if speedBtn.contains(localPos) {
+                    toggleFastForward()
+                    // Update control panel speed label
+                    if let lbl = speedBtn.childNode(withName: "ctrlSpeedLbl") as? SKLabelNode {
+                        lbl.text = isFastForward ? "2x" : "1x"
+                    }
+                    delegate?.hudDidTapFastForward()
+                    animateButtonPress(speedBtn)
+                    return true
+                }
+            }
         }
         
         // Check trash zone
@@ -318,7 +396,14 @@ final class HUDNode: SKNode {
         speedButton.fillColor = isFastForward ?
             SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0) :
             SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
-        animateButtonPress(speedButton)
+        
+        // Sync control panel speed button color
+        if let controlPanel = childNode(withName: "controlPanel"),
+           let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode {
+            speedBtn.fillColor = isFastForward ?
+                SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0) :
+                SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 1.0)
+        }
     }
     
     private func animateButtonPress(_ button: SKShapeNode) {
