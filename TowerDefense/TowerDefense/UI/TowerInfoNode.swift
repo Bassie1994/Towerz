@@ -203,12 +203,10 @@ final class TowerInfoNode: SKNode {
             return false 
         }
         
-        // Convert scene location to local coordinates (panelBackground coordinate space)
-        // panelBackground is at (0,0) relative to TowerInfoNode
+        // Convert scene location to local coordinates
         let localPoint = CGPoint(x: location.x - position.x, y: location.y - position.y)
         
         print("TowerInfo handleTouch - scene: \(location), local: \(localPoint), pos: \(position)")
-        print("Button positions - upgrade: \(upgradeButton.position), sell: \(sellButton.position), close: \(closeButton.position)")
         
         // Flash the panel to show touch was received (visual debug)
         let flash = SKAction.sequence([
@@ -217,22 +215,37 @@ final class TowerInfoNode: SKNode {
         ])
         panelBackground.run(flash)
         
-        // Use SpriteKit's built-in contains method for accurate hit testing
-        // The localPoint is in panelBackground's coordinate space
+        // Button dimensions (must match init)
+        let upgradeSize = CGSize(width: 80, height: 35)
+        let sellSize = CGSize(width: 80, height: 35)
+        let closeRadius: CGFloat = 12
         
-        // Check close button using SpriteKit's frame
-        let closeFrame = closeButton.frame.insetBy(dx: -10, dy: -10)  // Add padding
-        if closeFrame.contains(localPoint) {
-            print("Close button tapped via frame!")
+        // Button positions (must match init) - with panelHeight = 280, panelWidth = 200
+        let upgradePos = CGPoint(x: -45, y: -panelHeight / 2 + 50)  // (-45, -90)
+        let sellPos = CGPoint(x: 45, y: -panelHeight / 2 + 50)      // (45, -90)
+        let closePos = CGPoint(x: panelWidth / 2 - 20, y: panelHeight / 2 - 20)  // (80, 120)
+        
+        // Add touch padding
+        let padding: CGFloat = 15
+        
+        // Check close button (circular, use distance check)
+        let distToClose = sqrt(pow(localPoint.x - closePos.x, 2) + pow(localPoint.y - closePos.y, 2))
+        if distToClose <= closeRadius + padding {
+            print("Close button tapped! dist: \(distToClose)")
             animateButton(closeButton)
             hide()
             return true
         }
         
-        // Check upgrade button using SpriteKit's frame
-        let upgradeFrame = upgradeButton.frame.insetBy(dx: -15, dy: -15)  // Add padding
-        if upgradeFrame.contains(localPoint) {
-            print("Upgrade button tapped via frame! localPoint: \(localPoint), frame: \(upgradeFrame)")
+        // Check upgrade button (rectangular)
+        let upgradeBounds = CGRect(
+            x: upgradePos.x - upgradeSize.width / 2 - padding,
+            y: upgradePos.y - upgradeSize.height / 2 - padding,
+            width: upgradeSize.width + padding * 2,
+            height: upgradeSize.height + padding * 2
+        )
+        if upgradeBounds.contains(localPoint) {
+            print("Upgrade button tapped! localPoint: \(localPoint), bounds: \(upgradeBounds)")
             if tower.towerType == .wall {
                 delegate?.towerInfoDidTapConvert(tower)
                 animateButton(upgradeButton)
@@ -246,10 +259,15 @@ final class TowerInfoNode: SKNode {
             return true
         }
         
-        // Check sell button using SpriteKit's frame
-        let sellFrame = sellButton.frame.insetBy(dx: -15, dy: -15)  // Add padding
-        if sellFrame.contains(localPoint) {
-            print("Sell button tapped via frame! localPoint: \(localPoint), frame: \(sellFrame)")
+        // Check sell button (rectangular)
+        let sellBounds = CGRect(
+            x: sellPos.x - sellSize.width / 2 - padding,
+            y: sellPos.y - sellSize.height / 2 - padding,
+            width: sellSize.width + padding * 2,
+            height: sellSize.height + padding * 2
+        )
+        if sellBounds.contains(localPoint) {
+            print("Sell button tapped! localPoint: \(localPoint), bounds: \(sellBounds)")
             delegate?.towerInfoDidTapSell(tower)
             animateButton(sellButton)
             hide()
@@ -257,10 +275,15 @@ final class TowerInfoNode: SKNode {
         }
         
         // Check if touch is within panel (consume it)
-        let panelFrame = panelBackground.frame.insetBy(dx: -10, dy: -10)
-        if panelFrame.contains(localPoint) {
-            print("Panel touched but no button hit - local: \(localPoint), panelFrame: \(panelFrame)")
-            print("upgradeFrame: \(upgradeFrame), sellFrame: \(sellFrame)")
+        let panelBounds = CGRect(
+            x: -panelWidth / 2 - padding,
+            y: -panelHeight / 2 - padding,
+            width: panelWidth + padding * 2,
+            height: panelHeight + padding * 2
+        )
+        if panelBounds.contains(localPoint) {
+            print("Panel touched but no button hit - local: \(localPoint)")
+            print("upgradeBounds: \(upgradeBounds), sellBounds: \(sellBounds)")
             return true
         }
         
@@ -268,9 +291,18 @@ final class TowerInfoNode: SKNode {
     }
     
     private func animateButton(_ button: SKShapeNode) {
+        // More visible animation feedback
+        let originalColor = button.fillColor
         let press = SKAction.sequence([
-            SKAction.scale(to: 0.9, duration: 0.05),
-            SKAction.scale(to: 1.0, duration: 0.05)
+            SKAction.group([
+                SKAction.scale(to: 0.85, duration: 0.05),
+                SKAction.run { button.fillColor = .white }
+            ]),
+            SKAction.wait(forDuration: 0.1),
+            SKAction.group([
+                SKAction.scale(to: 1.0, duration: 0.1),
+                SKAction.run { button.fillColor = originalColor }
+            ])
         ])
         button.run(press)
     }
