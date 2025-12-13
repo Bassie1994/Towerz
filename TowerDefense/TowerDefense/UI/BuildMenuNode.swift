@@ -226,8 +226,8 @@ private class TowerButton: SKNode {
             symbol.text = "❄"
         case .buff:
             symbol.text = "★"
-        case .shotgun:
-            symbol.text = "⋮"
+        case .mine:
+            symbol.text = "💣"
         case .splash:
             symbol.text = "◎"
         case .laser:

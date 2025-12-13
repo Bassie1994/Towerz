@@ -22,6 +22,11 @@ final class HighscoreManager {
     
     private(set) var highscores: [HighscoreEntry] = []
     
+    /// Get all highscores
+    func getHighscores() -> [HighscoreEntry] {
+        return highscores
+    }
+    
     private init() {
         loadHighscores()
     }
