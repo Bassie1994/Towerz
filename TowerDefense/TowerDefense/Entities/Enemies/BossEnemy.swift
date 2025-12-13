@@ -104,15 +104,22 @@ final class BossEnemy: Enemy {
         // Add "BOSS" label above
         let bossLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         bossLabel.text = "BOSS"
-        bossLabel.fontSize = 12
+        bossLabel.fontSize = 14
         bossLabel.fontColor = .red
-        bossLabel.position = CGPoint(x: 0, y: enemySize + 25)
+        bossLabel.position = CGPoint(x: 0, y: enemySize + 30)
         bossLabel.zPosition = 3
         bodyNode.addChild(bossLabel)
         
-        // Scale up health bar
-        healthBarBackground.setScale(2.0)
-        healthBarBackground.position = CGPoint(x: 0, y: enemySize * 1.5 + 35)
+        // Create larger health bar for boss (much bigger and more visible)
+        let bossHealthBarY: CGFloat = enemySize * 2 + 50
+        healthBarBackground.setScale(3.0)
+        healthBarBackground.position = CGPoint(x: 0, y: bossHealthBarY)
+        healthBarBackground.zPosition = 10
+        
+        // Also scale and reposition the fill bar
+        healthBarFill.setScale(3.0)
+        healthBarFill.position = CGPoint(x: 0, y: bossHealthBarY)
+        healthBarFill.zPosition = 11
     }
     
     override func calculateMovementDirection() -> CGVector {

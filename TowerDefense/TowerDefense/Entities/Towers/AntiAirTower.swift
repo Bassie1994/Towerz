@@ -174,13 +174,18 @@ final class AntiAirTower: Tower {
         // Calculate damage with flying bonus
         let effectiveDamage = damage * damageMultiplier * flyingDamageMultiplier
         
-        // Create homing missile
+        // Create homing missile - add to scene's gameLayer for proper update
         let missile = AntiAirMissile(
             from: position,
             to: target,
             damage: effectiveDamage
         )
-        parent?.addChild(missile)
+        // Add to parent's parent (gameLayer) so it gets updated properly
+        if let towerLayer = parent, let gameLayer = towerLayer.parent {
+            gameLayer.addChild(missile)
+        } else {
+            parent?.addChild(missile)
+        }
         
         // Launch effect
         for i in 0..<2 {

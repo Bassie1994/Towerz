@@ -250,7 +250,13 @@ final class GameScene: SKScene {
         }
         
         // Update AA missiles (they need to track moving targets)
+        // Check both gameLayer and towerLayer for missiles
         for child in gameLayer.children {
+            if let missile = child as? AntiAirMissile {
+                missile.update(currentTime: gameTime)
+            }
+        }
+        for child in towerLayer.children {
             if let missile = child as? AntiAirMissile {
                 missile.update(currentTime: gameTime)
             }

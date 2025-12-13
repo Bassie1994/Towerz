@@ -77,12 +77,12 @@ final class CannonTower: Tower {
         delegate?.towerDidFire(self, at: target)
         // AudioManager.shared.playSound(.cannonFire)
         
-        // Create projectile
+        // Create projectile - fast cannon ball
         let projectile = Projectile(
             from: position,
             to: target,
             damage: damage * damageMultiplier,
-            speed: 400,
+            speed: 800,  // Fast cannon ball
             armorPenetration: armorPenetration + CGFloat(upgradeLevel) * 15
         )
         projectile.visualType = .cannonBall
