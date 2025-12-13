@@ -7,9 +7,9 @@ import SpriteKit
 final class LaserTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 1,       // Halved - base tower DPS
+        damage: 100,     // 100x damage (2x base * 50x extreme) - devastating beam
         range: 1300,     // Full field range (26 cells * 48 + buffer)
-        fireRate: 10.0   // Damage ticks per second
+        fireRate: 0.2    // /100 fire rate (2x base / 50x extreme) - very slow pulses
     )
     
     // Laser state

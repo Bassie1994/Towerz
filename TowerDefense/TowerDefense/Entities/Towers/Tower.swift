@@ -333,6 +333,9 @@ class Tower: SKNode {
         
         // Update range indicator to show buffed range
         updateRangeIndicatorForBuff()
+        
+        // Visual: Add golden glow to tower base
+        updateBuffVisual()
     }
     
     func removeBuff() {
@@ -343,6 +346,9 @@ class Tower: SKNode {
         
         // Reset range indicator to base range
         updateRangeIndicatorForBuff()
+        
+        // Reset visual
+        updateBuffVisual()
     }
     
     /// Update range indicator to reflect current buff state
@@ -353,11 +359,45 @@ class Tower: SKNode {
         
         // Change color when buffed
         if isBuffed {
-            rangeIndicator.strokeColor = SKColor.buffEffect.withAlphaComponent(0.5)
-            rangeIndicator.fillColor = SKColor.buffEffect.withAlphaComponent(0.15)
+            rangeIndicator.strokeColor = SKColor.buffEffect.withAlphaComponent(0.6)
+            rangeIndicator.fillColor = SKColor.buffEffect.withAlphaComponent(0.2)
         } else {
             rangeIndicator.strokeColor = SKColor.white.withAlphaComponent(0.3)
             rangeIndicator.fillColor = SKColor.white.withAlphaComponent(0.1)
+        }
+    }
+    
+    /// Update tower visual to show buff state
+    private func updateBuffVisual() {
+        if isBuffed {
+            // Golden/buff color glow on base
+            baseNode.strokeColor = SKColor.buffEffect
+            baseNode.lineWidth = 3
+            
+            // Add subtle glow effect
+            if baseNode.childNode(withName: "buffGlow") == nil {
+                let glow = SKShapeNode(rectOf: CGSize(width: towerSize + 6, height: towerSize + 6), cornerRadius: 6)
+                glow.fillColor = .clear
+                glow.strokeColor = SKColor.buffEffect.withAlphaComponent(0.6)
+                glow.lineWidth = 2
+                glow.name = "buffGlow"
+                glow.zPosition = -1
+                baseNode.addChild(glow)
+                
+                // Pulse animation
+                let pulse = SKAction.sequence([
+                    SKAction.fadeAlpha(to: 0.3, duration: 0.5),
+                    SKAction.fadeAlpha(to: 0.8, duration: 0.5)
+                ])
+                glow.run(SKAction.repeatForever(pulse), withKey: "buffPulse")
+            }
+        } else {
+            // Reset to normal
+            baseNode.strokeColor = isSelected ? .yellow : .white
+            baseNode.lineWidth = isSelected ? 3 : 2
+            
+            // Remove glow
+            baseNode.childNode(withName: "buffGlow")?.removeFromParent()
         }
     }
     

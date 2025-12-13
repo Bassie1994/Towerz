@@ -10,6 +10,8 @@ protocol HUDNodeDelegate: AnyObject {
     func hudDidTapBooze()
     func hudDidTapRestart()
     func hudDidTapLava(at position: CGPoint)
+    func hudDidTapSave()
+    func hudDidTapLoad()
 }
 
 /// Heads-Up Display showing game state
@@ -697,7 +699,41 @@ final class HUDNode: SKNode {
     // MARK: - Touch Handling
     
     func handleTouch(at location: CGPoint) -> Bool {
-        // Check pause menu first (highest priority)
+        // Check secret overlay (highest priority - dismiss on tap)
+        if let secretOverlay = childNode(withName: "secretOverlay") {
+            secretOverlay.removeAction(forKey: "secretDismiss")
+            secretOverlay.run(SKAction.sequence([
+                SKAction.fadeOut(withDuration: 0.2),
+                SKAction.removeFromParent()
+            ]))
+            return true
+        }
+        
+        // Check save/load confirmation overlays
+        if childNode(withName: "saveConfirmOverlay") != nil {
+            return handleSaveConfirmTouch(at: location)
+        }
+        if childNode(withName: "loadConfirmOverlay") != nil {
+            return handleLoadConfirmTouch(at: location)
+        }
+        
+        // Check highscores overlay
+        if let highscoresOverlay = childNode(withName: "highscoresOverlay") {
+            let localPos = convert(location, to: highscoresOverlay)
+            // Check back button
+            if let backBtn = highscoresOverlay.childNode(withName: "highscoresBack") as? SKShapeNode {
+                let bounds = CGRect(x: -75, y: -185 - 22, width: 150, height: 45)
+                if bounds.contains(localPos) {
+                    highscoresOverlay.removeFromParent()
+                    showPauseMenu()  // Go back to pause menu
+                    return true
+                }
+            }
+            // Consume touch on overlay
+            return true
+        }
+        
+        // Check pause menu
         if childNode(withName: "pauseMenuOverlay") != nil {
             return handlePauseMenuTouch(at: location)
         }
@@ -824,79 +860,161 @@ final class HUDNode: SKNode {
         // Remove any existing pause menu
         childNode(withName: "pauseMenuOverlay")?.removeFromParent()
         
-        // Create overlay
-        let overlay = SKShapeNode(rectOf: CGSize(width: 300, height: 250), cornerRadius: 10)
-        overlay.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.95)
-        overlay.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.6, alpha: 1.0)
-        overlay.lineWidth = 3
+        // Create larger overlay for all options
+        let menuWidth: CGFloat = 350
+        let menuHeight: CGFloat = 480
+        let overlay = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 15)
+        overlay.fillColor = SKColor(red: 0.08, green: 0.08, blue: 0.12, alpha: 0.98)
+        overlay.strokeColor = SKColor(red: 0.4, green: 0.5, blue: 0.7, alpha: 1.0)
+        overlay.lineWidth = 4
         overlay.position = CGPoint(x: 667, y: 375)
         overlay.zPosition = GameConstants.ZPosition.menu.rawValue
         overlay.name = "pauseMenuOverlay"
+        // Start at full scale to prevent size issues
+        overlay.setScale(1.0)
+        
+        var yPos: CGFloat = menuHeight / 2 - 50
         
         // Title
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
-        title.fontSize = 24
+        title.fontSize = 32
         title.fontColor = .white
         title.text = "⏸ PAUSED"
-        title.position = CGPoint(x: 0, y: 80)
+        title.position = CGPoint(x: 0, y: yPos)
         overlay.addChild(title)
+        yPos -= 60
+        
+        let buttonWidth: CGFloat = 260
+        let buttonHeight: CGFloat = 50
+        let buttonSpacing: CGFloat = 58
         
         // Autoplay toggle button
-        let autoplayBtn = SKShapeNode(rectOf: CGSize(width: 200, height: 45), cornerRadius: 8)
+        let autoplayBtn = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
         autoplayBtn.fillColor = isAutoStartEnabled ? 
             SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0) : 
-            SKColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0)
+            SKColor(red: 0.35, green: 0.35, blue: 0.4, alpha: 1.0)
         autoplayBtn.strokeColor = .white
         autoplayBtn.lineWidth = 2
-        autoplayBtn.position = CGPoint(x: 0, y: 25)
+        autoplayBtn.position = CGPoint(x: 0, y: yPos)
         autoplayBtn.name = "pauseMenuAutoplay"
         overlay.addChild(autoplayBtn)
         
         let autoplayLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        autoplayLabel.fontSize = 16
+        autoplayLabel.fontSize = 18
         autoplayLabel.fontColor = .white
         autoplayLabel.text = isAutoStartEnabled ? "⚡ Autoplay: ON" : "⚡ Autoplay: OFF"
         autoplayLabel.verticalAlignmentMode = .center
         autoplayLabel.name = "autoplayLabel"
         autoplayBtn.addChild(autoplayLabel)
+        yPos -= buttonSpacing
+        
+        // Highscores button
+        let highscoreBtn = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
+        highscoreBtn.fillColor = SKColor(red: 0.5, green: 0.4, blue: 0.2, alpha: 1.0)
+        highscoreBtn.strokeColor = .white
+        highscoreBtn.lineWidth = 2
+        highscoreBtn.position = CGPoint(x: 0, y: yPos)
+        highscoreBtn.name = "pauseMenuHighscores"
+        overlay.addChild(highscoreBtn)
+        
+        let highscoreLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        highscoreLabel.fontSize = 18
+        highscoreLabel.fontColor = .white
+        highscoreLabel.text = "🏆 Highscores"
+        highscoreLabel.verticalAlignmentMode = .center
+        highscoreBtn.addChild(highscoreLabel)
+        yPos -= buttonSpacing
+        
+        // Save button
+        let saveBtn = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
+        saveBtn.fillColor = SKColor(red: 0.3, green: 0.5, blue: 0.3, alpha: 1.0)
+        saveBtn.strokeColor = .white
+        saveBtn.lineWidth = 2
+        saveBtn.position = CGPoint(x: 0, y: yPos)
+        saveBtn.name = "pauseMenuSave"
+        overlay.addChild(saveBtn)
+        
+        let saveLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        saveLabel.fontSize = 18
+        saveLabel.fontColor = .white
+        saveLabel.text = "💾 Save Game"
+        saveLabel.verticalAlignmentMode = .center
+        saveBtn.addChild(saveLabel)
+        yPos -= buttonSpacing
+        
+        // Load button
+        let loadBtn = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
+        loadBtn.fillColor = SKColor(red: 0.3, green: 0.4, blue: 0.5, alpha: 1.0)
+        loadBtn.strokeColor = .white
+        loadBtn.lineWidth = 2
+        loadBtn.position = CGPoint(x: 0, y: yPos)
+        loadBtn.name = "pauseMenuLoad"
+        overlay.addChild(loadBtn)
+        
+        let loadLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        loadLabel.fontSize = 18
+        loadLabel.fontColor = .white
+        loadLabel.text = "📂 Load Game"
+        loadLabel.verticalAlignmentMode = .center
+        loadBtn.addChild(loadLabel)
+        yPos -= buttonSpacing
         
         // Restart button
-        let restartBtn = SKShapeNode(rectOf: CGSize(width: 200, height: 45), cornerRadius: 8)
-        restartBtn.fillColor = SKColor(red: 0.6, green: 0.3, blue: 0.2, alpha: 1.0)
+        let restartBtn = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
+        restartBtn.fillColor = SKColor(red: 0.6, green: 0.25, blue: 0.2, alpha: 1.0)
         restartBtn.strokeColor = .white
         restartBtn.lineWidth = 2
-        restartBtn.position = CGPoint(x: 0, y: -35)
+        restartBtn.position = CGPoint(x: 0, y: yPos)
         restartBtn.name = "pauseMenuRestart"
         overlay.addChild(restartBtn)
         
         let restartLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        restartLabel.fontSize = 16
+        restartLabel.fontSize = 18
         restartLabel.fontColor = .white
         restartLabel.text = "🔄 Restart Game"
         restartLabel.verticalAlignmentMode = .center
         restartBtn.addChild(restartLabel)
+        yPos -= buttonSpacing
         
         // Resume button
-        let resumeBtn = SKShapeNode(rectOf: CGSize(width: 200, height: 45), cornerRadius: 8)
+        let resumeBtn = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
         resumeBtn.fillColor = SKColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1.0)
         resumeBtn.strokeColor = .white
         resumeBtn.lineWidth = 2
-        resumeBtn.position = CGPoint(x: 0, y: -95)
+        resumeBtn.position = CGPoint(x: 0, y: yPos)
         resumeBtn.name = "pauseMenuResume"
         overlay.addChild(resumeBtn)
         
         let resumeLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        resumeLabel.fontSize = 16
+        resumeLabel.fontSize = 18
         resumeLabel.fontColor = .white
         resumeLabel.text = "▶ Resume"
         resumeLabel.verticalAlignmentMode = .center
         resumeBtn.addChild(resumeLabel)
+        yPos -= buttonSpacing + 5
+        
+        // Secret button (smaller, at bottom)
+        let secretBtn = SKShapeNode(rectOf: CGSize(width: 180, height: 35), cornerRadius: 8)
+        secretBtn.fillColor = SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 0.8)
+        secretBtn.strokeColor = SKColor(white: 0.4, alpha: 0.5)
+        secretBtn.lineWidth = 1
+        secretBtn.position = CGPoint(x: 0, y: yPos)
+        secretBtn.name = "pauseMenuSecret"
+        overlay.addChild(secretBtn)
+        
+        let secretLabel = SKLabelNode(fontNamed: "Helvetica")
+        secretLabel.fontSize = 12
+        secretLabel.fontColor = SKColor(white: 0.6, alpha: 1.0)
+        secretLabel.text = "niet hier op klikken!"
+        secretLabel.verticalAlignmentMode = .center
+        secretLabel.name = "secretLabel"
+        secretBtn.addChild(secretLabel)
         
         addChild(overlay)
         
-        // Animate in
-        overlay.setScale(0.1)
-        overlay.run(SKAction.scale(to: 1.0, duration: 0.2))
+        // Animate in (subtle)
+        overlay.alpha = 0
+        overlay.run(SKAction.fadeIn(withDuration: 0.15))
     }
     
     private func handlePauseMenuTouch(at location: CGPoint) -> Bool {
@@ -904,47 +1022,421 @@ final class HUDNode: SKNode {
         
         let localPos = convert(location, to: overlay)
         
-        // Check autoplay button
-        if let autoplayBtn = overlay.childNode(withName: "pauseMenuAutoplay") as? SKShapeNode {
-            let btnBounds = CGRect(x: -100, y: 2, width: 200, height: 45)
-            if btnBounds.contains(localPos) {
-                toggleAutoStart()
-                // Update button appearance
-                autoplayBtn.fillColor = isAutoStartEnabled ? 
-                    SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0) : 
-                    SKColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0)
-                if let label = autoplayBtn.childNode(withName: "autoplayLabel") as? SKLabelNode {
-                    label.text = isAutoStartEnabled ? "⚡ Autoplay: ON" : "⚡ Autoplay: OFF"
+        let buttonWidth: CGFloat = 260
+        let buttonHeight: CGFloat = 50
+        let menuHeight: CGFloat = 480
+        var yPos: CGFloat = menuHeight / 2 - 50 - 60  // Start position of first button
+        let buttonSpacing: CGFloat = 58
+        
+        // Helper to check button
+        func checkButton(_ name: String, yCenter: CGFloat, width: CGFloat = buttonWidth, height: CGFloat = buttonHeight) -> SKShapeNode? {
+            if let btn = overlay.childNode(withName: name) as? SKShapeNode {
+                let bounds = CGRect(x: -width/2, y: yCenter - height/2, width: width, height: height)
+                if bounds.contains(localPos) {
+                    return btn
                 }
-                animateButtonPress(autoplayBtn)
-                return true
             }
+            return nil
         }
+        
+        // Check autoplay button
+        if let btn = checkButton("pauseMenuAutoplay", yCenter: yPos) {
+            toggleAutoStart()
+            btn.fillColor = isAutoStartEnabled ? 
+                SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0) : 
+                SKColor(red: 0.35, green: 0.35, blue: 0.4, alpha: 1.0)
+            if let label = btn.childNode(withName: "autoplayLabel") as? SKLabelNode {
+                label.text = isAutoStartEnabled ? "⚡ Autoplay: ON" : "⚡ Autoplay: OFF"
+            }
+            animateButtonPress(btn)
+            return true
+        }
+        yPos -= buttonSpacing
+        
+        // Check highscores button
+        if let btn = checkButton("pauseMenuHighscores", yCenter: yPos) {
+            animateButtonPress(btn)
+            showHighscoresFromPauseMenu()
+            return true
+        }
+        yPos -= buttonSpacing
+        
+        // Check save button
+        if let btn = checkButton("pauseMenuSave", yCenter: yPos) {
+            animateButtonPress(btn)
+            showSaveConfirmation()
+            return true
+        }
+        yPos -= buttonSpacing
+        
+        // Check load button
+        if let btn = checkButton("pauseMenuLoad", yCenter: yPos) {
+            animateButtonPress(btn)
+            showLoadConfirmation()
+            return true
+        }
+        yPos -= buttonSpacing
         
         // Check restart button
-        if let restartBtn = overlay.childNode(withName: "pauseMenuRestart") as? SKShapeNode {
-            let btnBounds = CGRect(x: -100, y: -58, width: 200, height: 45)
-            if btnBounds.contains(localPos) {
-                overlay.removeFromParent()
-                delegate?.hudDidTapRestart()
-                return true
-            }
+        if let btn = checkButton("pauseMenuRestart", yCenter: yPos) {
+            overlay.removeFromParent()
+            delegate?.hudDidTapRestart()
+            return true
         }
+        yPos -= buttonSpacing
         
         // Check resume button
-        if let resumeBtn = overlay.childNode(withName: "pauseMenuResume") as? SKShapeNode {
-            let btnBounds = CGRect(x: -100, y: -118, width: 200, height: 45)
-            if btnBounds.contains(localPos) {
-                overlay.removeFromParent()
-                delegate?.hudDidTapPause()  // Toggle pause off
-                animateButtonPress(resumeBtn)
-                return true
-            }
+        if let btn = checkButton("pauseMenuResume", yCenter: yPos) {
+            overlay.removeFromParent()
+            delegate?.hudDidTapPause()  // Toggle pause off
+            animateButtonPress(btn)
+            return true
+        }
+        yPos -= buttonSpacing + 5
+        
+        // Check secret button
+        if let btn = checkButton("pauseMenuSecret", yCenter: yPos, width: 180, height: 35) {
+            animateButtonPress(btn)
+            showSecretMessage()
+            return true
         }
         
         // Touch on overlay but not on button - consume it
-        let overlayBounds = CGRect(x: -150, y: -125, width: 300, height: 250)
+        let overlayBounds = CGRect(x: -175, y: -menuHeight/2, width: 350, height: menuHeight)
         return overlayBounds.contains(localPos)
+    }
+    
+    private func showHighscoresFromPauseMenu() {
+        // Remove pause menu
+        childNode(withName: "pauseMenuOverlay")?.removeFromParent()
+        
+        // Create highscores overlay
+        let overlay = SKShapeNode(rectOf: CGSize(width: 400, height: 450), cornerRadius: 15)
+        overlay.fillColor = SKColor(red: 0.08, green: 0.08, blue: 0.12, alpha: 0.98)
+        overlay.strokeColor = SKColor(red: 0.6, green: 0.5, blue: 0.2, alpha: 1.0)
+        overlay.lineWidth = 4
+        overlay.position = CGPoint(x: 667, y: 375)
+        overlay.zPosition = GameConstants.ZPosition.menu.rawValue
+        overlay.name = "highscoresOverlay"
+        
+        // Title
+        let title = SKLabelNode(fontNamed: "Helvetica-Bold")
+        title.fontSize = 28
+        title.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
+        title.text = "🏆 HIGHSCORES 🏆"
+        title.position = CGPoint(x: 0, y: 175)
+        overlay.addChild(title)
+        
+        // Highscores list
+        let highscores = HighscoreManager.shared.getHighscores()
+        var yPos: CGFloat = 130
+        
+        if highscores.isEmpty {
+            let noScores = SKLabelNode(fontNamed: "Helvetica")
+            noScores.fontSize = 16
+            noScores.fontColor = SKColor(white: 0.6, alpha: 1.0)
+            noScores.text = "No highscores yet!"
+            noScores.position = CGPoint(x: 0, y: 0)
+            overlay.addChild(noScores)
+        } else {
+            for (index, entry) in highscores.prefix(10).enumerated() {
+                let rankLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+                rankLabel.fontSize = 16
+                rankLabel.fontColor = index < 3 ? SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0) : .white
+                rankLabel.text = "#\(index + 1)"
+                rankLabel.horizontalAlignmentMode = .left
+                rankLabel.position = CGPoint(x: -170, y: yPos)
+                overlay.addChild(rankLabel)
+                
+                let scoreLabel = SKLabelNode(fontNamed: "Helvetica")
+                scoreLabel.fontSize = 16
+                scoreLabel.fontColor = .white
+                scoreLabel.text = "\(entry.score) pts"
+                scoreLabel.horizontalAlignmentMode = .left
+                scoreLabel.position = CGPoint(x: -120, y: yPos)
+                overlay.addChild(scoreLabel)
+                
+                let waveLabel = SKLabelNode(fontNamed: "Helvetica")
+                waveLabel.fontSize = 14
+                waveLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
+                waveLabel.text = "Wave \(entry.wave)"
+                waveLabel.horizontalAlignmentMode = .right
+                waveLabel.position = CGPoint(x: 170, y: yPos)
+                overlay.addChild(waveLabel)
+                
+                yPos -= 28
+            }
+        }
+        
+        // Back button
+        let backBtn = SKShapeNode(rectOf: CGSize(width: 150, height: 45), cornerRadius: 10)
+        backBtn.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
+        backBtn.strokeColor = .white
+        backBtn.lineWidth = 2
+        backBtn.position = CGPoint(x: 0, y: -185)
+        backBtn.name = "highscoresBack"
+        overlay.addChild(backBtn)
+        
+        let backLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        backLabel.fontSize = 18
+        backLabel.fontColor = .white
+        backLabel.text = "← Back"
+        backLabel.verticalAlignmentMode = .center
+        backBtn.addChild(backLabel)
+        
+        addChild(overlay)
+    }
+    
+    private func showSecretMessage() {
+        // Show the secret message overlay
+        let secretOverlay = SKShapeNode(rectOf: CGSize(width: 300, height: 150), cornerRadius: 15)
+        secretOverlay.fillColor = SKColor(red: 0.1, green: 0.05, blue: 0.15, alpha: 0.98)
+        secretOverlay.strokeColor = SKColor(red: 0.8, green: 0.2, blue: 0.5, alpha: 1.0)
+        secretOverlay.lineWidth = 3
+        secretOverlay.position = CGPoint(x: 667, y: 375)
+        secretOverlay.zPosition = GameConstants.ZPosition.menu.rawValue + 10
+        secretOverlay.name = "secretOverlay"
+        
+        let message = SKLabelNode(fontNamed: "Helvetica-Bold")
+        message.fontSize = 28
+        message.fontColor = SKColor(red: 1.0, green: 0.3, blue: 0.6, alpha: 1.0)
+        message.text = "Kut Melis :)"
+        message.position = CGPoint(x: 0, y: 10)
+        secretOverlay.addChild(message)
+        
+        let dismissLabel = SKLabelNode(fontNamed: "Helvetica")
+        dismissLabel.fontSize = 14
+        dismissLabel.fontColor = SKColor(white: 0.6, alpha: 1.0)
+        dismissLabel.text = "tap to close"
+        dismissLabel.position = CGPoint(x: 0, y: -40)
+        secretOverlay.addChild(dismissLabel)
+        
+        addChild(secretOverlay)
+        
+        // Auto-dismiss after 3 seconds or on tap
+        secretOverlay.run(SKAction.sequence([
+            SKAction.wait(forDuration: 3.0),
+            SKAction.fadeOut(withDuration: 0.3),
+            SKAction.removeFromParent()
+        ]), withKey: "secretDismiss")
+    }
+    
+    // MARK: - Save/Load
+    
+    private func showSaveConfirmation() {
+        // Remove pause menu
+        childNode(withName: "pauseMenuOverlay")?.removeFromParent()
+        
+        let overlay = SKShapeNode(rectOf: CGSize(width: 380, height: 220), cornerRadius: 15)
+        overlay.fillColor = SKColor(red: 0.08, green: 0.1, blue: 0.08, alpha: 0.98)
+        overlay.strokeColor = SKColor(red: 0.3, green: 0.6, blue: 0.3, alpha: 1.0)
+        overlay.lineWidth = 3
+        overlay.position = CGPoint(x: 667, y: 375)
+        overlay.zPosition = GameConstants.ZPosition.menu.rawValue + 5
+        overlay.name = "saveConfirmOverlay"
+        
+        // Title
+        let title = SKLabelNode(fontNamed: "Helvetica-Bold")
+        title.fontSize = 22
+        title.fontColor = .white
+        title.text = "💾 Save Game?"
+        title.position = CGPoint(x: 0, y: 65)
+        overlay.addChild(title)
+        
+        // Warning
+        let warning1 = SKLabelNode(fontNamed: "Helvetica")
+        warning1.fontSize = 14
+        warning1.fontColor = SKColor(red: 1.0, green: 0.8, blue: 0.3, alpha: 1.0)
+        warning1.text = "⚠️ Let op: Er is GEEN autosave!"
+        warning1.position = CGPoint(x: 0, y: 25)
+        overlay.addChild(warning1)
+        
+        let warning2 = SKLabelNode(fontNamed: "Helvetica")
+        warning2.fontSize = 13
+        warning2.fontColor = SKColor(white: 0.7, alpha: 1.0)
+        warning2.text = "Dit overschrijft je vorige save."
+        warning2.position = CGPoint(x: 0, y: 5)
+        overlay.addChild(warning2)
+        
+        // Yes button
+        let yesBtn = SKShapeNode(rectOf: CGSize(width: 120, height: 45), cornerRadius: 10)
+        yesBtn.fillColor = SKColor(red: 0.2, green: 0.5, blue: 0.2, alpha: 1.0)
+        yesBtn.strokeColor = .white
+        yesBtn.lineWidth = 2
+        yesBtn.position = CGPoint(x: -75, y: -55)
+        yesBtn.name = "saveYes"
+        overlay.addChild(yesBtn)
+        
+        let yesLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        yesLabel.fontSize = 18
+        yesLabel.fontColor = .white
+        yesLabel.text = "Ja, save!"
+        yesLabel.verticalAlignmentMode = .center
+        yesBtn.addChild(yesLabel)
+        
+        // No button
+        let noBtn = SKShapeNode(rectOf: CGSize(width: 120, height: 45), cornerRadius: 10)
+        noBtn.fillColor = SKColor(red: 0.4, green: 0.3, blue: 0.3, alpha: 1.0)
+        noBtn.strokeColor = .white
+        noBtn.lineWidth = 2
+        noBtn.position = CGPoint(x: 75, y: -55)
+        noBtn.name = "saveNo"
+        overlay.addChild(noBtn)
+        
+        let noLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        noLabel.fontSize = 18
+        noLabel.fontColor = .white
+        noLabel.text = "Annuleer"
+        noLabel.verticalAlignmentMode = .center
+        noBtn.addChild(noLabel)
+        
+        addChild(overlay)
+    }
+    
+    private func showLoadConfirmation() {
+        // Check if save exists
+        let hasSave = UserDefaults.standard.data(forKey: "GameSave") != nil
+        
+        // Remove pause menu
+        childNode(withName: "pauseMenuOverlay")?.removeFromParent()
+        
+        let overlay = SKShapeNode(rectOf: CGSize(width: 380, height: 220), cornerRadius: 15)
+        overlay.fillColor = SKColor(red: 0.08, green: 0.08, blue: 0.12, alpha: 0.98)
+        overlay.strokeColor = SKColor(red: 0.3, green: 0.4, blue: 0.6, alpha: 1.0)
+        overlay.lineWidth = 3
+        overlay.position = CGPoint(x: 667, y: 375)
+        overlay.zPosition = GameConstants.ZPosition.menu.rawValue + 5
+        overlay.name = "loadConfirmOverlay"
+        
+        // Title
+        let title = SKLabelNode(fontNamed: "Helvetica-Bold")
+        title.fontSize = 22
+        title.fontColor = .white
+        title.text = "📂 Load Game?"
+        title.position = CGPoint(x: 0, y: 65)
+        overlay.addChild(title)
+        
+        if hasSave {
+            // Warning
+            let warning1 = SKLabelNode(fontNamed: "Helvetica")
+            warning1.fontSize = 14
+            warning1.fontColor = SKColor(red: 1.0, green: 0.8, blue: 0.3, alpha: 1.0)
+            warning1.text = "⚠️ Je huidige voortgang gaat verloren!"
+            warning1.position = CGPoint(x: 0, y: 25)
+            overlay.addChild(warning1)
+            
+            let warning2 = SKLabelNode(fontNamed: "Helvetica")
+            warning2.fontSize = 13
+            warning2.fontColor = SKColor(white: 0.7, alpha: 1.0)
+            warning2.text = "Weet je het zeker?"
+            warning2.position = CGPoint(x: 0, y: 5)
+            overlay.addChild(warning2)
+            
+            // Yes button
+            let yesBtn = SKShapeNode(rectOf: CGSize(width: 120, height: 45), cornerRadius: 10)
+            yesBtn.fillColor = SKColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1.0)
+            yesBtn.strokeColor = .white
+            yesBtn.lineWidth = 2
+            yesBtn.position = CGPoint(x: -75, y: -55)
+            yesBtn.name = "loadYes"
+            overlay.addChild(yesBtn)
+            
+            let yesLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+            yesLabel.fontSize = 18
+            yesLabel.fontColor = .white
+            yesLabel.text = "Ja, load!"
+            yesLabel.verticalAlignmentMode = .center
+            yesBtn.addChild(yesLabel)
+        } else {
+            // No save found
+            let noSave = SKLabelNode(fontNamed: "Helvetica")
+            noSave.fontSize = 16
+            noSave.fontColor = SKColor(red: 1.0, green: 0.5, blue: 0.5, alpha: 1.0)
+            noSave.text = "❌ Geen saved game gevonden!"
+            noSave.position = CGPoint(x: 0, y: 15)
+            overlay.addChild(noSave)
+        }
+        
+        // Back/No button
+        let noBtn = SKShapeNode(rectOf: CGSize(width: 120, height: 45), cornerRadius: 10)
+        noBtn.fillColor = SKColor(red: 0.4, green: 0.3, blue: 0.3, alpha: 1.0)
+        noBtn.strokeColor = .white
+        noBtn.lineWidth = 2
+        noBtn.position = CGPoint(x: hasSave ? 75 : 0, y: -55)
+        noBtn.name = "loadNo"
+        overlay.addChild(noBtn)
+        
+        let noLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        noLabel.fontSize = 18
+        noLabel.fontColor = .white
+        noLabel.text = hasSave ? "Annuleer" : "Terug"
+        noLabel.verticalAlignmentMode = .center
+        noBtn.addChild(noLabel)
+        
+        addChild(overlay)
+    }
+    
+    private func handleSaveConfirmTouch(at location: CGPoint) -> Bool {
+        guard let overlay = childNode(withName: "saveConfirmOverlay") else { return false }
+        
+        let localPos = convert(location, to: overlay)
+        
+        // Yes button
+        if let yesBtn = overlay.childNode(withName: "saveYes") as? SKShapeNode {
+            let bounds = CGRect(x: -75 - 60, y: -55 - 22, width: 120, height: 45)
+            if bounds.contains(localPos) {
+                animateButtonPress(yesBtn)
+                delegate?.hudDidTapSave()
+                overlay.removeFromParent()
+                showPauseMenu()
+                return true
+            }
+        }
+        
+        // No button
+        if let noBtn = overlay.childNode(withName: "saveNo") as? SKShapeNode {
+            let bounds = CGRect(x: 75 - 60, y: -55 - 22, width: 120, height: 45)
+            if bounds.contains(localPos) {
+                animateButtonPress(noBtn)
+                overlay.removeFromParent()
+                showPauseMenu()
+                return true
+            }
+        }
+        
+        return true  // Consume touch
+    }
+    
+    private func handleLoadConfirmTouch(at location: CGPoint) -> Bool {
+        guard let overlay = childNode(withName: "loadConfirmOverlay") else { return false }
+        
+        let localPos = convert(location, to: overlay)
+        let hasSave = UserDefaults.standard.data(forKey: "GameSave") != nil
+        
+        // Yes button (only if save exists)
+        if hasSave, let yesBtn = overlay.childNode(withName: "loadYes") as? SKShapeNode {
+            let bounds = CGRect(x: -75 - 60, y: -55 - 22, width: 120, height: 45)
+            if bounds.contains(localPos) {
+                animateButtonPress(yesBtn)
+                delegate?.hudDidTapLoad()
+                overlay.removeFromParent()
+                return true
+            }
+        }
+        
+        // No button
+        if let noBtn = overlay.childNode(withName: "loadNo") as? SKShapeNode {
+            let xPos: CGFloat = hasSave ? 75 : 0
+            let bounds = CGRect(x: xPos - 60, y: -55 - 22, width: 120, height: 45)
+            if bounds.contains(localPos) {
+                animateButtonPress(noBtn)
+                overlay.removeFromParent()
+                showPauseMenu()
+                return true
+            }
+        }
+        
+        return true  // Consume touch
     }
     
     // MARK: - Game Over / Victory

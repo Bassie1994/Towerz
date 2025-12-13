@@ -47,6 +47,11 @@ final class EconomyManager {
         return true
     }
     
+    /// Set money directly (for loading saves)
+    func setMoney(_ amount: Int) {
+        money = max(0, amount)
+    }
+    
     func earn(_ amount: Int) {
         money += amount
         totalEarned += amount

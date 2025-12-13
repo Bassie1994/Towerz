@@ -43,6 +43,14 @@ final class WaveManager {
     
     // MARK: - Wave Control
     
+    /// Set current wave (for loading saves)
+    func setWave(_ wave: Int) {
+        currentWave = max(0, min(wave, totalWaves))
+        isWaveActive = false
+        spawnQueue.removeAll()
+        aliveEnemyCount = 0
+    }
+    
     func startNextWave(currentTime: TimeInterval) {
         guard !isWaveActive else { return }
         guard currentWave < totalWaves else {

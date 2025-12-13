@@ -75,12 +75,12 @@ enum EnemyType: String, CaseIterable, Codable {
 
 // MARK: - Tower Types
 enum TowerType: String, CaseIterable {
-    case wall       // NEW: Cheap blocker, can convert to other towers
+    case wall       // Cheap blocker, can convert to other towers
     case machineGun
     case cannon
     case slow
     case buff
-    case shotgun
+    case mine       // Was shotgun - now places mines that explode
     case splash
     case laser
     case antiAir
@@ -92,7 +92,7 @@ enum TowerType: String, CaseIterable {
         case .cannon: return "Cannon"
         case .slow: return "Slow"
         case .buff: return "Buff"
-        case .shotgun: return "Shotgun"
+        case .mine: return "Mine"
         case .splash: return "Splash"
         case .laser: return "Laser"
         case .antiAir: return "AA"
@@ -106,7 +106,7 @@ enum TowerType: String, CaseIterable {
         case .cannon: return SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0)
         case .slow: return SKColor(red: 0.4, green: 0.7, blue: 0.9, alpha: 1.0)
         case .buff: return SKColor(red: 0.9, green: 0.7, blue: 0.2, alpha: 1.0)
-        case .shotgun: return SKColor(red: 0.7, green: 0.3, blue: 0.3, alpha: 1.0)
+        case .mine: return SKColor(red: 0.5, green: 0.35, blue: 0.25, alpha: 1.0)  // Brown for mine
         case .splash: return SKColor(red: 0.8, green: 0.4, blue: 0.6, alpha: 1.0)
         case .laser: return SKColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0)
         case .antiAir: return SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
@@ -115,15 +115,15 @@ enum TowerType: String, CaseIterable {
     
     var baseCost: Int {
         switch self {
-        case .wall: return 5        // Halved - very cheap blocking
-        case .machineGun: return 25 // Halved
-        case .cannon: return 40     // Halved
-        case .slow: return 30       // Halved
-        case .buff: return 50       // Halved
-        case .shotgun: return 35    // Halved
-        case .splash: return 45     // Halved
-        case .laser: return 60      // Halved
-        case .antiAir: return 38    // Halved
+        case .wall: return 5        // Very cheap blocking
+        case .machineGun: return 25
+        case .cannon: return 40
+        case .slow: return 30
+        case .buff: return 50
+        case .mine: return 35       // Mine layer
+        case .splash: return 45
+        case .laser: return 60
+        case .antiAir: return 38
         }
     }
 }

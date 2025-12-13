@@ -249,6 +249,13 @@ final class GameScene: SKScene {
             tower.update(currentTime: gameTime)
         }
         
+        // Update AA missiles (they need to track moving targets)
+        for child in gameLayer.children {
+            if let missile = child as? AntiAirMissile {
+                missile.update(currentTime: gameTime)
+            }
+        }
+        
         // Update booze power
         BoozeManager.shared.update(currentTime: gameTime)
         hudNode.updateBooze(currentTime: gameTime)
@@ -557,8 +564,8 @@ final class GameScene: SKScene {
             tower = SlowTower(gridPosition: gridPosition)
         case .buff:
             tower = BuffTower(gridPosition: gridPosition)
-        case .shotgun:
-            tower = ShotgunTower(gridPosition: gridPosition)
+        case .mine:
+            tower = MineTower(gridPosition: gridPosition)
         case .splash:
             tower = SplashTower(gridPosition: gridPosition)
         case .laser:
@@ -584,6 +591,11 @@ final class GameScene: SKScene {
         // Handle buff tower cleanup
         if let buffTower = tower as? BuffTower {
             buffTower.removeAllBuffs()
+        }
+        
+        // Handle mine tower cleanup
+        if let mineTower = tower as? MineTower {
+            mineTower.removeAllMines()
         }
         
         towers.removeAll { $0.id == tower.id }
@@ -749,6 +761,153 @@ extension GameScene: HUDNodeDelegate {
         if LavaManager.shared.canActivate(currentTime: gameTime) {
             LavaManager.shared.activate(currentTime: gameTime, position: position)
             spawnLavaEffect(at: position)
+        }
+    }
+    
+    func hudDidTapSave() {
+        saveGame()
+    }
+    
+    func hudDidTapLoad() {
+        loadGame()
+    }
+    
+    private func saveGame() {
+        // Create save data
+        var saveData: [String: Any] = [:]
+        
+        // Save game state
+        saveData["wave"] = gameManager.waveManager.currentWave
+        saveData["money"] = gameManager.economyManager.money
+        saveData["lives"] = gameManager.lives
+        saveData["gameTime"] = gameTime
+        
+        // Save tower positions and types
+        var towerData: [[String: Any]] = []
+        for tower in towers {
+            var td: [String: Any] = [:]
+            td["type"] = tower.towerType.rawValue
+            td["gridX"] = tower.gridPosition.x
+            td["gridY"] = tower.gridPosition.y
+            td["upgradeLevel"] = tower.upgradeLevel
+            td["totalInvested"] = tower.totalInvested
+            towerData.append(td)
+        }
+        saveData["towers"] = towerData
+        
+        // Encode and save
+        do {
+            let data = try JSONSerialization.data(withJSONObject: saveData)
+            UserDefaults.standard.set(data, forKey: "GameSave")
+            UserDefaults.standard.synchronize()
+            print("Game saved successfully")
+        } catch {
+            print("Failed to save game: \(error)")
+        }
+    }
+    
+    private func loadGame() {
+        guard let data = UserDefaults.standard.data(forKey: "GameSave") else {
+            print("No save data found")
+            return
+        }
+        
+        do {
+            guard let saveData = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return
+            }
+            
+            // Clear current game
+            for enemy in enemies {
+                enemy.removeFromParent()
+            }
+            enemies.removeAll()
+            
+            for tower in towers {
+                if let mineTower = tower as? MineTower {
+                    mineTower.removeAllMines()
+                }
+                tower.removeFromParent()
+            }
+            towers.removeAll()
+            
+            // Reset managers
+            MineTower.currentMineCount = 0
+            BoozeManager.shared.reset()
+            LavaManager.shared.reset()
+            
+            // Clear effects
+            effectsLayer.removeAllChildren()
+            
+            // Load game state
+            if let wave = saveData["wave"] as? Int {
+                gameManager.waveManager.setWave(wave)
+            }
+            if let money = saveData["money"] as? Int {
+                gameManager.economyManager.setMoney(money)
+            }
+            if let lives = saveData["lives"] as? Int {
+                gameManager.setLives(lives)
+            }
+            if let savedGameTime = saveData["gameTime"] as? Double {
+                gameTime = savedGameTime
+            }
+            
+            // Load towers
+            if let towerDataArray = saveData["towers"] as? [[String: Any]] {
+                for td in towerDataArray {
+                    guard let typeRaw = td["type"] as? String,
+                          let type = TowerType(rawValue: typeRaw),
+                          let gridX = td["gridX"] as? Int,
+                          let gridY = td["gridY"] as? Int else { continue }
+                    
+                    let gridPos = GridPosition(x: gridX, y: gridY)
+                    
+                    // Block the grid cell
+                    gameManager.pathfindingGrid.blockCell(at: gridPos)
+                    
+                    // Create tower (using createTower would add it to array twice)
+                    let tower: Tower
+                    switch type {
+                    case .wall: tower = WallTower(gridPosition: gridPos)
+                    case .machineGun: tower = MachineGunTower(gridPosition: gridPos)
+                    case .cannon: tower = CannonTower(gridPosition: gridPos)
+                    case .slow: tower = SlowTower(gridPosition: gridPos)
+                    case .buff: tower = BuffTower(gridPosition: gridPos)
+                    case .mine: tower = MineTower(gridPosition: gridPos)
+                    case .splash: tower = SplashTower(gridPosition: gridPos)
+                    case .laser: tower = LaserTower(gridPosition: gridPos)
+                    case .antiAir: tower = AntiAirTower(gridPosition: gridPos)
+                    }
+                    
+                    tower.delegate = self
+                    tower.position = gridPos.toWorldPosition()
+                    
+                    // Apply upgrades
+                    if let upgradeLevel = td["upgradeLevel"] as? Int {
+                        for _ in 0..<upgradeLevel {
+                            _ = tower.upgrade()
+                        }
+                    }
+                    if let totalInvested = td["totalInvested"] as? Int {
+                        tower.totalInvested = totalInvested
+                    }
+                    
+                    towers.append(tower)
+                    towerLayer.addChild(tower)
+                }
+            }
+            
+            // Recalculate pathfinding
+            notifyPathfindingChanged()
+            
+            // Update UI
+            updateUI()
+            
+            print("Game loaded successfully")
+            
+        } catch {
+            print("Failed to load game: \(error)")
         }
     }
     

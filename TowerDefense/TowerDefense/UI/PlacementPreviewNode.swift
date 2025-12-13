@@ -98,15 +98,21 @@ final class PlacementPreviewNode: SKNode {
         // Update position
         position = gridPosition.toWorldPosition()
         
-        // Update buffed range indicator
+        // Update buffed range indicator and show buff visual
         if buffRangeMultiplier > 1.0, let towerType = currentTowerType, towerType != .buff {
             let baseRange = getTowerRange(for: towerType)
             let buffedRange = baseRange * buffRangeMultiplier
             let buffedPath = CGPath(ellipseIn: CGRect(x: -buffedRange, y: -buffedRange, width: buffedRange * 2, height: buffedRange * 2), transform: nil)
             buffedRangeIndicator.path = buffedPath
             buffedRangeIndicator.isHidden = false
+            
+            // Add golden glow to preview when in buff range
+            previewNode.strokeColor = SKColor.buffEffect
+            previewNode.lineWidth = 3
         } else {
             buffedRangeIndicator.isHidden = true
+            previewNode.strokeColor = .white
+            previewNode.lineWidth = 2
         }
         
         // Update validity visual
@@ -178,7 +184,7 @@ final class PlacementPreviewNode: SKNode {
         case .cannon: return CannonTower.stats.range
         case .slow: return SlowTower.stats.range
         case .buff: return BuffTower.stats.range
-        case .shotgun: return ShotgunTower.stats.range
+        case .mine: return MineTower.stats.range
         case .splash: return SplashTower.stats.range
         case .laser: return LaserTower.stats.range
         case .antiAir: return AntiAirTower.stats.range
