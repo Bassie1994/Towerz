@@ -170,7 +170,7 @@ struct WaveConfig: Codable {
         }
     }
     
-    // Generate 50 waves with scaling difficulty
+    // Generate 50 waves with scaling difficulty + boss every 5 waves
     static var defaultWaves: [WaveConfig] {
         var waves: [WaveConfig] = []
         
@@ -181,17 +181,42 @@ struct WaveConfig: Codable {
         return waves
     }
     
-    private static func generateWave(number: Int) -> WaveConfig {
-        // Base enemy count that scales
-        // Waves 1-10: 50% increase per wave (1.5x multiplier)
-        // Waves 11-30: 15% increase per wave
-        // Waves 31-50: 10% increase per wave
+    /// Calculate total HP of a wave (for boss calculation)
+    private static func calculateWaveHP(number: Int) -> CGFloat {
+        let (totalEnemies, enemyLevel) = getWaveStats(number: number)
         
+        // Calculate HP based on enemy distribution
+        var totalHP: CGFloat = 0
+        
+        if number < 3 {
+            // Infantry only
+            totalHP = CGFloat(totalEnemies) * 200 * (1.0 + CGFloat(enemyLevel - 1) * 0.3)
+        } else if number < 6 {
+            // Infantry + Flying
+            let infantryCount = Int(Double(totalEnemies) * 0.7)
+            let flyingCount = totalEnemies - infantryCount
+            totalHP = CGFloat(infantryCount) * 200 * (1.0 + CGFloat(enemyLevel - 1) * 0.3)
+            totalHP += CGFloat(flyingCount) * 80 * (1.0 + CGFloat(max(1, enemyLevel - 1) - 1) * 0.2)
+        } else {
+            // Mixed
+            let infantryCount = Int(Double(totalEnemies) * 0.4)
+            let flyingCount = Int(Double(totalEnemies) * 0.3)
+            let cavalryCount = totalEnemies - infantryCount - flyingCount
+            totalHP = CGFloat(infantryCount) * 200 * (1.0 + CGFloat(enemyLevel - 1) * 0.3)
+            totalHP += CGFloat(flyingCount) * 80 * (1.0 + CGFloat(enemyLevel - 1) * 0.2)
+            totalHP += CGFloat(cavalryCount) * 600 * (1.0 + CGFloat(enemyLevel - 1) * 0.35)
+        }
+        
+        return totalHP
+    }
+    
+    /// Get wave stats without generating full config
+    private static func getWaveStats(number: Int) -> (totalEnemies: Int, enemyLevel: Int) {
         let baseCount: Double
         if number <= 10 {
             baseCount = 8.0 * pow(1.5, Double(number - 1))
         } else if number <= 30 {
-            let wave10Base = 8.0 * pow(1.5, 9.0)  // ~307
+            let wave10Base = 8.0 * pow(1.5, 9.0)
             baseCount = wave10Base * pow(1.15, Double(number - 10))
         } else {
             let wave10Base = 8.0 * pow(1.5, 9.0)
@@ -199,8 +224,20 @@ struct WaveConfig: Codable {
             baseCount = wave30Base * pow(1.10, Double(number - 30))
         }
         
-        // Cap max enemies per wave for performance
         let totalEnemies = min(Int(baseCount), 200)
+        let enemyLevel = max(1, (number - 1) / 5 + 1)
+        
+        return (totalEnemies, enemyLevel)
+    }
+    
+    private static func generateWave(number: Int) -> WaveConfig {
+        // Check if this is a boss wave (every 5th wave: 5, 10, 15, etc.)
+        if number % 5 == 0 && number > 0 {
+            return generateBossWave(number: number)
+        }
+        
+        // Base enemy count that scales
+        let (totalEnemies, enemyLevel) = getWaveStats(number: number)
         
         // Enemy level scales with wave
         let enemyLevel = max(1, (number - 1) / 5 + 1)  // Level up every 5 waves
@@ -383,6 +420,56 @@ struct WaveConfig: Codable {
                 ))
             }
         }
+        
+        return WaveConfig(waveNumber: number, groups: groups)
+    }
+    
+    /// Generate a boss wave - single powerful enemy with combined HP of previous wave
+    private static func generateBossWave(number: Int) -> WaveConfig {
+        // Calculate HP from previous wave (wave 4 for boss 5, wave 9 for boss 10, etc.)
+        let previousWave = number - 1
+        let bossHP = calculateWaveHP(number: previousWave)
+        
+        // Boss level scales with wave number
+        let bossLevel = max(1, number / 5)
+        
+        // Create a "boss" as multiple high-HP cavalry units
+        // Each cavalry base HP is 600, so we need bossHP / 600 units
+        // But we'll make fewer, stronger units instead
+        let bossUnitHP: CGFloat = 600 * CGFloat(bossLevel) * 2.0  // Each boss unit is extra tanky
+        let bossCount = max(1, Int(bossHP / bossUnitHP))
+        
+        // Also add some escort units
+        let escortCount = 5 + bossLevel * 2
+        
+        var groups: [WaveConfig.EnemyGroup] = []
+        
+        // Escort infantry first
+        groups.append(WaveConfig.EnemyGroup(
+            type: .infantry,
+            count: escortCount,
+            level: bossLevel + 1,
+            spawnInterval: 0.8,
+            groupDelay: 0
+        ))
+        
+        // Boss units (cavalry) - spawn slowly
+        groups.append(WaveConfig.EnemyGroup(
+            type: .cavalry,
+            count: max(1, bossCount),
+            level: bossLevel + 2,  // Higher level for more HP
+            spawnInterval: 2.0,
+            groupDelay: 3.0
+        ))
+        
+        // Flying escorts
+        groups.append(WaveConfig.EnemyGroup(
+            type: .flying,
+            count: escortCount / 2 + 1,
+            level: bossLevel + 1,
+            spawnInterval: 1.0,
+            groupDelay: 2.0
+        ))
         
         return WaveConfig(waveNumber: number, groups: groups)
     }

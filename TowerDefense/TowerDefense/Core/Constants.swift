@@ -3,8 +3,8 @@ import SpriteKit
 // MARK: - Game Constants
 enum GameConstants {
     // Field dimensions (in grid cells)
-    static let gridWidth = 26
-    static let gridHeight = 12  // Reduced from 14 - top 2 rows removed for UI
+    static let gridWidth = 24   // Reduced by 2 columns
+    static let gridHeight = 11  // Reduced by 1 row
     static let cellSize: CGFloat = 48
     
     // Playfield bounds

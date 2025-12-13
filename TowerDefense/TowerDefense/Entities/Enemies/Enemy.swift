@@ -211,26 +211,49 @@ class Enemy: SKNode {
                                 !newGridPos.isInExitZone()
                 
                 if isBlocked {
-                    // Try to slide along the obstacle
-                    // Try horizontal movement only
-                    let horizPos = CGPoint(x: position.x + movement.dx, y: position.y)
-                    let horizGrid = horizPos.toGridPosition()
-                    let horizBlocked = flowField.getDirection(at: horizGrid) == nil &&
-                                      !horizGrid.isInSpawnZone() && !horizGrid.isInExitZone()
+                    // Try multiple alternatives to find a way around
+                    let moveDistance = actualSpeed * CGFloat(deltaTime)
                     
-                    // Try vertical movement only
-                    let vertPos = CGPoint(x: position.x, y: position.y + movement.dy)
-                    let vertGrid = vertPos.toGridPosition()
-                    let vertBlocked = flowField.getDirection(at: vertGrid) == nil &&
-                                     !vertGrid.isInSpawnZone() && !vertGrid.isInExitZone()
+                    // Try 8 different directions to find a valid path
+                    let alternatives: [(CGFloat, CGFloat)] = [
+                        (movement.dx, 0),           // Horizontal only
+                        (0, movement.dy),           // Vertical only
+                        (moveDistance, 0),          // Pure right
+                        (-moveDistance, 0),         // Pure left
+                        (0, moveDistance),          // Pure up
+                        (0, -moveDistance),         // Pure down
+                        (moveDistance, -moveDistance), // Diagonal down-right
+                        (moveDistance, moveDistance)   // Diagonal up-right
+                    ]
                     
-                    if !horizBlocked {
-                        newPosition = horizPos
-                    } else if !vertBlocked {
-                        newPosition = vertPos
-                    } else {
-                        // Can't move - stay in place
-                        newPosition = position
+                    var foundPath = false
+                    for (dx, dy) in alternatives {
+                        let testPos = CGPoint(x: position.x + dx, y: position.y + dy)
+                        let testGrid = testPos.toGridPosition()
+                        
+                        // Check bounds
+                        guard testGrid.x >= 0 && testGrid.x < GameConstants.gridWidth &&
+                              testGrid.y >= 0 && testGrid.y < GameConstants.gridHeight else { continue }
+                        
+                        let testBlocked = flowField.getDirection(at: testGrid) == nil &&
+                                         !testGrid.isInSpawnZone() && !testGrid.isInExitZone()
+                        
+                        if !testBlocked {
+                            newPosition = testPos
+                            foundPath = true
+                            break
+                        }
+                    }
+                    
+                    if !foundPath {
+                        // Still stuck - try to push away from the blocking cell
+                        let currentGrid = position.toGridPosition()
+                        if let escapeDir = flowField.getDirection(at: currentGrid) {
+                            newPosition = CGPoint(
+                                x: position.x + escapeDir.dx * moveDistance * 0.5,
+                                y: position.y + escapeDir.dy * moveDistance * 0.5
+                            )
+                        }
                     }
                 }
             }
