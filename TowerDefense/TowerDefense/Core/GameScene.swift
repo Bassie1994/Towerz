@@ -92,6 +92,7 @@ final class GameScene: SKScene {
         // Tower Info Panel
         towerInfoNode = TowerInfoNode()
         towerInfoNode.delegate = self
+        towerInfoNode.zPosition = 500  // Highest priority, above all other UI
         uiLayer.addChild(towerInfoNode)
         
         // Placement Preview
@@ -395,9 +396,15 @@ final class GameScene: SKScene {
         }
         
         // Check tower info panel FIRST (highest priority popup)
-        if !towerInfoNode.isHidden && towerInfoNode.containsTouchPoint(location) {
-            _ = towerInfoNode.handleTouch(at: location)
-            return
+        print("GameScene touch at: \(location), towerInfo hidden: \(towerInfoNode.isHidden)")
+        if !towerInfoNode.isHidden {
+            let containsTouch = towerInfoNode.containsTouchPoint(location)
+            print("GameScene: towerInfo containsTouch: \(containsTouch)")
+            if containsTouch {
+                let handled = towerInfoNode.handleTouch(at: location)
+                print("GameScene: towerInfo handled touch: \(handled)")
+                return
+            }
         }
         
         // Check HUD

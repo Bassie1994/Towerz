@@ -199,37 +199,40 @@ final class TowerInfoNode: SKNode {
     
     func handleTouch(at location: CGPoint) -> Bool {
         guard !isHidden, let tower = selectedTower else { 
+            print("TowerInfo handleTouch: hidden or no tower")
             return false 
         }
         
-        // Convert scene location to local coordinates
+        // Convert scene location to local coordinates (panelBackground coordinate space)
+        // panelBackground is at (0,0) relative to TowerInfoNode
         let localPoint = CGPoint(x: location.x - position.x, y: location.y - position.y)
         
-        print("TowerInfo touch - scene: \(location), local: \(localPoint), pos: \(position)")
+        print("TowerInfo handleTouch - scene: \(location), local: \(localPoint), pos: \(position)")
+        print("Button positions - upgrade: \(upgradeButton.position), sell: \(sellButton.position), close: \(closeButton.position)")
         
-        // Check close button (top-right of panel)
-        let closeButtonBounds = CGRect(
-            x: panelWidth / 2 - 35,
-            y: panelHeight / 2 - 35,
-            width: 30,
-            height: 30
-        )
-        if closeButtonBounds.contains(localPoint) {
-            print("Close button tapped!")
+        // Flash the panel to show touch was received (visual debug)
+        let flash = SKAction.sequence([
+            SKAction.colorize(with: .yellow, colorBlendFactor: 0.3, duration: 0.1),
+            SKAction.colorize(withColorBlendFactor: 0, duration: 0.1)
+        ])
+        panelBackground.run(flash)
+        
+        // Use SpriteKit's built-in contains method for accurate hit testing
+        // The localPoint is in panelBackground's coordinate space
+        
+        // Check close button using SpriteKit's frame
+        let closeFrame = closeButton.frame.insetBy(dx: -10, dy: -10)  // Add padding
+        if closeFrame.contains(localPoint) {
+            print("Close button tapped via frame!")
             animateButton(closeButton)
             hide()
             return true
         }
         
-        // Check upgrade button (bottom-left)
-        let upgradeBounds = CGRect(
-            x: -90,
-            y: -panelHeight / 2 + 30,
-            width: 90,
-            height: 40
-        )
-        if upgradeBounds.contains(localPoint) {
-            print("Upgrade button tapped!")
+        // Check upgrade button using SpriteKit's frame
+        let upgradeFrame = upgradeButton.frame.insetBy(dx: -15, dy: -15)  // Add padding
+        if upgradeFrame.contains(localPoint) {
+            print("Upgrade button tapped via frame! localPoint: \(localPoint), frame: \(upgradeFrame)")
             if tower.towerType == .wall {
                 delegate?.towerInfoDidTapConvert(tower)
                 animateButton(upgradeButton)
@@ -243,15 +246,10 @@ final class TowerInfoNode: SKNode {
             return true
         }
         
-        // Check sell button (bottom-right)
-        let sellBounds = CGRect(
-            x: 0,
-            y: -panelHeight / 2 + 30,
-            width: 90,
-            height: 40
-        )
-        if sellBounds.contains(localPoint) {
-            print("Sell button tapped!")
+        // Check sell button using SpriteKit's frame
+        let sellFrame = sellButton.frame.insetBy(dx: -15, dy: -15)  // Add padding
+        if sellFrame.contains(localPoint) {
+            print("Sell button tapped via frame! localPoint: \(localPoint), frame: \(sellFrame)")
             delegate?.towerInfoDidTapSell(tower)
             animateButton(sellButton)
             hide()
@@ -259,14 +257,10 @@ final class TowerInfoNode: SKNode {
         }
         
         // Check if touch is within panel (consume it)
-        let panelBounds = CGRect(
-            x: -panelWidth / 2,
-            y: -panelHeight / 2,
-            width: panelWidth,
-            height: panelHeight
-        )
-        if panelBounds.contains(localPoint) {
-            print("Panel touched but no button hit")
+        let panelFrame = panelBackground.frame.insetBy(dx: -10, dy: -10)
+        if panelFrame.contains(localPoint) {
+            print("Panel touched but no button hit - local: \(localPoint), panelFrame: \(panelFrame)")
+            print("upgradeFrame: \(upgradeFrame), sellFrame: \(sellFrame)")
             return true
         }
         
@@ -282,7 +276,10 @@ final class TowerInfoNode: SKNode {
     }
     
     func containsTouchPoint(_ location: CGPoint) -> Bool {
-        guard !isHidden else { return false }
+        guard !isHidden else { 
+            print("TowerInfo containsTouchPoint: hidden, returning false")
+            return false 
+        }
         let localPoint = CGPoint(x: location.x - position.x, y: location.y - position.y)
         let panelBounds = CGRect(
             x: -panelWidth / 2,
@@ -290,6 +287,8 @@ final class TowerInfoNode: SKNode {
             width: panelWidth,
             height: panelHeight
         )
-        return panelBounds.contains(localPoint)
+        let contains = panelBounds.contains(localPoint)
+        print("TowerInfo containsTouchPoint: scene=\(location), pos=\(position), local=\(localPoint), bounds=\(panelBounds), contains=\(contains)")
+        return contains
     }
 }
