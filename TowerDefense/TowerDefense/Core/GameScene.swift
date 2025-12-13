@@ -720,7 +720,7 @@ extension GameScene: HUDNodeDelegate {
     }
     
     func hudDidTapFastForward() {
-        gameSpeed = hudNode.isFastForwardEnabled() ? 2.0 : 1.0
+        gameSpeed = hudNode.getSpeedMultiplier()
     }
     
     func hudDidDropInTrash() {

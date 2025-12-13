@@ -30,7 +30,7 @@ final class HUDNode: SKNode {
     private let trashZone: SKShapeNode
     private let trashLabel: SKLabelNode
     
-    private var isFastForward = false
+    private var speedMultiplier: CGFloat = 1.0  // 1x, 2x, or 4x
     private(set) var isTrashHighlighted = false
     
     // MARK: - Initialization
@@ -388,10 +388,6 @@ final class HUDNode: SKNode {
             if let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode {
                 if speedBtn.contains(localPos) {
                     toggleFastForward()
-                    // Update control panel speed label
-                    if let lbl = speedBtn.childNode(withName: "ctrlSpeedLbl") as? SKLabelNode {
-                        lbl.text = isFastForward ? "2x" : "1x"
-                    }
                     delegate?.hudDidTapFastForward()
                     animateButtonPress(speedBtn)
                     return true
@@ -409,18 +405,36 @@ final class HUDNode: SKNode {
     }
     
     private func toggleFastForward() {
-        isFastForward = !isFastForward
-        speedLabel.text = isFastForward ? "2x" : "1x"
-        speedButton.fillColor = isFastForward ?
-            SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0) :
-            SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
+        // Cycle through 1x → 2x → 4x → 1x
+        if speedMultiplier == 1.0 {
+            speedMultiplier = 2.0
+        } else if speedMultiplier == 2.0 {
+            speedMultiplier = 4.0
+        } else {
+            speedMultiplier = 1.0
+        }
         
-        // Sync control panel speed button color
+        // Update label
+        speedLabel.text = "\(Int(speedMultiplier))x"
+        
+        // Update button color based on speed
+        let buttonColor: SKColor
+        switch speedMultiplier {
+        case 2.0:
+            buttonColor = SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0)
+        case 4.0:
+            buttonColor = SKColor(red: 0.8, green: 0.3, blue: 0.2, alpha: 1.0)
+        default:
+            buttonColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
+        }
+        speedButton.fillColor = buttonColor
+        
+        // Sync control panel speed button
         if let controlPanel = childNode(withName: "controlPanel"),
-           let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode {
-            speedBtn.fillColor = isFastForward ?
-                SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0) :
-                SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 1.0)
+           let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode,
+           let lbl = speedBtn.childNode(withName: "ctrlSpeedLbl") as? SKLabelNode {
+            speedBtn.fillColor = buttonColor
+            lbl.text = "\(Int(speedMultiplier))x"
         }
     }
     
@@ -432,8 +446,8 @@ final class HUDNode: SKNode {
         button.run(press)
     }
     
-    func isFastForwardEnabled() -> Bool {
-        return isFastForward
+    func getSpeedMultiplier() -> CGFloat {
+        return speedMultiplier
     }
     
     // MARK: - Game Over / Victory
