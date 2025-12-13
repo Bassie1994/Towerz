@@ -86,11 +86,11 @@ final class BuildMenuNode: SKNode {
             xOffset += buttonSpacing
         }
         
-        // Money display on right side of menu bar
-        moneyIcon.position = CGPoint(x: menuWidth/2 - 80, y: 0)
+        // Money display - right after last tower button (xOffset is now past the last button)
+        moneyIcon.position = CGPoint(x: xOffset - 30, y: 0)
         menuBackground.addChild(moneyIcon)
         
-        moneyLabel.position = CGPoint(x: menuWidth/2 - 55, y: 0)
+        moneyLabel.position = CGPoint(x: xOffset + 5, y: 0)
         menuBackground.addChild(moneyLabel)
     }
     

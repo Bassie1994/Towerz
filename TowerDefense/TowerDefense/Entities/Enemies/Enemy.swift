@@ -33,7 +33,7 @@ class Enemy: SKNode {
     
     // Drunk movement (Booze effect)
     var drunkPhase: CGFloat = CGFloat.random(in: 0...(.pi * 2))
-    var drunkAmplitude: CGFloat = CGFloat.random(in: 0.3...0.6)
+    var drunkAmplitude: CGFloat = CGFloat.random(in: 0.5...1.0)  // Stronger sway
     
     // Visual components
     let bodyNode: SKShapeNode
@@ -44,6 +44,10 @@ class Enemy: SKNode {
     // Movement
     var currentDirection: CGVector = CGVector(dx: 1, dy: 0)
     var separationForce: CGVector = .zero
+    
+    // Stuck detection
+    private var lastPosition: CGPoint = .zero
+    private var stuckCounter: Int = 0
     
     // Size
     let enemySize: CGFloat = 30
@@ -176,17 +180,29 @@ class Enemy: SKNode {
         
         // Apply drunk movement if booze is active
         if BoozeManager.shared.isActive {
-            drunkPhase += CGFloat(deltaTime) * 4.0  // Oscillation speed
-            let sway = sin(drunkPhase) * drunkAmplitude
+            // Base 5-degree deviation (wrong direction)
+            let baseDeviation: CGFloat = 5.0 * .pi / 180.0  // 5 degrees in radians
+            let currentAngle = atan2(combinedDirection.dy, combinedDirection.dx)
+            let deviatedAngle = currentAngle + baseDeviation
+            
+            // Apply the base deviation
             combinedDirection = CGVector(
-                dx: combinedDirection.dx + sway * 0.5,
-                dy: combinedDirection.dy + cos(drunkPhase * 1.3) * drunkAmplitude * 0.3
+                dx: cos(deviatedAngle),
+                dy: sin(deviatedAngle)
             )
-            // Re-normalize after drunk adjustment
-            let drunkMag = sqrt(combinedDirection.dx * combinedDirection.dx + combinedDirection.dy * combinedDirection.dy)
-            if drunkMag > 0 {
-                combinedDirection = CGVector(dx: combinedDirection.dx / drunkMag, dy: combinedDirection.dy / drunkMag)
-            }
+            
+            // Strong swerving motion that can correct the deviation
+            drunkPhase += CGFloat(deltaTime) * 6.0  // Faster oscillation
+            
+            // Large amplitude sway (±30 degrees)
+            let swayAngle = sin(drunkPhase) * drunkAmplitude * 0.5  // Up to ~17 degrees sway
+            let secondarySway = cos(drunkPhase * 1.7) * drunkAmplitude * 0.3
+            
+            let swayedAngle = deviatedAngle + swayAngle + secondarySway
+            combinedDirection = CGVector(
+                dx: cos(swayedAngle),
+                dy: sin(swayedAngle)
+            )
         }
         
         // Smooth direction change to prevent jittering
@@ -332,6 +348,46 @@ class Enemy: SKNode {
         let maxX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - enemySize / 2
         position.y = max(minY, min(maxY, position.y))
         position.x = max(minX, min(maxX, position.x))
+        
+        // Stuck detection - if barely moved, try more aggressive escaping
+        let movedDistance = position.distance(to: lastPosition)
+        if movedDistance < actualSpeed * CGFloat(deltaTime) * 0.1 {
+            stuckCounter += 1
+            
+            if stuckCounter > 10 {
+                // Aggressively push toward exit
+                let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width
+                let exitY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
+                let toExitDir = CGVector(dx: exitX - position.x, dy: exitY - position.y).normalized()
+                
+                // Try a bigger jump in the general direction of exit
+                let jumpDistance = GameConstants.cellSize * 0.5
+                var testPos = CGPoint(
+                    x: position.x + toExitDir.dx * jumpDistance,
+                    y: position.y + toExitDir.dy * jumpDistance
+                )
+                
+                // Clamp test position
+                testPos.x = max(minX, min(maxX, testPos.x))
+                testPos.y = max(minY, min(maxY, testPos.y))
+                
+                // Check if test position is walkable
+                let testGrid = testPos.toGridPosition()
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: testGrid) != nil || testGrid.isInExitZone() {
+                    position = testPos
+                    stuckCounter = 0
+                } else if stuckCounter > 30 {
+                    // Really stuck - teleport slightly toward exit
+                    position.x += CGFloat.random(in: -10...20)
+                    position.y += CGFloat.random(in: -20...20)
+                    stuckCounter = 0
+                }
+            }
+        } else {
+            stuckCounter = max(0, stuckCounter - 1)
+        }
+        lastPosition = position
         
         // Check if reached exit
         if hasReachedExit() {

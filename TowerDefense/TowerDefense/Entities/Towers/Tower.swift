@@ -87,14 +87,15 @@ class Tower: SKNode {
         rangeIndicator.isHidden = true
         rangeIndicator.zPosition = GameConstants.ZPosition.rangeIndicator.rawValue
         
-        // Create upgrade indicators
+        // Create upgrade indicators (3 for 3 upgrade levels)
         var indicators: [SKShapeNode] = []
-        for i in 0..<2 {
-            let indicator = SKShapeNode(circleOfRadius: 4)
+        for i in 0..<3 {
+            let indicator = SKShapeNode(circleOfRadius: 3)
             indicator.fillColor = .darkGray
             indicator.strokeColor = .white
             indicator.lineWidth = 1
-            indicator.position = CGPoint(x: -8 + CGFloat(i) * 16, y: -towerSize / 2 - 8)
+            // Position 3 indicators evenly spaced below tower
+            indicator.position = CGPoint(x: -10 + CGFloat(i) * 10, y: -towerSize / 2 - 8)
             indicators.append(indicator)
         }
         upgradeIndicators = indicators
