@@ -205,97 +205,26 @@ final class HUDNode: SKNode {
         heart.verticalAlignmentMode = .center
         livesIcon.addChild(heart)
         
-        // Add control panel on the right side
-        setupControlPanel()
+        // Control panel removed - using top HUD buttons instead
         
-        // Trash zone (top-right)
-        trashZone.position = CGPoint(x: 1280, y: 650)
+        // Trash zone (top-right, next to HUD)
+        trashZone.position = CGPoint(x: 1050, y: 725)
+        trashZone.setScale(0.7)  // Smaller
         trashZone.addChild(trashLabel)
         addChild(trashZone)
         
-        // Add "SELL" text below trash
+        // Add "SELL" text
         let sellLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        sellLabel.fontSize = 12
+        sellLabel.fontSize = 10
         sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
         sellLabel.text = "SELL"
-        sellLabel.position = CGPoint(x: 1280, y: 600)
+        sellLabel.position = CGPoint(x: 1050, y: 690)
         addChild(sellLabel)
         
         // Initial values
         updateLives(GameConstants.startingLives)
         updateMoney(GameConstants.startingMoney)
         updateWave(0, total: 10, active: false)
-    }
-    
-    private func setupControlPanel() {
-        // Floating control panel in bottom-left corner
-        let panelWidth: CGFloat = 200
-        let panelHeight: CGFloat = 60
-        
-        let controlPanel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 10)
-        controlPanel.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.95)
-        controlPanel.strokeColor = SKColor(red: 0.4, green: 0.6, blue: 0.4, alpha: 1.0)
-        controlPanel.lineWidth = 2
-        controlPanel.position = CGPoint(x: 120, y: 100)
-        controlPanel.name = "controlPanel"
-        addChild(controlPanel)
-        
-        // "CONTROLS" header
-        let header = SKLabelNode(fontNamed: "Helvetica-Bold")
-        header.fontSize = 10
-        header.fontColor = .gray
-        header.text = "CONTROLS"
-        header.position = CGPoint(x: 0, y: 18)
-        controlPanel.addChild(header)
-        
-        // Start button
-        let startBtn = SKShapeNode(rectOf: CGSize(width: 55, height: 30), cornerRadius: 5)
-        startBtn.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
-        startBtn.strokeColor = .white
-        startBtn.lineWidth = 1
-        startBtn.position = CGPoint(x: -65, y: -8)
-        startBtn.name = "ctrlStartBtn"
-        controlPanel.addChild(startBtn)
-        
-        let startLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
-        startLbl.fontSize = 11
-        startLbl.fontColor = .white
-        startLbl.text = "▶ START"
-        startLbl.verticalAlignmentMode = .center
-        startBtn.addChild(startLbl)
-        
-        // Pause button
-        let pauseBtn = SKShapeNode(rectOf: CGSize(width: 45, height: 30), cornerRadius: 5)
-        pauseBtn.fillColor = SKColor(red: 0.5, green: 0.5, blue: 0.2, alpha: 1.0)
-        pauseBtn.strokeColor = .white
-        pauseBtn.lineWidth = 1
-        pauseBtn.position = CGPoint(x: 0, y: -8)
-        pauseBtn.name = "ctrlPauseBtn"
-        controlPanel.addChild(pauseBtn)
-        
-        let pauseLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
-        pauseLbl.fontSize = 11
-        pauseLbl.fontColor = .white
-        pauseLbl.text = "⏸"
-        pauseLbl.verticalAlignmentMode = .center
-        pauseBtn.addChild(pauseLbl)
-        
-        // Speed button
-        let speedBtn = SKShapeNode(rectOf: CGSize(width: 45, height: 30), cornerRadius: 5)
-        speedBtn.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 1.0)
-        speedBtn.strokeColor = .white
-        speedBtn.lineWidth = 1
-        speedBtn.position = CGPoint(x: 55, y: -8)
-        speedBtn.name = "ctrlSpeedBtn"
-        controlPanel.addChild(speedBtn)
-        
-        let speedLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
-        speedLbl.fontSize = 11
-        speedLbl.fontColor = .white
-        speedLbl.text = "1x"
-        speedLbl.verticalAlignmentMode = .center
-        speedLbl.name = "ctrlSpeedLbl"
-        speedBtn.addChild(speedLbl)
     }
     
     // MARK: - Updates
@@ -351,51 +280,14 @@ final class HUDNode: SKNode {
     // MARK: - Touch Handling
     
     func handleTouch(at location: CGPoint) -> Bool {
-        // Check control panel buttons (bottom-left)
-        if let controlPanel = childNode(withName: "controlPanel") {
-            let localPos = convert(location, to: controlPanel)
-            
-            // Start button in control panel
-            if let startBtn = controlPanel.childNode(withName: "ctrlStartBtn") as? SKShapeNode {
-                if startBtn.contains(localPos) {
-                    delegate?.hudDidTapStartWave()
-                    animateButtonPress(startBtn)
-                    return true
-                }
-            }
-            
-            // Pause button in control panel
-            if let pauseBtn = controlPanel.childNode(withName: "ctrlPauseBtn") as? SKShapeNode {
-                if pauseBtn.contains(localPos) {
-                    delegate?.hudDidTapPause()
-                    animateButtonPress(pauseBtn)
-                    return true
-                }
-            }
-            
-            // Speed button in control panel
-            if let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode {
-                if speedBtn.contains(localPos) {
-                    toggleFastForward()
-                    // Update control panel speed label too
-                    if let lbl = speedBtn.childNode(withName: "ctrlSpeedLbl") as? SKLabelNode {
-                        lbl.text = isFastForward ? "2x" : "1x"
-                    }
-                    delegate?.hudDidTapFastForward()
-                    animateButtonPress(speedBtn)
-                    return true
-                }
-            }
-        }
-        
-        // Check top HUD pause button
+        // Check pause button
         if location.distance(to: pauseButton.position) < 30 {
             delegate?.hudDidTapPause()
             animateButtonPress(pauseButton)
             return true
         }
         
-        // Check start wave button (top bar)
+        // Check start wave button
         if !startWaveButton.isHidden {
             if location.distance(to: startWaveButton.position) < 70 {
                 delegate?.hudDidTapStartWave()
@@ -404,10 +296,16 @@ final class HUDNode: SKNode {
             }
         }
         
-        // Check speed button (top bar)
+        // Check speed button
         if location.distance(to: speedButton.position) < 35 {
             toggleFastForward()
             delegate?.hudDidTapFastForward()
+            return true
+        }
+        
+        // Check trash zone
+        if isInTrashZone(location) {
+            delegate?.hudDidDropInTrash()
             return true
         }
         
@@ -420,17 +318,6 @@ final class HUDNode: SKNode {
         speedButton.fillColor = isFastForward ?
             SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0) :
             SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
-        
-        // Also update control panel speed button
-        if let controlPanel = childNode(withName: "controlPanel"),
-           let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode,
-           let lbl = speedBtn.childNode(withName: "ctrlSpeedLbl") as? SKLabelNode {
-            lbl.text = isFastForward ? "2x" : "1x"
-            speedBtn.fillColor = isFastForward ?
-                SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0) :
-                SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 1.0)
-        }
-        
         animateButtonPress(speedButton)
     }
     
@@ -526,10 +413,10 @@ final class HUDNode: SKNode {
     
     func isInTrashZone(_ location: CGPoint) -> Bool {
         let trashFrame = CGRect(
-            x: trashZone.position.x - 50,
-            y: trashZone.position.y - 50,
-            width: 100,
-            height: 100
+            x: trashZone.position.x - 40,
+            y: trashZone.position.y - 40,
+            width: 80,
+            height: 80
         )
         return trashFrame.contains(location)
     }
