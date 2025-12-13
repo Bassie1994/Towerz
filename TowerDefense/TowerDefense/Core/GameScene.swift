@@ -613,23 +613,27 @@ final class GameScene: SKScene {
     }
     
     func spawnEnemy(type: EnemyType, level: Int) {
+        // Safety: limit max enemies on screen to prevent memory issues
+        guard enemies.count < 500 else { return }
+        
         let enemy: Enemy
         
         switch type {
         case .infantry:
-            enemy = InfantryEnemy(level: level)
+            enemy = InfantryEnemy(level: max(1, level))
         case .cavalry:
-            enemy = CavalryEnemy(level: level)
+            enemy = CavalryEnemy(level: max(1, level))
         case .flying:
-            enemy = FlyingEnemy(level: level)
+            enemy = FlyingEnemy(level: max(1, level))
         }
         
         enemy.delegate = self
         
-        // Random spawn position
-        let spawnY = CGFloat.random(
-            in: GameConstants.playFieldOrigin.y + 50...GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - 50
-        )
+        // Random spawn position (with safety bounds)
+        let minY = GameConstants.playFieldOrigin.y + 50
+        let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - 50
+        let spawnY = CGFloat.random(in: minY...max(minY + 1, maxY))
+        
         enemy.position = CGPoint(
             x: GameConstants.playFieldOrigin.x + GameConstants.cellSize,
             y: spawnY
