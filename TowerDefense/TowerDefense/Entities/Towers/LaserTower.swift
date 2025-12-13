@@ -7,7 +7,7 @@ import SpriteKit
 final class LaserTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 7,       // Nerfed from 15 DPS
+        damage: 2,       // Nerfed 3x from 7 DPS
         range: 1300,     // Full field range (26 cells * 48 + buffer)
         fireRate: 10.0   // Damage ticks per second
     )
@@ -177,7 +177,7 @@ final class LaserTower: Tower {
             
             // Play sound occasionally
             if Int(currentTime * 10) % 3 == 0 {
-                AudioManager.shared.playSound(.laserFire)
+                // AudioManager.shared.playSound(.laserFire)
             }
         }
         

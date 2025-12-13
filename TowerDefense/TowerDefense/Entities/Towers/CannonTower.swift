@@ -75,7 +75,7 @@ final class CannonTower: Tower {
     
     override func fire(at target: Enemy, currentTime: TimeInterval) {
         delegate?.towerDidFire(self, at: target)
-        AudioManager.shared.playSound(.cannonFire)
+        // AudioManager.shared.playSound(.cannonFire)
         
         // Create projectile
         let projectile = Projectile(

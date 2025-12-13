@@ -74,7 +74,7 @@ final class FlowField {
                 
                 // Skip exit positions (no direction needed)
                 if pos.isInExitZone() {
-                    directionField[x][y] = CGVector(dx: 1, dy: 0) // Move right to exit
+                    directionField[x][y] = CGVector(dx: 1, dy: -1).normalized() // Move to bottom-right
                     continue
                 }
                 
@@ -163,26 +163,31 @@ final class FlowField {
     
     /// Get interpolated direction for smoother movement
     func getInterpolatedDirection(at worldPosition: CGPoint) -> CGVector? {
+        // Safety: check for valid world position
+        guard !worldPosition.x.isNaN && !worldPosition.y.isNaN else {
+            return CGVector(dx: 1, dy: 0)
+        }
+        
         let gridPos = worldPosition.toGridPosition()
+        
+        // Safety: if base position is out of bounds, return simple direction
+        guard gridPos.x >= 0 && gridPos.x < grid.width &&
+              gridPos.y >= 0 && gridPos.y < grid.height else {
+            return CGVector(dx: 1, dy: -0.5).normalized()
+        }
         
         // Get cell-local position (0-1)
         let cellX = (worldPosition.x - GameConstants.playFieldOrigin.x) / GameConstants.cellSize
         let cellY = (worldPosition.y - GameConstants.playFieldOrigin.y) / GameConstants.cellSize
-        let localX = cellX - floor(cellX)
-        let localY = cellY - floor(cellY)
+        let localX = max(0, min(1, cellX - floor(cellX)))
+        let localY = max(0, min(1, cellY - floor(cellY)))
         
-        // Sample four corners
-        let positions = [
-            GridPosition(x: gridPos.x, y: gridPos.y),
-            GridPosition(x: gridPos.x + 1, y: gridPos.y),
-            GridPosition(x: gridPos.x, y: gridPos.y + 1),
-            GridPosition(x: gridPos.x + 1, y: gridPos.y + 1)
-        ]
-        
+        // Sample four corners (only valid positions)
         var totalDx: CGFloat = 0
         var totalDy: CGFloat = 0
-        var count: CGFloat = 0
+        var totalWeight: CGFloat = 0
         
+        let offsets = [(0, 0), (1, 0), (0, 1), (1, 1)]
         let weights = [
             (1 - localX) * (1 - localY),
             localX * (1 - localY),
@@ -190,19 +195,29 @@ final class FlowField {
             localX * localY
         ]
         
-        for (i, pos) in positions.enumerated() {
+        for (i, offset) in offsets.enumerated() {
+            let pos = GridPosition(x: gridPos.x + offset.0, y: gridPos.y + offset.1)
             if let dir = getDirection(at: pos) {
                 let weight = weights[i]
                 totalDx += dir.dx * weight
                 totalDy += dir.dy * weight
-                count += weight
+                totalWeight += weight
             }
         }
         
-        guard count > 0 else { return getDirection(at: gridPos) }
+        // Fallback to base position direction
+        guard totalWeight > 0 else { 
+            return getDirection(at: gridPos) ?? CGVector(dx: 1, dy: 0)
+        }
         
-        let result = CGVector(dx: totalDx / count, dy: totalDy / count)
-        return result.normalized()
+        let result = CGVector(dx: totalDx / totalWeight, dy: totalDy / totalWeight)
+        let length = sqrt(result.dx * result.dx + result.dy * result.dy)
+        
+        guard length > 0 else {
+            return CGVector(dx: 1, dy: 0)
+        }
+        
+        return CGVector(dx: result.dx / length, dy: result.dy / length)
     }
     
     /// Get distance to exit from a position

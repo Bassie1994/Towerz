@@ -169,7 +169,7 @@ final class AntiAirTower: Tower {
         guard target.enemyType == .flying else { return }
         
         delegate?.towerDidFire(self, at: target)
-        AudioManager.shared.playSound(.antiAirFire)
+        // AudioManager.shared.playSound(.antiAirFire)
         
         // Calculate damage with flying bonus
         let effectiveDamage = damage * damageMultiplier * flyingDamageMultiplier

@@ -7,7 +7,7 @@ protocol BuildMenuNodeDelegate: AnyObject {
     func canAfford(_ cost: Int) -> Bool
 }
 
-/// Tower selection menu
+/// Tower selection menu - HORIZONTAL at top of screen, below HUD
 final class BuildMenuNode: SKNode {
     
     // MARK: - Properties
@@ -18,15 +18,15 @@ final class BuildMenuNode: SKNode {
     private var selectedTower: TowerType?
     
     private let menuBackground: SKShapeNode
-    private let menuWidth: CGFloat = 100
-    private let menuHeight: CGFloat = 720
+    private let menuWidth: CGFloat = 1200
+    private let menuHeight: CGFloat = 65
     
     // MARK: - Initialization
     
     override init() {
-        // Background panel
-        menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 8)
-        menuBackground.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.2, alpha: 0.95)
+        // Background panel - horizontal bar below HUD
+        menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 5)
+        menuBackground.fillColor = SKColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 0.95)
         menuBackground.strokeColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
         menuBackground.lineWidth = 2
         
@@ -41,30 +41,31 @@ final class BuildMenuNode: SKNode {
     }
     
     private func setupMenu() {
-        // Position menu on right side
-        menuBackground.position = CGPoint(x: 1284, y: 375)
+        // Position menu below HUD (at y=665, leaving room for HUD at 725)
+        menuBackground.position = CGPoint(x: 667, y: 665)
         addChild(menuBackground)
         
-        // Title
+        // Title on left
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
-        title.fontSize = 14
-        title.fontColor = .white
-        title.text = "BUILD"
-        title.position = CGPoint(x: 0, y: menuHeight / 2 - 20)
+        title.fontSize = 11
+        title.fontColor = .gray
+        title.text = "TOWERS:"
+        title.horizontalAlignmentMode = .left
+        title.position = CGPoint(x: -menuWidth/2 + 15, y: -3)
         menuBackground.addChild(title)
         
-        // Create buttons for each tower type (9 towers now)
-        let buttonSpacing: CGFloat = 68  // Reduced spacing for 9 buttons
-        var yOffset: CGFloat = menuHeight / 2 - 55
+        // Create buttons for each tower type horizontally
+        let buttonSpacing: CGFloat = 115
+        var xOffset: CGFloat = -menuWidth/2 + 120
         
         for towerType in TowerType.allCases {
             let button = TowerButton(type: towerType)
-            button.position = CGPoint(x: 0, y: yOffset)
+            button.position = CGPoint(x: xOffset, y: 0)
             button.name = "towerButton_\(towerType.rawValue)"
             menuBackground.addChild(button)
             towerButtons[towerType] = button
             
-            yOffset -= buttonSpacing
+            xOffset += buttonSpacing
         }
     }
     
@@ -79,114 +80,116 @@ final class BuildMenuNode: SKNode {
     
     func setSelectedTower(_ type: TowerType?) {
         // Deselect previous
-        if let previous = selectedTower {
-            towerButtons[previous]?.setSelected(false)
+        if let prev = selectedTower, let button = towerButtons[prev] {
+            button.setSelected(false)
         }
         
         selectedTower = type
         
         // Select new
-        if let type = type {
-            towerButtons[type]?.setSelected(true)
+        if let current = type, let button = towerButtons[current] {
+            button.setSelected(true)
         }
     }
     
     // MARK: - Touch Handling
     
     func handleTouch(at location: CGPoint) -> Bool {
+        // Convert to menu coordinates
         let menuLocation = convert(location, to: menuBackground)
         
+        // Check if in menu background area first
+        let menuFrame = CGRect(x: -menuWidth/2, y: -menuHeight/2, width: menuWidth, height: menuHeight)
+        guard menuFrame.contains(menuLocation) else { return false }
+        
+        // Check each tower button
         for (type, button) in towerButtons {
-            if button.contains(menuLocation) {
-                if delegate?.canAfford(type.baseCost) == true {
-                    if selectedTower == type {
-                        // Deselect
-                        setSelectedTower(nil)
-                        delegate?.buildMenuDidDeselect()
-                    } else {
-                        // Select
-                        setSelectedTower(type)
-                        delegate?.buildMenuDidSelectTower(type)
-                    }
-                    button.animatePress()
+            if button.containsTouchPoint(menuLocation) {
+                if selectedTower == type {
+                    // Deselect if tapping same button
+                    setSelectedTower(nil)
+                    delegate?.buildMenuDidDeselect()
+                } else if delegate?.canAfford(type.baseCost) ?? false {
+                    setSelectedTower(type)
+                    delegate?.buildMenuDidSelectTower(type)
                 }
                 return true
             }
         }
         
-        return false
+        return true  // Consumed touch in menu area
     }
     
     func isInMenuArea(_ location: CGPoint) -> Bool {
-        return location.x > 1234
+        // Check if point is in the top menu bar area
+        return location.y > 630
     }
 }
 
 // MARK: - Tower Button
 
-class TowerButton: SKNode {
+private class TowerButton: SKNode {
     
     let towerType: TowerType
-    
     private let background: SKShapeNode
-    private let iconNode: SKShapeNode
+    private let iconLabel: SKLabelNode
     private let nameLabel: SKLabelNode
     private let costLabel: SKLabelNode
     
-    private var isSelected = false
     private var isAffordable = true
+    private var isButtonSelected = false
     
     init(type: TowerType) {
         self.towerType = type
         
-        // Background - smaller for 8 buttons
-        background = SKShapeNode(rectOf: CGSize(width: 80, height: 68), cornerRadius: 6)
-        background.fillColor = SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 1.0)
+        // Button size
+        background = SKShapeNode(rectOf: CGSize(width: 100, height: 50), cornerRadius: 6)
+        background.fillColor = type.color.withAlphaComponent(0.3)
         background.strokeColor = type.color
         background.lineWidth = 2
         
-        // Tower icon - smaller
-        iconNode = SKShapeNode(rectOf: CGSize(width: 28, height: 28), cornerRadius: 4)
-        iconNode.fillColor = type.color
-        iconNode.strokeColor = .white
-        iconNode.lineWidth = 1
-        iconNode.position = CGPoint(x: 0, y: 10)
+        // Icon/symbol
+        iconLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        iconLabel.fontSize = 20
+        iconLabel.fontColor = .white
+        iconLabel.verticalAlignmentMode = .center
+        iconLabel.horizontalAlignmentMode = .center
+        iconLabel.position = CGPoint(x: -30, y: 0)
         
         // Tower name
         nameLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        nameLabel.fontSize = 10
+        nameLabel.fontSize = 11
         nameLabel.fontColor = .white
-        nameLabel.text = type.displayName
-        nameLabel.position = CGPoint(x: 0, y: -12)
+        nameLabel.verticalAlignmentMode = .center
+        nameLabel.horizontalAlignmentMode = .left
+        nameLabel.position = CGPoint(x: -10, y: 8)
         
         // Cost
         costLabel = SKLabelNode(fontNamed: "Helvetica")
         costLabel.fontSize = 10
         costLabel.fontColor = .yellow
-        costLabel.text = "$\(type.baseCost)"
-        costLabel.position = CGPoint(x: 0, y: -24)
+        costLabel.verticalAlignmentMode = .center
+        costLabel.horizontalAlignmentMode = .left
+        costLabel.position = CGPoint(x: -10, y: -8)
         
         super.init()
         
         addChild(background)
-        addChild(iconNode)
+        addChild(iconLabel)
         addChild(nameLabel)
         addChild(costLabel)
         
-        // Add tower-specific icon
-        addTowerIcon()
+        setupIcon()
+        nameLabel.text = type.displayName
+        costLabel.text = "$\(type.baseCost)"
     }
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func addTowerIcon() {
-        let symbol = SKLabelNode(fontNamed: "Helvetica-Bold")
-        symbol.fontSize = 14
-        symbol.fontColor = .white
-        symbol.horizontalAlignmentMode = .center
-        symbol.verticalAlignmentMode = .center
+    private func setupIcon() {
+        let symbol = iconLabel
         
         switch towerType {
         case .wall:
@@ -204,42 +207,49 @@ class TowerButton: SKNode {
         case .splash:
             symbol.text = "◎"
         case .laser:
-            symbol.text = "—"
+            symbol.text = "═"
         case .antiAir:
             symbol.text = "↑"
-        }
-        
-        iconNode.addChild(symbol)
-    }
-    
-    func setSelected(_ selected: Bool) {
-        isSelected = selected
-        
-        if selected {
-            background.fillColor = towerType.color.withAlphaComponent(0.3)
-            background.lineWidth = 3
-        } else {
-            background.fillColor = SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 1.0)
-            background.lineWidth = 2
         }
     }
     
     func setAffordable(_ affordable: Bool) {
         isAffordable = affordable
-        
-        alpha = affordable ? 1.0 : 0.5
-        costLabel.fontColor = affordable ? .yellow : .gray
+        updateAppearance()
     }
     
-    func animatePress() {
-        let press = SKAction.sequence([
-            SKAction.scale(to: 0.9, duration: 0.05),
-            SKAction.scale(to: 1.0, duration: 0.05)
-        ])
-        run(press)
+    func setSelected(_ selected: Bool) {
+        isButtonSelected = selected
+        updateAppearance()
     }
     
-    override func contains(_ point: CGPoint) -> Bool {
-        return background.contains(point)
+    private func updateAppearance() {
+        if !isAffordable {
+            background.fillColor = SKColor.darkGray.withAlphaComponent(0.3)
+            background.strokeColor = .darkGray
+            iconLabel.alpha = 0.5
+            nameLabel.alpha = 0.5
+            costLabel.fontColor = .red
+        } else if isButtonSelected {
+            background.fillColor = towerType.color.withAlphaComponent(0.7)
+            background.strokeColor = .white
+            background.lineWidth = 3
+            iconLabel.alpha = 1.0
+            nameLabel.alpha = 1.0
+            costLabel.fontColor = .green
+        } else {
+            background.fillColor = towerType.color.withAlphaComponent(0.3)
+            background.strokeColor = towerType.color
+            background.lineWidth = 2
+            iconLabel.alpha = 1.0
+            nameLabel.alpha = 1.0
+            costLabel.fontColor = .yellow
+        }
+    }
+    
+    func containsTouchPoint(_ p: CGPoint) -> Bool {
+        let localPoint = convert(p, from: parent!)
+        let buttonFrame = CGRect(x: -50, y: -25, width: 100, height: 50)
+        return buttonFrame.contains(localPoint)
     }
 }

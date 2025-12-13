@@ -35,17 +35,10 @@ final class WaveManager {
     }
     
     private func loadWaveConfigs() {
-        // Try to load from JSON file
-        if let url = Bundle.main.url(forResource: "WaveConfig", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let configs = try? JSONDecoder().decode([WaveConfig].self, from: data) {
-            waveConfigs = configs
-        } else {
-            // Fallback to hardcoded waves
-            waveConfigs = WaveConfig.defaultWaves
-        }
-        
+        // Use generated 50 waves
+        waveConfigs = WaveConfig.defaultWaves
         totalWaves = waveConfigs.count
+        print("Loaded \(totalWaves) waves")
     }
     
     // MARK: - Wave Control
@@ -99,11 +92,20 @@ final class WaveManager {
         
         let timeSinceWaveStart = currentTime - waveStartTime
         
-        // Spawn enemies from queue
-        while let next = spawnQueue.first, next.delay <= timeSinceWaveStart {
+        // Safety: don't spawn if time is invalid
+        guard timeSinceWaveStart >= 0 && timeSinceWaveStart < 10000 else { return }
+        
+        // Spawn enemies from queue - LIMIT to max 5 per frame to prevent mass spawning
+        var spawnedThisFrame = 0
+        let maxSpawnsPerFrame = 5
+        
+        while let next = spawnQueue.first, 
+              next.delay <= timeSinceWaveStart,
+              spawnedThisFrame < maxSpawnsPerFrame {
             spawnQueue.removeFirst()
             delegate?.spawnEnemy(type: next.type, level: next.level)
             aliveEnemyCount += 1
+            spawnedThisFrame += 1
         }
         
         // Check if wave is complete (all spawned and all dead)
@@ -168,78 +170,220 @@ struct WaveConfig: Codable {
         }
     }
     
-    // Default waves for fallback - MASSIVE enemy counts
+    // Generate 50 waves with scaling difficulty
     static var defaultWaves: [WaveConfig] {
-        return [
-            // Wave 1: Large intro wave
-            WaveConfig(waveNumber: 1, groups: [
-                EnemyGroup(type: .infantry, count: 30, level: 1, spawnInterval: 0.8)
-            ]),
+        var waves: [WaveConfig] = []
+        
+        for waveNum in 1...50 {
+            waves.append(generateWave(number: waveNum))
+        }
+        
+        return waves
+    }
+    
+    private static func generateWave(number: Int) -> WaveConfig {
+        // Base enemy count that scales
+        // Waves 1-10: 50% increase per wave (1.5x multiplier)
+        // Waves 11-30: 15% increase per wave
+        // Waves 31-50: 10% increase per wave
+        
+        let baseCount: Double
+        if number <= 10 {
+            baseCount = 8.0 * pow(1.5, Double(number - 1))
+        } else if number <= 30 {
+            let wave10Base = 8.0 * pow(1.5, 9.0)  // ~307
+            baseCount = wave10Base * pow(1.15, Double(number - 10))
+        } else {
+            let wave10Base = 8.0 * pow(1.5, 9.0)
+            let wave30Base = wave10Base * pow(1.15, 20.0)
+            baseCount = wave30Base * pow(1.10, Double(number - 30))
+        }
+        
+        // Cap max enemies per wave for performance
+        let totalEnemies = min(Int(baseCount), 200)
+        
+        // Enemy level scales with wave
+        let enemyLevel = max(1, (number - 1) / 5 + 1)  // Level up every 5 waves
+        
+        // Spawn interval gets faster as waves progress (but not too fast)
+        let baseInterval = max(0.3, 1.0 - Double(number) * 0.015)
+        
+        // Distribute enemies among types based on wave number
+        var groups: [WaveConfig.EnemyGroup] = []
+        
+        if number < 3 {
+            // Early waves: infantry only
+            groups.append(WaveConfig.EnemyGroup(
+                type: .infantry,
+                count: totalEnemies,
+                level: enemyLevel,
+                spawnInterval: baseInterval
+            ))
+        } else if number < 6 {
+            // Waves 3-5: introduce flying
+            let infantryCount = Int(Double(totalEnemies) * 0.7)
+            let flyingCount = totalEnemies - infantryCount
             
-            // Wave 2: More infantry
-            WaveConfig(waveNumber: 2, groups: [
-                EnemyGroup(type: .infantry, count: 40, level: 1, spawnInterval: 0.6),
-                EnemyGroup(type: .infantry, count: 20, level: 1, spawnInterval: 0.5, groupDelay: 2.0)
-            ]),
+            groups.append(WaveConfig.EnemyGroup(
+                type: .infantry,
+                count: infantryCount,
+                level: enemyLevel,
+                spawnInterval: baseInterval
+            ))
+            groups.append(WaveConfig.EnemyGroup(
+                type: .flying,
+                count: flyingCount,
+                level: max(1, enemyLevel - 1),
+                spawnInterval: baseInterval * 1.5,
+                groupDelay: 2.0
+            ))
+        } else if number < 10 {
+            // Waves 6-9: introduce cavalry
+            let infantryCount = Int(Double(totalEnemies) * 0.5)
+            let flyingCount = Int(Double(totalEnemies) * 0.3)
+            let cavalryCount = totalEnemies - infantryCount - flyingCount
             
-            // Wave 3: Introduce flying
-            WaveConfig(waveNumber: 3, groups: [
-                EnemyGroup(type: .infantry, count: 35, level: 1, spawnInterval: 0.6),
-                EnemyGroup(type: .flying, count: 15, level: 1, spawnInterval: 1.0, groupDelay: 2.0)
-            ]),
+            groups.append(WaveConfig.EnemyGroup(
+                type: .infantry,
+                count: infantryCount,
+                level: enemyLevel,
+                spawnInterval: baseInterval
+            ))
+            groups.append(WaveConfig.EnemyGroup(
+                type: .cavalry,
+                count: cavalryCount,
+                level: max(1, enemyLevel - 1),
+                spawnInterval: baseInterval * 2.0,
+                groupDelay: 2.0
+            ))
+            groups.append(WaveConfig.EnemyGroup(
+                type: .flying,
+                count: flyingCount,
+                level: enemyLevel,
+                spawnInterval: baseInterval * 1.2,
+                groupDelay: 1.5
+            ))
+        } else {
+            // Waves 10+: full mixed with varying compositions
+            let waveType = number % 5
             
-            // Wave 4: Introduce cavalry (slow tanks)
-            WaveConfig(waveNumber: 4, groups: [
-                EnemyGroup(type: .infantry, count: 40, level: 2, spawnInterval: 0.5),
-                EnemyGroup(type: .cavalry, count: 8, level: 1, spawnInterval: 2.0, groupDelay: 2.0),
-                EnemyGroup(type: .flying, count: 12, level: 1, spawnInterval: 0.8, groupDelay: 1.0)
-            ]),
-            
-            // Wave 5: Mixed assault
-            WaveConfig(waveNumber: 5, groups: [
-                EnemyGroup(type: .infantry, count: 50, level: 2, spawnInterval: 0.4),
-                EnemyGroup(type: .cavalry, count: 10, level: 2, spawnInterval: 1.5, groupDelay: 2.0),
-                EnemyGroup(type: .flying, count: 20, level: 2, spawnInterval: 0.6, groupDelay: 1.0),
-                EnemyGroup(type: .infantry, count: 30, level: 2, spawnInterval: 0.3, groupDelay: 2.0)
-            ]),
-            
-            // Wave 6: Tank rush
-            WaveConfig(waveNumber: 6, groups: [
-                EnemyGroup(type: .cavalry, count: 20, level: 2, spawnInterval: 1.2),
-                EnemyGroup(type: .cavalry, count: 15, level: 3, spawnInterval: 1.0, groupDelay: 3.0),
-                EnemyGroup(type: .infantry, count: 40, level: 2, spawnInterval: 0.4, groupDelay: 2.0)
-            ]),
-            
-            // Wave 7: Air superiority
-            WaveConfig(waveNumber: 7, groups: [
-                EnemyGroup(type: .flying, count: 30, level: 2, spawnInterval: 0.5),
-                EnemyGroup(type: .flying, count: 25, level: 3, spawnInterval: 0.4, groupDelay: 2.0),
-                EnemyGroup(type: .infantry, count: 50, level: 2, spawnInterval: 0.3, groupDelay: 1.0)
-            ]),
-            
-            // Wave 8: Full assault
-            WaveConfig(waveNumber: 8, groups: [
-                EnemyGroup(type: .infantry, count: 60, level: 3, spawnInterval: 0.3),
-                EnemyGroup(type: .cavalry, count: 15, level: 3, spawnInterval: 1.2, groupDelay: 2.0),
-                EnemyGroup(type: .flying, count: 25, level: 3, spawnInterval: 0.5, groupDelay: 1.0),
-                EnemyGroup(type: .infantry, count: 40, level: 3, spawnInterval: 0.25, groupDelay: 2.0)
-            ]),
-            
-            // Wave 9: Elite wave
-            WaveConfig(waveNumber: 9, groups: [
-                EnemyGroup(type: .cavalry, count: 25, level: 4, spawnInterval: 1.0),
-                EnemyGroup(type: .flying, count: 35, level: 4, spawnInterval: 0.4, groupDelay: 1.0),
-                EnemyGroup(type: .infantry, count: 80, level: 4, spawnInterval: 0.2, groupDelay: 2.0)
-            ]),
-            
-            // Wave 10: Final boss wave - MASSIVE
-            WaveConfig(waveNumber: 10, groups: [
-                EnemyGroup(type: .infantry, count: 100, level: 4, spawnInterval: 0.15),
-                EnemyGroup(type: .cavalry, count: 30, level: 5, spawnInterval: 0.8, groupDelay: 1.0),
-                EnemyGroup(type: .flying, count: 50, level: 5, spawnInterval: 0.3, groupDelay: 1.0),
-                EnemyGroup(type: .cavalry, count: 20, level: 5, spawnInterval: 1.0, groupDelay: 2.0),
-                EnemyGroup(type: .infantry, count: 60, level: 5, spawnInterval: 0.1, groupDelay: 1.0)
-            ])
-        ]
+            switch waveType {
+            case 0: // Boss wave - heavy cavalry
+                let cavalryCount = Int(Double(totalEnemies) * 0.5)
+                let infantryCount = Int(Double(totalEnemies) * 0.3)
+                let flyingCount = totalEnemies - cavalryCount - infantryCount
+                
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .cavalry,
+                    count: cavalryCount,
+                    level: enemyLevel + 1,
+                    spawnInterval: baseInterval * 1.5
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .infantry,
+                    count: infantryCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval,
+                    groupDelay: 2.0
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .flying,
+                    count: flyingCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.2,
+                    groupDelay: 1.5
+                ))
+                
+            case 1: // Swarm wave - lots of infantry
+                let infantryCount = Int(Double(totalEnemies) * 0.8)
+                let flyingCount = totalEnemies - infantryCount
+                
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .infantry,
+                    count: infantryCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 0.7
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .flying,
+                    count: flyingCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval,
+                    groupDelay: 3.0
+                ))
+                
+            case 2: // Air raid - heavy flying
+                let flyingCount = Int(Double(totalEnemies) * 0.6)
+                let infantryCount = totalEnemies - flyingCount
+                
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .flying,
+                    count: flyingCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .infantry,
+                    count: infantryCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval,
+                    groupDelay: 2.0
+                ))
+                
+            case 3: // Tank rush
+                let cavalryCount = Int(Double(totalEnemies) * 0.4)
+                let infantryCount = Int(Double(totalEnemies) * 0.4)
+                let flyingCount = totalEnemies - cavalryCount - infantryCount
+                
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .cavalry,
+                    count: cavalryCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.8
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .infantry,
+                    count: infantryCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval,
+                    groupDelay: 1.5
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .flying,
+                    count: flyingCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.2,
+                    groupDelay: 1.5
+                ))
+                
+            default: // Balanced
+                let infantryCount = Int(Double(totalEnemies) * 0.4)
+                let flyingCount = Int(Double(totalEnemies) * 0.35)
+                let cavalryCount = totalEnemies - infantryCount - flyingCount
+                
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .infantry,
+                    count: infantryCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .flying,
+                    count: flyingCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.1,
+                    groupDelay: 1.5
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .cavalry,
+                    count: cavalryCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 2.0,
+                    groupDelay: 2.0
+                ))
+            }
+        }
+        
+        return WaveConfig(waveNumber: number, groups: groups)
     }
 }

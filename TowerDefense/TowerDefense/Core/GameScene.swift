@@ -31,6 +31,7 @@ final class GameScene: SKScene {
     private var selectedTowerType: TowerType?
     private var lastUpdateTime: TimeInterval = 0
     private var gameSpeed: CGFloat = 1.0
+    private var gameTime: TimeInterval = 0  // Accumulated game time (respects speed)
     
     // Grid visualization
     private var gridNode: SKNode?
@@ -122,13 +123,111 @@ final class GameScene: SKScene {
             label: "SPAWN"
         )
         
-        // Draw exit zone
-        drawZone(
-            startX: GameConstants.gridWidth - GameConstants.exitZoneWidth,
-            endX: GameConstants.gridWidth,
-            color: SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.3),
-            label: "EXIT"
+        // Draw exit zone in bottom-right corner only
+        drawExitZone()
+        
+        // Add prominent BASE castle indicator in bottom-right
+        drawBaseIndicator()
+    }
+    
+    private func drawExitZone() {
+        // Exit zone is bottom-right: last 2 columns, bottom 4 rows
+        let width = CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
+        let height = CGFloat(4) * GameConstants.cellSize  // 4 rows
+        let color = SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.4)
+        
+        let zone = SKShapeNode(rectOf: CGSize(width: width, height: height))
+        zone.fillColor = color
+        zone.strokeColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        zone.lineWidth = 3
+        zone.position = CGPoint(
+            x: GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - width / 2,
+            y: GameConstants.playFieldOrigin.y + height / 2
         )
+        zone.zPosition = GameConstants.ZPosition.grid.rawValue - 1
+        gameLayer.addChild(zone)
+        
+        // Label
+        let labelNode = SKLabelNode(fontNamed: "Helvetica-Bold")
+        labelNode.fontSize = 16
+        labelNode.fontColor = .white
+        labelNode.text = "EXIT"
+        labelNode.position = CGPoint(x: 0, y: 0)
+        zone.addChild(labelNode)
+    }
+    
+    private func drawBaseIndicator() {
+        let baseNode = SKNode()
+        baseNode.zPosition = GameConstants.ZPosition.ui.rawValue - 10
+        
+        // Position in bottom-right of exit zone
+        let baseX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - GameConstants.cellSize * 1.5
+        let baseY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
+        baseNode.position = CGPoint(x: baseX, y: baseY)
+        
+        // Castle/Base icon background
+        let baseSize: CGFloat = 80
+        let baseBg = SKShapeNode(rectOf: CGSize(width: baseSize, height: baseSize), cornerRadius: 10)
+        baseBg.fillColor = SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 0.8)
+        baseBg.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 1.0)
+        baseBg.lineWidth = 3
+        baseNode.addChild(baseBg)
+        
+        // Castle towers
+        let towerWidth: CGFloat = 15
+        let towerHeight: CGFloat = 30
+        for xOffset in [-25, 25] as [CGFloat] {
+            let tower = SKShapeNode(rectOf: CGSize(width: towerWidth, height: towerHeight))
+            tower.fillColor = SKColor(red: 0.5, green: 0.15, blue: 0.15, alpha: 1.0)
+            tower.strokeColor = .clear
+            tower.position = CGPoint(x: CGFloat(xOffset), y: 15)
+            baseNode.addChild(tower)
+            
+            // Tower top (crenellations)
+            let top = SKShapeNode(rectOf: CGSize(width: towerWidth + 4, height: 5))
+            top.fillColor = SKColor(red: 0.4, green: 0.1, blue: 0.1, alpha: 1.0)
+            top.strokeColor = .clear
+            top.position = CGPoint(x: CGFloat(xOffset), y: 32)
+            baseNode.addChild(top)
+        }
+        
+        // Main gate
+        let gate = SKShapeNode(rectOf: CGSize(width: 25, height: 35))
+        gate.fillColor = SKColor(red: 0.3, green: 0.1, blue: 0.1, alpha: 1.0)
+        gate.strokeColor = .clear
+        gate.position = CGPoint(x: 0, y: 0)
+        baseNode.addChild(gate)
+        
+        // "BASE" label
+        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        label.fontSize = 14
+        label.fontColor = .white
+        label.text = "🏰 BASE"
+        label.position = CGPoint(x: 0, y: -55)
+        baseNode.addChild(label)
+        
+        // Pulsing effect
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.05, duration: 0.8),
+            SKAction.scale(to: 1.0, duration: 0.8)
+        ])
+        baseBg.run(SKAction.repeatForever(pulse))
+        
+        // Arrow indicator pointing to base
+        let arrow = SKLabelNode(fontNamed: "Helvetica-Bold")
+        arrow.fontSize = 24
+        arrow.fontColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
+        arrow.text = "→→→"
+        arrow.position = CGPoint(x: -80, y: 0)
+        baseNode.addChild(arrow)
+        
+        let arrowPulse = SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.3, duration: 0.5),
+            SKAction.fadeAlpha(to: 1.0, duration: 0.5)
+        ])
+        arrow.run(SKAction.repeatForever(arrowPulse))
+        
+        gameLayer.addChild(baseNode)
     }
     
     private func drawGrid() {
@@ -197,26 +296,32 @@ final class GameScene: SKScene {
     // MARK: - Update Loop
     
     override func update(_ currentTime: TimeInterval) {
-        // Calculate delta time
-        let deltaTime = lastUpdateTime > 0 ? (currentTime - lastUpdateTime) * Double(gameSpeed) : 0
+        // Calculate real delta time first (not scaled)
+        let realDeltaTime = lastUpdateTime > 0 ? (currentTime - lastUpdateTime) : 0
         lastUpdateTime = currentTime
+        
+        // Scale delta by game speed
+        let scaledDeltaTime = realDeltaTime * Double(gameSpeed)
+        
+        // Accumulate game time (respects speed changes properly)
+        gameTime += scaledDeltaTime
         
         guard gameManager.isGameActive() else { return }
         
-        // Update wave manager
-        gameManager.waveManager.update(currentTime: currentTime * Double(gameSpeed))
+        // Update wave manager with accumulated game time
+        gameManager.waveManager.update(currentTime: gameTime)
         
-        // Update enemies
+        // Update enemies with scaled delta
         for enemy in enemies where enemy.isAlive {
-            enemy.update(deltaTime: deltaTime, currentTime: currentTime, enemies: enemies)
+            enemy.update(deltaTime: scaledDeltaTime, currentTime: gameTime, enemies: enemies)
         }
         
         // Clean up dead enemies
         enemies.removeAll { !$0.isAlive && $0.parent == nil }
         
-        // Update towers
+        // Update towers with game time
         for tower in towers {
-            tower.update(currentTime: currentTime * Double(gameSpeed))
+            tower.update(currentTime: gameTime)
         }
         
         // Update UI
@@ -247,6 +352,10 @@ final class GameScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
+        // Check if dragging over trash zone
+        let inTrash = hudNode.isInTrashZone(location)
+        hudNode.highlightTrashZone(inTrash)
+        
         // Update placement preview if in placement mode
         if selectedTowerType != nil {
             updatePlacementPreview(at: location)
@@ -256,6 +365,15 @@ final class GameScene: SKScene {
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+        
+        // Check if dropped in trash zone
+        if hudNode.isInTrashZone(location) {
+            hudNode.highlightTrashZone(false)
+            hudDidDropInTrash()
+            return
+        }
+        
+        hudNode.highlightTrashZone(false)
         
         // Attempt placement if in placement mode
         if let towerType = selectedTowerType {
@@ -341,27 +459,28 @@ final class GameScene: SKScene {
     private func performConversion(wallTower: Tower, to targetType: TowerType) {
         let conversionCost = targetType.baseCost - TowerType.wall.baseCost
         
-        guard gameManager.economyManager.gold >= conversionCost else {
-            AudioManager.shared.playSound(.error)
+        guard gameManager.economyManager.canAfford(conversionCost) else {
+            // AudioManager.shared.playSound(.invalidPlacement)
             return
         }
         
-        // Spend gold
-        gameManager.economyManager.spendGold(conversionCost)
+        // Spend money
+        _ = gameManager.economyManager.spend(conversionCost)
         
-        // Remove wall tower
+        // Remove wall tower from our array
         let gridPos = wallTower.gridPosition
         wallTower.removeFromParent()
-        gameManager.towers.removeAll { $0 === wallTower }
+        towers.removeAll { $0 === wallTower }
         
-        // Don't unblock - we're replacing with another tower
+        // Don't unblock grid - we're replacing with another tower
         // Create new tower
         let newTower = createTower(type: targetType, at: gridPos)
-        newTower.position = gameManager.placementValidator.gridToWorld(gridPosition: gridPos)
-        gameManager.towers.append(newTower)
-        worldNode.addChild(newTower)
+        newTower.position = gridPos.toWorldPosition()
+        newTower.delegate = self
+        towers.append(newTower)
+        towerLayer.addChild(newTower)
         
-        AudioManager.shared.playSound(.towerPlace)
+        // AudioManager.shared.playSound(.towerPlace)
         updateUI()
     }
     
@@ -385,7 +504,7 @@ final class GameScene: SKScene {
         
         let gridPos = gameManager.placementValidator.snapToGrid(worldPosition: location)
         
-        if let tower = gameManager.placeTower(type: type, at: gridPos) {
+        if gameManager.placeTower(type: type, at: gridPos) != nil {
             placementPreviewNode.animatePlacementSuccess()
             
             // Keep placement mode active for consecutive placements
@@ -421,8 +540,21 @@ final class GameScene: SKScene {
     }
     
     private func getTowerAt(_ location: CGPoint) -> Tower? {
-        let gridPos = location.toGridPosition()
-        return towers.first { $0.gridPosition == gridPos }
+        // Use distance-based selection for better touch accuracy
+        let touchRadius: CGFloat = 40  // Generous touch area
+        
+        var closestTower: Tower?
+        var closestDistance: CGFloat = touchRadius
+        
+        for tower in towers {
+            let distance = location.distance(to: tower.position)
+            if distance < closestDistance {
+                closestDistance = distance
+                closestTower = tower
+            }
+        }
+        
+        return closestTower
     }
     
     // MARK: - Game Object Management
@@ -456,7 +588,7 @@ final class GameScene: SKScene {
         towerLayer.addChild(tower)
         
         // Play placement sound
-        AudioManager.shared.playSound(.towerPlace)
+        // AudioManager.shared.playSound(.towerPlace)
         
         // Update enemies' paths
         notifyPathfindingChanged()
@@ -474,30 +606,34 @@ final class GameScene: SKScene {
         tower.removeFromParent()
         
         // Play sell sound
-        AudioManager.shared.playSound(.towerSell)
+        // AudioManager.shared.playSound(.towerSell)
         
         // Update enemies' paths
         notifyPathfindingChanged()
     }
     
     func spawnEnemy(type: EnemyType, level: Int) {
+        // Safety: limit max enemies on screen to prevent memory issues
+        guard enemies.count < 500 else { return }
+        
         let enemy: Enemy
         
         switch type {
         case .infantry:
-            enemy = InfantryEnemy(level: level)
+            enemy = InfantryEnemy(level: max(1, level))
         case .cavalry:
-            enemy = CavalryEnemy(level: level)
+            enemy = CavalryEnemy(level: max(1, level))
         case .flying:
-            enemy = FlyingEnemy(level: level)
+            enemy = FlyingEnemy(level: max(1, level))
         }
         
         enemy.delegate = self
         
-        // Random spawn position
-        let spawnY = CGFloat.random(
-            in: GameConstants.playFieldOrigin.y + 50...GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - 50
-        )
+        // Random spawn position (with safety bounds)
+        let minY = GameConstants.playFieldOrigin.y + 50
+        let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - 50
+        let spawnY = CGFloat.random(in: minY...max(minY + 1, maxY))
+        
         enemy.position = CGPoint(
             x: GameConstants.playFieldOrigin.x + GameConstants.cellSize,
             y: spawnY
@@ -515,12 +651,12 @@ final class GameScene: SKScene {
     // MARK: - Game State
     
     func handleGameOver() {
-        AudioManager.shared.playSound(.gameOver)
+        // AudioManager.shared.playSound(.gameOver)
         hudNode.showGameOver()
     }
     
     func handleVictory() {
-        AudioManager.shared.playSound(.victory)
+        // AudioManager.shared.playSound(.victory)
         hudNode.showVictory()
     }
     
@@ -538,6 +674,11 @@ final class GameScene: SKScene {
                 gameManager.pathfindingGrid.unblockCell(GridPosition(x: x, y: y))
             }
         }
+        
+        // Reset timing
+        gameTime = 0
+        lastUpdateTime = 0
+        gameSpeed = 1.0
         
         // Reset managers
         gameManager = GameManager()
@@ -571,11 +712,26 @@ extension GameScene: HUDNodeDelegate {
     }
     
     func hudDidTapStartWave() {
-        gameManager.startWave(currentTime: lastUpdateTime)
+        // Ensure gameTime has started (at least a small value)
+        if gameTime < 0.1 {
+            gameTime = 0.1
+        }
+        gameManager.startWave(currentTime: gameTime)
     }
     
     func hudDidTapFastForward() {
         gameSpeed = hudNode.isFastForwardEnabled() ? 2.0 : 1.0
+    }
+    
+    func hudDidDropInTrash() {
+        // Sell selected tower or cancel placement
+        if let tower = towerInfoNode.selectedTower {
+            gameManager.sellTower(tower)
+            towerInfoNode.hide()
+            updateUI()
+        } else if selectedTowerType != nil {
+            exitPlacementMode()
+        }
     }
 }
 
@@ -600,7 +756,7 @@ extension GameScene: BuildMenuNodeDelegate {
 extension GameScene: TowerInfoNodeDelegate {
     func towerInfoDidTapUpgrade(_ tower: Tower) {
         if gameManager.upgradeTower(tower) {
-            AudioManager.shared.playSound(.towerUpgrade)
+            // AudioManager.shared.playSound(.towerUpgrade)
         }
         towerInfoNode.updateContent()
         updateUI()
@@ -712,13 +868,13 @@ extension GameScene: TowerInfoNodeDelegate {
 
 extension GameScene: EnemyDelegate {
     func enemyDidReachExit(_ enemy: Enemy) {
-        AudioManager.shared.playSound(.lifeLost)
+        // AudioManager.shared.playSound(.lifeLost)
         gameManager.enemyReachedExit(enemy)
     }
     
     func enemyDidDie(_ enemy: Enemy) {
-        AudioManager.shared.playSound(.enemyDeath)
-        AudioManager.shared.playSound(.coinEarn)
+        // AudioManager.shared.playSound(.enemyDeath)
+        // AudioManager.shared.playSound(.coinEarn)
         gameManager.enemyKilled(enemy)
     }
     
@@ -745,7 +901,7 @@ extension GameScene: TowerDelegate {
 
 extension GameScene: WaveManagerDelegate {
     func waveDidStart(waveNumber: Int) {
-        AudioManager.shared.playSound(.waveStart)
+        // AudioManager.shared.playSound(.waveStart)
         
         // Show wave start notification
         let label = SKLabelNode(fontNamed: "Helvetica-Bold")
@@ -767,7 +923,7 @@ extension GameScene: WaveManagerDelegate {
     }
     
     func waveDidComplete(waveNumber: Int) {
-        AudioManager.shared.playSound(.waveComplete)
+        // AudioManager.shared.playSound(.waveComplete)
         gameManager.waveCompleted(waveNumber: waveNumber)
         
         // Show completion notification

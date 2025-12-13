@@ -94,7 +94,7 @@ final class SplashTower: Tower {
     
     override func fire(at target: Enemy, currentTime: TimeInterval) {
         delegate?.towerDidFire(self, at: target)
-        AudioManager.shared.playSound(.splashFire)
+        // AudioManager.shared.playSound(.splashFire)
         
         // Create arcing projectile
         let projectile = SplashProjectile(

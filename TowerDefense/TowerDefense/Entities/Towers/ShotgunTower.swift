@@ -8,7 +8,7 @@ final class ShotgunTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
         damage: 6,       // Nerfed from 12 per pellet
-        range: 60,       // Reduced from 100 - very short range
+        range: 70,       // Minimum range
         fireRate: 1.5    // Shots per second
     )
     
@@ -55,7 +55,7 @@ final class ShotgunTower: Tower {
     
     override func fire(at target: Enemy, currentTime: TimeInterval) {
         delegate?.towerDidFire(self, at: target)
-        AudioManager.shared.playSound(.shotgunFire)
+        // AudioManager.shared.playSound(.shotgunFire)
         
         let baseAngle = position.angle(to: target.position)
         let effectiveDamage = damage * damageMultiplier

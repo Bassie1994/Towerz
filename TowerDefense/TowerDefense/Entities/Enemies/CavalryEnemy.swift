@@ -49,35 +49,13 @@ final class CavalryEnemy: Enemy {
         mount.zPosition = -1
         bodyNode.addChild(mount)
         
-        // Add speed lines effect
-        let speedLine1 = SKShapeNode(rectOf: CGSize(width: 15, height: 2))
-        speedLine1.fillColor = .white
-        speedLine1.strokeColor = .clear
-        speedLine1.alpha = 0.5
-        speedLine1.position = CGPoint(x: -enemySize, y: 3)
-        bodyNode.addChild(speedLine1)
-        
-        let speedLine2 = SKShapeNode(rectOf: CGSize(width: 10, height: 2))
-        speedLine2.fillColor = .white
-        speedLine2.strokeColor = .clear
-        speedLine2.alpha = 0.3
-        speedLine2.position = CGPoint(x: -enemySize - 5, y: -3)
-        bodyNode.addChild(speedLine2)
-        
-        // Animate speed lines
-        let fadeAnimation = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.2, duration: 0.2),
-            SKAction.fadeAlpha(to: 0.5, duration: 0.2)
-        ])
-        speedLine1.run(SKAction.repeatForever(fadeAnimation))
-        speedLine2.run(SKAction.repeatForever(fadeAnimation.reversed()))
-        
-        // Gallop animation
-        let gallopAnimation = SKAction.sequence([
-            SKAction.moveBy(x: 0, y: 2, duration: 0.1),
-            SKAction.moveBy(x: 0, y: -2, duration: 0.1)
-        ])
-        bodyNode.run(SKAction.repeatForever(gallopAnimation), withKey: "gallop")
+        // Simple visual indicator for cavalry (no complex animations)
+        let armorIndicator = SKShapeNode(circleOfRadius: 5)
+        armorIndicator.fillColor = .gray
+        armorIndicator.strokeColor = .white
+        armorIndicator.lineWidth = 1
+        armorIndicator.position = CGPoint(x: 0, y: 5)
+        bodyNode.addChild(armorIndicator)
     }
     
     override func calculateMovementDirection() -> CGVector {

@@ -138,26 +138,51 @@ class Enemy: SKNode {
     func update(deltaTime: TimeInterval, currentTime: TimeInterval, enemies: [Enemy]) {
         guard isAlive else { return }
         
+        // Safety check for valid delta time
+        guard deltaTime > 0 && deltaTime < 1.0 else { return }
+        
         // Update slow status
         updateSlowStatus(currentTime: currentTime)
         
         // Calculate movement
-        let direction = calculateMovementDirection()
+        var direction = calculateMovementDirection()
+        
+        // Safety: ensure direction is valid
+        if direction.dx.isNaN || direction.dy.isNaN || 
+           (direction.dx == 0 && direction.dy == 0) {
+            direction = CGVector(dx: 1, dy: 0)
+        }
         
         // Apply separation from other enemies
         let separation = calculateSeparation(from: enemies)
         
         // Combine forces
-        var finalDirection = CGVector(
+        var combinedDirection = CGVector(
             dx: direction.dx + separation.dx * 0.3,
             dy: direction.dy + separation.dy * 0.3
-        ).normalized()
+        )
+        
+        // Safety: ensure combined direction is valid before normalizing
+        let magnitude = sqrt(combinedDirection.dx * combinedDirection.dx + combinedDirection.dy * combinedDirection.dy)
+        if magnitude > 0 {
+            combinedDirection = CGVector(dx: combinedDirection.dx / magnitude, dy: combinedDirection.dy / magnitude)
+        } else {
+            combinedDirection = CGVector(dx: 1, dy: 0)
+        }
         
         // Smooth direction change to prevent jittering
         currentDirection = CGVector(
-            dx: currentDirection.dx * 0.7 + finalDirection.dx * 0.3,
-            dy: currentDirection.dy * 0.7 + finalDirection.dy * 0.3
-        ).normalized()
+            dx: currentDirection.dx * 0.7 + combinedDirection.dx * 0.3,
+            dy: currentDirection.dy * 0.7 + combinedDirection.dy * 0.3
+        )
+        
+        // Normalize current direction safely
+        let currentMag = sqrt(currentDirection.dx * currentDirection.dx + currentDirection.dy * currentDirection.dy)
+        if currentMag > 0 {
+            currentDirection = CGVector(dx: currentDirection.dx / currentMag, dy: currentDirection.dy / currentMag)
+        } else {
+            currentDirection = CGVector(dx: 1, dy: 0)
+        }
         
         // Calculate actual speed (with slow effect)
         let actualSpeed = moveSpeed * slowMultiplier
@@ -186,29 +211,124 @@ class Enemy: SKNode {
     
     /// Override in subclasses for different movement behavior
     func calculateMovementDirection() -> CGVector {
-        // Default: use flow field
+        // Use flow field for navigation (line-of-sight disabled for stability)
         if let flowField = delegate?.getFlowField(),
            let direction = flowField.getInterpolatedDirection(at: position) {
             return direction
         }
-        // Fallback: move right
-        return CGVector(dx: 1, dy: 0)
+        
+        // Fallback: move toward bottom-right
+        return CGVector(dx: 1, dy: -1).normalized()
+    }
+    
+    /// Check if there's a clear line to the exit - returns direction if clear
+    private func getDirectPathToExit() -> CGVector? {
+        // Target is bottom-right corner
+        let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - GameConstants.cellSize
+        let exitY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
+        let targetPoint = CGPoint(x: exitX, y: exitY)
+        
+        // Check if we have line of sight (no blocked cells in the way)
+        if hasLineOfSight(to: targetPoint) {
+            let dx = targetPoint.x - position.x
+            let dy = targetPoint.y - position.y
+            return CGVector(dx: dx, dy: dy).normalized()
+        }
+        
+        return nil
+    }
+    
+    /// Check if there's a clear path (no towers) between current position and target
+    private func hasLineOfSight(to target: CGPoint) -> Bool {
+        let startGrid = position.toGridPosition()
+        let endGrid = target.toGridPosition()
+        
+        // Safety: ensure valid grid positions
+        guard startGrid.x >= 0 && startGrid.x < GameConstants.gridWidth &&
+              startGrid.y >= 0 && startGrid.y < GameConstants.gridHeight &&
+              endGrid.x >= 0 && endGrid.x < GameConstants.gridWidth &&
+              endGrid.y >= 0 && endGrid.y < GameConstants.gridHeight else {
+            return false
+        }
+        
+        // Use Bresenham-style line check
+        let dx = abs(endGrid.x - startGrid.x)
+        let dy = abs(endGrid.y - startGrid.y)
+        let sx = startGrid.x < endGrid.x ? 1 : -1
+        let sy = startGrid.y < endGrid.y ? 1 : -1
+        
+        var x = startGrid.x
+        var y = startGrid.y
+        var err = dx - dy
+        
+        // Safety: limit iterations to prevent infinite loops
+        var iterations = 0
+        let maxIterations = GameConstants.gridWidth + GameConstants.gridHeight + 10
+        
+        // Check each cell along the line
+        while iterations < maxIterations {
+            iterations += 1
+            
+            // Bounds check
+            guard x >= 0 && x < GameConstants.gridWidth &&
+                  y >= 0 && y < GameConstants.gridHeight else {
+                return false
+            }
+            
+            // Skip spawn/exit zone check
+            let gridPos = GridPosition(x: x, y: y)
+            if !gridPos.isInSpawnZone() && !gridPos.isInExitZone() {
+                // Check if this cell is blocked by a tower
+                if let flowField = delegate?.getFlowField() {
+                    if flowField.getDirection(at: gridPos) == nil {
+                        return false  // Blocked cell
+                    }
+                }
+            }
+            
+            // Reached end
+            if x == endGrid.x && y == endGrid.y {
+                break
+            }
+            
+            let e2 = 2 * err
+            if e2 > -dy {
+                err -= dy
+                x += sx
+            }
+            if e2 < dx {
+                err += dx
+                y += sy
+            }
+        }
+        
+        return true
     }
     
     private func calculateSeparation(from enemies: [Enemy]) -> CGVector {
         var separation = CGVector.zero
         let separationRadius: CGFloat = enemySize * 1.5
         
+        // Optimization: only check nearby enemies (limit to 10 closest checks)
+        var checksPerformed = 0
+        let maxChecks = 10
+        
         for other in enemies {
+            guard checksPerformed < maxChecks else { break }
             guard other.id != self.id && other.isAlive else { continue }
             
-            let distance = position.distance(to: other.position)
-            if distance < separationRadius && distance > 0 {
+            // Quick distance check first (avoid sqrt)
+            let dx = position.x - other.position.x
+            let dy = position.y - other.position.y
+            let distSquared = dx * dx + dy * dy
+            let radiusSquared = separationRadius * separationRadius
+            
+            if distSquared < radiusSquared && distSquared > 0 {
+                checksPerformed += 1
+                let distance = sqrt(distSquared)
                 let strength = (separationRadius - distance) / separationRadius
-                let dx = (position.x - other.position.x) / distance
-                let dy = (position.y - other.position.y) / distance
-                separation.dx += dx * strength
-                separation.dy += dy * strength
+                separation.dx += (dx / distance) * strength
+                separation.dy += (dy / distance) * strength
             }
         }
         
@@ -216,8 +336,12 @@ class Enemy: SKNode {
     }
     
     private func hasReachedExit() -> Bool {
+        // Exit is in bottom-right corner
         let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
-        return position.x >= exitX
+        let exitY = GameConstants.playFieldOrigin.y + CGFloat(4) * GameConstants.cellSize  // Top of exit zone (4 rows)
+        
+        // Must be in both the right columns AND bottom rows
+        return position.x >= exitX && position.y < exitY
     }
     
     // MARK: - Slow Effect
@@ -277,7 +401,6 @@ class Enemy: SKNode {
     private func updateHealthBar() {
         let healthPercent = max(0, currentHealth / maxHealth)
         let fullWidth: CGFloat = enemySize + 8
-        let newWidth = fullWidth * healthPercent
         
         // Update fill width using scale
         healthBarFill.xScale = healthPercent

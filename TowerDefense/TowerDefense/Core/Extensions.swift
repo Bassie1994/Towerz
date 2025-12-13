@@ -52,7 +52,10 @@ extension GridPosition {
     }
     
     func isInExitZone() -> Bool {
-        return x >= GameConstants.gridWidth - GameConstants.exitZoneWidth
+        // Exit zone is bottom-right corner (last 2 columns, bottom 4 rows)
+        let inExitColumns = x >= GameConstants.gridWidth - GameConstants.exitZoneWidth
+        let inExitRows = y < 4  // Bottom 4 rows
+        return inExitColumns && inExitRows
     }
     
     func isInPlayableArea() -> Bool {
@@ -70,7 +73,7 @@ extension CGVector {
     
     func normalized() -> CGVector {
         let len = length
-        guard len > 0 else { return .zero }
+        guard len > 0 else { return CGVector(dx: 1, dy: 0) }  // Default right direction
         return CGVector(dx: dx / len, dy: dy / len)
     }
     

@@ -42,8 +42,8 @@ final class PathfindingGrid {
             }
         }
         
-        // Exit zone: rightmost columns
-        for y in 0..<height {
+        // Exit zone: bottom-right corner (last 2 columns, bottom 4 rows)
+        for y in 0..<4 {  // Bottom 4 rows only
             for x in (width - GameConstants.exitZoneWidth)..<width {
                 exitPositions.append(GridPosition(x: x, y: y))
             }

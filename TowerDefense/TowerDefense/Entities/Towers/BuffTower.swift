@@ -8,7 +8,7 @@ final class BuffTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
         damage: 0,      // No damage
-        range: 30,      // Small buff radius - towers must be adjacent
+        range: 70,      // Minimum range - buff nearby towers
         fireRate: 1.0   // Update rate (not used for attacks)
     )
     
