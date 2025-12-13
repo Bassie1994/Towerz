@@ -35,17 +35,10 @@ final class WaveManager {
     }
     
     private func loadWaveConfigs() {
-        // Try to load from JSON file
-        if let url = Bundle.main.url(forResource: "WaveConfig", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let configs = try? JSONDecoder().decode([WaveConfig].self, from: data) {
-            waveConfigs = configs
-        } else {
-            // Fallback to hardcoded waves
-            waveConfigs = WaveConfig.defaultWaves
-        }
-        
+        // Use generated 50 waves
+        waveConfigs = WaveConfig.defaultWaves
         totalWaves = waveConfigs.count
+        print("Loaded \(totalWaves) waves")
     }
     
     // MARK: - Wave Control
