@@ -324,6 +324,10 @@ final class GameScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
+        // Check if dragging over trash zone
+        let inTrash = hudNode.isInTrashZone(location)
+        hudNode.highlightTrashZone(inTrash)
+        
         // Update placement preview if in placement mode
         if selectedTowerType != nil {
             updatePlacementPreview(at: location)
@@ -333,6 +337,15 @@ final class GameScene: SKScene {
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+        
+        // Check if dropped in trash zone
+        if hudNode.isInTrashZone(location) {
+            hudNode.highlightTrashZone(false)
+            hudDidDropInTrash()
+            return
+        }
+        
+        hudNode.highlightTrashZone(false)
         
         // Attempt placement if in placement mode
         if let towerType = selectedTowerType {
@@ -499,8 +512,21 @@ final class GameScene: SKScene {
     }
     
     private func getTowerAt(_ location: CGPoint) -> Tower? {
-        let gridPos = location.toGridPosition()
-        return towers.first { $0.gridPosition == gridPos }
+        // Use distance-based selection for better touch accuracy
+        let touchRadius: CGFloat = 40  // Generous touch area
+        
+        var closestTower: Tower?
+        var closestDistance: CGFloat = touchRadius
+        
+        for tower in towers {
+            let distance = location.distance(to: tower.position)
+            if distance < closestDistance {
+                closestDistance = distance
+                closestTower = tower
+            }
+        }
+        
+        return closestTower
     }
     
     // MARK: - Game Object Management
@@ -654,6 +680,17 @@ extension GameScene: HUDNodeDelegate {
     
     func hudDidTapFastForward() {
         gameSpeed = hudNode.isFastForwardEnabled() ? 2.0 : 1.0
+    }
+    
+    func hudDidDropInTrash() {
+        // Sell selected tower or cancel placement
+        if let tower = towerInfoNode.selectedTower {
+            gameManager.sellTower(tower)
+            towerInfoNode.hide()
+            updateUI()
+        } else if selectedTowerType != nil {
+            exitPlacementMode()
+        }
     }
 }
 

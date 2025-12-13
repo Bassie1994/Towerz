@@ -5,6 +5,7 @@ protocol HUDNodeDelegate: AnyObject {
     func hudDidTapPause()
     func hudDidTapStartWave()
     func hudDidTapFastForward()
+    func hudDidDropInTrash()
 }
 
 /// Heads-Up Display showing game state
@@ -26,8 +27,11 @@ final class HUDNode: SKNode {
     private let speedLabel: SKLabelNode
     
     private let hudBackground: SKShapeNode
+    private let trashZone: SKShapeNode
+    private let trashLabel: SKLabelNode
     
     private var isFastForward = false
+    private(set) var isTrashHighlighted = false
     
     // MARK: - Initialization
     
@@ -105,6 +109,20 @@ final class HUDNode: SKNode {
         speedLabel.horizontalAlignmentMode = .center
         speedLabel.verticalAlignmentMode = .center
         speedLabel.text = "1x"
+        
+        // Trash zone (top-right corner)
+        trashZone = SKShapeNode(rectOf: CGSize(width: 80, height: 80), cornerRadius: 10)
+        trashZone.fillColor = SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.8)
+        trashZone.strokeColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        trashZone.lineWidth = 3
+        trashZone.name = "trashZone"
+        
+        trashLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        trashLabel.fontSize = 30
+        trashLabel.fontColor = .white
+        trashLabel.text = "🗑"
+        trashLabel.verticalAlignmentMode = .center
+        trashLabel.horizontalAlignmentMode = .center
         
         super.init()
         
@@ -189,6 +207,19 @@ final class HUDNode: SKNode {
         
         // Add control panel on the right side
         setupControlPanel()
+        
+        // Trash zone (top-right)
+        trashZone.position = CGPoint(x: 1280, y: 650)
+        trashZone.addChild(trashLabel)
+        addChild(trashZone)
+        
+        // Add "SELL" text below trash
+        let sellLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        sellLabel.fontSize = 12
+        sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        sellLabel.text = "SELL"
+        sellLabel.position = CGPoint(x: 1280, y: 600)
+        addChild(sellLabel)
         
         // Initial values
         updateLives(GameConstants.startingLives)
@@ -489,5 +520,37 @@ final class HUDNode: SKNode {
         // Animate in
         overlay.setScale(0.1)
         overlay.run(SKAction.scale(to: 1.0, duration: 0.3))
+    }
+    
+    // MARK: - Trash Zone
+    
+    func isInTrashZone(_ location: CGPoint) -> Bool {
+        let trashFrame = CGRect(
+            x: trashZone.position.x - 50,
+            y: trashZone.position.y - 50,
+            width: 100,
+            height: 100
+        )
+        return trashFrame.contains(location)
+    }
+    
+    func highlightTrashZone(_ highlight: Bool) {
+        isTrashHighlighted = highlight
+        
+        if highlight {
+            trashZone.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.9)
+            trashZone.strokeColor = .white
+            trashZone.setScale(1.1)
+            trashLabel.text = "🗑️"
+        } else {
+            trashZone.fillColor = SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.8)
+            trashZone.strokeColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+            trashZone.setScale(1.0)
+            trashLabel.text = "🗑"
+        }
+    }
+    
+    func getTrashZonePosition() -> CGPoint {
+        return trashZone.position
     }
 }
