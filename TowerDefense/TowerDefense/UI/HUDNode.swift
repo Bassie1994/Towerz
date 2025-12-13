@@ -208,19 +208,28 @@ final class HUDNode: SKNode {
         // Control panel (bottom-left)
         setupControlPanel()
         
-        // Trash zone (top-right, next to HUD)
-        trashZone.position = CGPoint(x: 1050, y: 725)
-        trashZone.setScale(0.7)  // Smaller
+        // Trash zone (bottom-right corner, visible and accessible)
+        trashZone.position = CGPoint(x: 1260, y: 80)
+        trashZone.zPosition = 100  // Above other elements
         trashZone.addChild(trashLabel)
         addChild(trashZone)
         
-        // Add "SELL" text
+        // Add "SELL" text below trash
         let sellLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        sellLabel.fontSize = 10
+        sellLabel.fontSize = 12
         sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
         sellLabel.text = "SELL"
-        sellLabel.position = CGPoint(x: 1050, y: 690)
+        sellLabel.position = CGPoint(x: 1260, y: 25)
         addChild(sellLabel)
+        
+        // Add border/frame around trash zone for visibility
+        let trashFrame = SKShapeNode(rectOf: CGSize(width: 90, height: 90), cornerRadius: 12)
+        trashFrame.fillColor = .clear
+        trashFrame.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
+        trashFrame.lineWidth = 2
+        trashFrame.position = CGPoint(x: 1260, y: 80)
+        trashFrame.zPosition = 99
+        addChild(trashFrame)
         
         // Initial values
         updateLives(GameConstants.startingLives)
@@ -229,17 +238,26 @@ final class HUDNode: SKNode {
     }
     
     private func setupControlPanel() {
-        // Floating control panel in bottom-left corner
+        // Floating control panel in bottom-left corner - with visible border
         let panelWidth: CGFloat = 180
         let panelHeight: CGFloat = 50
         
         let controlPanel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 8)
-        controlPanel.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.9)
-        controlPanel.strokeColor = SKColor(red: 0.3, green: 0.5, blue: 0.3, alpha: 1.0)
-        controlPanel.lineWidth = 2
-        controlPanel.position = CGPoint(x: 100, y: 40)
+        controlPanel.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.95)
+        controlPanel.strokeColor = SKColor(red: 0.4, green: 0.7, blue: 0.4, alpha: 1.0)
+        controlPanel.lineWidth = 3
+        controlPanel.position = CGPoint(x: 110, y: 80)  // Higher up, more visible
         controlPanel.name = "controlPanel"
+        controlPanel.zPosition = 100  // Above other elements
         addChild(controlPanel)
+        
+        // Add "CONTROLS" label above panel
+        let headerLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        headerLabel.fontSize = 9
+        headerLabel.fontColor = .gray
+        headerLabel.text = "CONTROLS"
+        headerLabel.position = CGPoint(x: 0, y: 32)
+        controlPanel.addChild(headerLabel)
         
         // Start button
         let startBtn = SKShapeNode(rectOf: CGSize(width: 50, height: 35), cornerRadius: 5)
@@ -498,10 +516,10 @@ final class HUDNode: SKNode {
     
     func isInTrashZone(_ location: CGPoint) -> Bool {
         let trashFrame = CGRect(
-            x: trashZone.position.x - 40,
-            y: trashZone.position.y - 40,
-            width: 80,
-            height: 80
+            x: trashZone.position.x - 50,
+            y: trashZone.position.y - 50,
+            width: 100,
+            height: 100
         )
         return trashFrame.contains(location)
     }
@@ -510,15 +528,15 @@ final class HUDNode: SKNode {
         isTrashHighlighted = highlight
         
         if highlight {
-            trashZone.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.9)
+            trashZone.fillColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 0.95)
             trashZone.strokeColor = .white
-            trashZone.setScale(1.1)
-            trashLabel.text = "🗑️"
+            trashZone.lineWidth = 4
+            trashLabel.fontColor = .white
         } else {
             trashZone.fillColor = SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.8)
             trashZone.strokeColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
-            trashZone.setScale(1.0)
-            trashLabel.text = "🗑"
+            trashZone.lineWidth = 3
+            trashLabel.fontColor = .white
         }
     }
     
