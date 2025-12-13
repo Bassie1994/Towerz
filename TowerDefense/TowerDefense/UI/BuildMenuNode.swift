@@ -247,7 +247,7 @@ private class TowerButton: SKNode {
         }
     }
     
-    func containsPoint(_ p: CGPoint) -> Bool {
+    func containsTouchPoint(_ p: CGPoint) -> Bool {
         let localPoint = convert(p, from: parent!)
         let buttonFrame = CGRect(x: -50, y: -25, width: 100, height: 50)
         return buttonFrame.contains(localPoint)
