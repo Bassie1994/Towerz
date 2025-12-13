@@ -83,19 +83,25 @@ final class FlowField {
                     continue
                 }
                 
-                // Find neighbor with lowest distance
-                var bestDirection: CGVector?
-                var bestDistance = distanceField[x][y]
+                // Use gradient-based direction for smoother pathing
+                // Sample all 8 neighbors and compute weighted direction
+                var totalDx: CGFloat = 0
+                var totalDy: CGFloat = 0
+                let currentDist = distanceField[x][y]
                 
-                // Check cardinal directions
-                let directions: [(Int, Int, CGVector)] = [
-                    (1, 0, CGVector(dx: 1, dy: 0)),   // Right
-                    (-1, 0, CGVector(dx: -1, dy: 0)), // Left
-                    (0, 1, CGVector(dx: 0, dy: 1)),   // Up
-                    (0, -1, CGVector(dx: 0, dy: -1))  // Down
+                // All 8 directions with their offsets
+                let allDirections: [(dx: Int, dy: Int, weight: CGFloat)] = [
+                    (1, 0, 1.0),    // Right
+                    (-1, 0, 1.0),   // Left
+                    (0, 1, 1.0),    // Up
+                    (0, -1, 1.0),   // Down
+                    (1, 1, 0.707),  // Diagonal (weighted less)
+                    (1, -1, 0.707),
+                    (-1, 1, 0.707),
+                    (-1, -1, 0.707)
                 ]
                 
-                for (dx, dy, dir) in directions {
+                for (dx, dy, weight) in allDirections {
                     let nx = x + dx
                     let ny = y + dy
                     
@@ -103,46 +109,43 @@ final class FlowField {
                         continue
                     }
                     
-                    let neighborDistance = distanceField[nx][ny]
-                    if neighborDistance < bestDistance {
-                        bestDistance = neighborDistance
-                        bestDirection = dir
+                    // For diagonals, check that adjacent cells are walkable
+                    if abs(dx) == 1 && abs(dy) == 1 {
+                        let adj1 = GridPosition(x: x + dx, y: y)
+                        let adj2 = GridPosition(x: x, y: y + dy)
+                        if !grid.isWalkable(adj1) || !grid.isWalkable(adj2) {
+                            continue
+                        }
+                    }
+                    
+                    let neighborDist = distanceField[nx][ny]
+                    
+                    // Only consider cells that bring us closer to goal
+                    if neighborDist < currentDist {
+                        // Weight by how much closer this cell is
+                        let improvement = CGFloat(currentDist - neighborDist)
+                        totalDx += CGFloat(dx) * improvement * weight
+                        totalDy += CGFloat(dy) * improvement * weight
                     }
                 }
                 
-                // Also check diagonals for smoother movement
-                let diagonals: [(Int, Int, CGVector)] = [
-                    (1, 1, CGVector(dx: 0.707, dy: 0.707)),
-                    (1, -1, CGVector(dx: 0.707, dy: -0.707)),
-                    (-1, 1, CGVector(dx: -0.707, dy: 0.707)),
-                    (-1, -1, CGVector(dx: -0.707, dy: -0.707))
-                ]
-                
-                for (dx, dy, dir) in diagonals {
-                    let nx = x + dx
-                    let ny = y + dy
-                    
-                    guard nx >= 0 && nx < grid.width && ny >= 0 && ny < grid.height else {
-                        continue
-                    }
-                    
-                    // Diagonal movement requires both adjacent cells to be walkable
-                    let adj1Walkable = grid.isWalkable(GridPosition(x: x + dx, y: y))
-                    let adj2Walkable = grid.isWalkable(GridPosition(x: x, y: y + dy))
-                    
-                    if !adj1Walkable || !adj2Walkable {
-                        continue
-                    }
-                    
-                    let neighborDistance = distanceField[nx][ny]
-                    // Diagonal has slightly higher cost (1.4 vs 1.0)
-                    if neighborDistance < bestDistance - 1 {
-                        bestDistance = neighborDistance
-                        bestDirection = dir
+                // Normalize the direction
+                let length = sqrt(totalDx * totalDx + totalDy * totalDy)
+                if length > 0 {
+                    directionField[x][y] = CGVector(dx: totalDx / length, dy: totalDy / length)
+                } else {
+                    // Fallback: find any neighbor with lower distance
+                    for (dx, dy, _) in allDirections {
+                        let nx = x + dx
+                        let ny = y + dy
+                        guard nx >= 0 && nx < grid.width && ny >= 0 && ny < grid.height else { continue }
+                        if distanceField[nx][ny] < currentDist {
+                            let len = sqrt(CGFloat(dx * dx + dy * dy))
+                            directionField[x][y] = CGVector(dx: CGFloat(dx) / len, dy: CGFloat(dy) / len)
+                            break
+                        }
                     }
                 }
-                
-                directionField[x][y] = bestDirection
             }
         }
     }
@@ -176,13 +179,19 @@ final class FlowField {
             return CGVector(dx: 1, dy: -0.5).normalized()
         }
         
+        // If current cell has no direction (blocked), return nil
+        guard let currentDir = getDirection(at: gridPos) else {
+            // Try to find escape direction from blocked cell
+            return findEscapeDirection(from: gridPos)
+        }
+        
         // Get cell-local position (0-1)
         let cellX = (worldPosition.x - GameConstants.playFieldOrigin.x) / GameConstants.cellSize
         let cellY = (worldPosition.y - GameConstants.playFieldOrigin.y) / GameConstants.cellSize
         let localX = max(0, min(1, cellX - floor(cellX)))
         let localY = max(0, min(1, cellY - floor(cellY)))
         
-        // Sample four corners (only valid positions)
+        // Only interpolate with walkable neighbors
         var totalDx: CGFloat = 0
         var totalDy: CGFloat = 0
         var totalWeight: CGFloat = 0
@@ -197,6 +206,7 @@ final class FlowField {
         
         for (i, offset) in offsets.enumerated() {
             let pos = GridPosition(x: gridPos.x + offset.0, y: gridPos.y + offset.1)
+            // Only include if walkable or in spawn/exit zone
             if let dir = getDirection(at: pos) {
                 let weight = weights[i]
                 totalDx += dir.dx * weight
@@ -205,19 +215,42 @@ final class FlowField {
             }
         }
         
-        // Fallback to base position direction
-        guard totalWeight > 0 else { 
-            return getDirection(at: gridPos) ?? CGVector(dx: 1, dy: 0)
+        // If no valid neighbors, use current cell direction
+        guard totalWeight > 0.1 else { 
+            return currentDir
         }
         
         let result = CGVector(dx: totalDx / totalWeight, dy: totalDy / totalWeight)
         let length = sqrt(result.dx * result.dx + result.dy * result.dy)
         
-        guard length > 0 else {
-            return CGVector(dx: 1, dy: 0)
+        guard length > 0.01 else {
+            return currentDir
         }
         
         return CGVector(dx: result.dx / length, dy: result.dy / length)
+    }
+    
+    /// Find direction to escape from a blocked cell
+    private func findEscapeDirection(from pos: GridPosition) -> CGVector? {
+        let directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+        
+        var bestDir: CGVector?
+        var bestDist = Int.max
+        
+        for (dx, dy) in directions {
+            let neighbor = GridPosition(x: pos.x + dx, y: pos.y + dy)
+            guard neighbor.x >= 0 && neighbor.x < grid.width &&
+                  neighbor.y >= 0 && neighbor.y < grid.height else { continue }
+            
+            let dist = distanceField[neighbor.x][neighbor.y]
+            if dist < bestDist && dist < maxDistance {
+                bestDist = dist
+                let len = sqrt(CGFloat(dx * dx + dy * dy))
+                bestDir = CGVector(dx: CGFloat(dx) / len, dy: CGFloat(dy) / len)
+            }
+        }
+        
+        return bestDir
     }
     
     /// Get distance to exit from a position

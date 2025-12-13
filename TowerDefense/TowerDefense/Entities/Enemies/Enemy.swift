@@ -193,15 +193,58 @@ class Enemy: SKNode {
             dy: currentDirection.dy * actualSpeed * CGFloat(deltaTime)
         )
         
-        position = CGPoint(
+        // Calculate new position
+        var newPosition = CGPoint(
             x: position.x + movement.dx,
             y: position.y + movement.dy
         )
         
-        // Clamp to playfield bounds (vertical only)
+        // Collision detection with towers/blocked cells
+        let newGridPos = newPosition.toGridPosition()
+        if newGridPos.x >= 0 && newGridPos.x < GameConstants.gridWidth &&
+           newGridPos.y >= 0 && newGridPos.y < GameConstants.gridHeight {
+            
+            // Check if new position is blocked
+            if let flowField = delegate?.getFlowField() {
+                let isBlocked = flowField.getDirection(at: newGridPos) == nil && 
+                                !newGridPos.isInSpawnZone() && 
+                                !newGridPos.isInExitZone()
+                
+                if isBlocked {
+                    // Try to slide along the obstacle
+                    // Try horizontal movement only
+                    let horizPos = CGPoint(x: position.x + movement.dx, y: position.y)
+                    let horizGrid = horizPos.toGridPosition()
+                    let horizBlocked = flowField.getDirection(at: horizGrid) == nil &&
+                                      !horizGrid.isInSpawnZone() && !horizGrid.isInExitZone()
+                    
+                    // Try vertical movement only
+                    let vertPos = CGPoint(x: position.x, y: position.y + movement.dy)
+                    let vertGrid = vertPos.toGridPosition()
+                    let vertBlocked = flowField.getDirection(at: vertGrid) == nil &&
+                                     !vertGrid.isInSpawnZone() && !vertGrid.isInExitZone()
+                    
+                    if !horizBlocked {
+                        newPosition = horizPos
+                    } else if !vertBlocked {
+                        newPosition = vertPos
+                    } else {
+                        // Can't move - stay in place
+                        newPosition = position
+                    }
+                }
+            }
+        }
+        
+        position = newPosition
+        
+        // Clamp to playfield bounds
         let minY = GameConstants.playFieldOrigin.y + enemySize / 2
         let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - enemySize / 2
+        let minX = GameConstants.playFieldOrigin.x + enemySize / 2
+        let maxX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - enemySize / 2
         position.y = max(minY, min(maxY, position.y))
+        position.x = max(minX, min(maxX, position.x))
         
         // Check if reached exit
         if hasReachedExit() {
