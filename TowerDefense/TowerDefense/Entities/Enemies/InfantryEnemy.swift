@@ -7,7 +7,7 @@ final class InfantryEnemy: Enemy {
     
     // Infantry stats per level
     static let baseStats: (health: CGFloat, speed: CGFloat, armor: CGFloat, reward: Int) = (
-        health: 100,
+        health: 200,    // 2x HP
         speed: 100,     // Increased from 80
         armor: 0,
         reward: 2       // Reduced from 10 (factor 5)
