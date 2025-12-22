@@ -210,21 +210,24 @@ final class HUDNode: SKNode {
     }
     
     private func setupHUD() {
+        let screenCenterX: CGFloat = 667
+        let topBarY: CGFloat = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height + 90
+
         // Position background at top (lowered for safe area)
-        hudBackground.position = CGPoint(x: 667, y: 710)
+        hudBackground.position = CGPoint(x: screenCenterX, y: topBarY)
         addChild(hudBackground)
-        
+
         // Lives (left side)
-        livesIcon.position = CGPoint(x: 50, y: 710)
+        livesIcon.position = CGPoint(x: GameConstants.playFieldOrigin.x - 40, y: topBarY)
         addChild(livesIcon)
-        
-        livesLabel.position = CGPoint(x: 70, y: 710)
+
+        livesLabel.position = CGPoint(x: GameConstants.playFieldOrigin.x - 20, y: topBarY)
         addChild(livesLabel)
-        
+
         // Money (next to lives)
-        moneyIcon.position = CGPoint(x: 160, y: 710)
+        moneyIcon.position = CGPoint(x: GameConstants.playFieldOrigin.x + 60, y: topBarY)
         addChild(moneyIcon)
-        
+
         // Add coin symbol
         let coinSymbol = SKLabelNode(fontNamed: "Helvetica-Bold")
         coinSymbol.fontSize = 12
@@ -233,27 +236,27 @@ final class HUDNode: SKNode {
         coinSymbol.horizontalAlignmentMode = .center
         coinSymbol.verticalAlignmentMode = .center
         moneyIcon.addChild(coinSymbol)
-        
-        moneyLabel.position = CGPoint(x: 180, y: 710)
+
+        moneyLabel.position = CGPoint(x: GameConstants.playFieldOrigin.x + 80, y: topBarY)
         addChild(moneyLabel)
-        
+
         // Wave info (center) - larger and more visible
-        waveLabel.position = CGPoint(x: 500, y: 710)
+        waveLabel.position = CGPoint(x: screenCenterX - 80, y: topBarY)
         waveLabel.fontSize = 18
         addChild(waveLabel)
-        
+
         // Start wave button - BIGGER and more prominent
-        startWaveButton.position = CGPoint(x: 700, y: 710)
+        startWaveButton.position = CGPoint(x: screenCenterX + 80, y: topBarY)
         startWaveButton.addChild(startWaveLabel)
         addChild(startWaveButton)
-        
+
         // Speed button
-        speedButton.position = CGPoint(x: 850, y: 710)
+        speedButton.position = CGPoint(x: screenCenterX + 190, y: topBarY)
         speedButton.addChild(speedLabel)
         addChild(speedButton)
-        
-        // Pause button 
-        pauseButton.position = CGPoint(x: 950, y: 710)
+
+        // Pause button
+        pauseButton.position = CGPoint(x: screenCenterX + 260, y: topBarY)
         
         // Pause icon (two vertical bars)
         let bar1 = SKShapeNode(rectOf: CGSize(width: 4, height: 15))
@@ -283,9 +286,9 @@ final class HUDNode: SKNode {
         // Control panel (bottom-left)
         setupControlPanel()
         
-        // Booze power button (left side, below spawn area)
-        let boozeX: CGFloat = 180
-        let boozeY: CGFloat = 565
+        // Booze power button (top-left cluster)
+        let boozeX: CGFloat = GameConstants.playFieldOrigin.x - 40
+        let boozeY: CGFloat = topBarY - 90
         
         boozeCooldownRing.position = CGPoint(x: boozeX, y: boozeY)
         boozeCooldownRing.zPosition = 99
@@ -307,7 +310,7 @@ final class HUDNode: SKNode {
         boozeTitleLabel.text = "BOOZE"
         boozeTitleLabel.position = CGPoint(x: boozeX, y: boozeY - 50)
         addChild(boozeTitleLabel)
-        
+
         // Lava power button (below booze)
         let lavaX: CGFloat = boozeX
         let lavaY: CGFloat = boozeY - 110
@@ -334,7 +337,7 @@ final class HUDNode: SKNode {
         addChild(lavaTitleLabel)
         
         // Trash zone (top-right corner, near HUD)
-        trashZone.position = CGPoint(x: 1280, y: 650)
+        trashZone.position = CGPoint(x: 1250, y: topBarY - 40)
         trashZone.zPosition = 100  // Above other elements
         trashZone.addChild(trashLabel)
         addChild(trashZone)
@@ -344,7 +347,7 @@ final class HUDNode: SKNode {
         sellLabel.fontSize = 10
         sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
         sellLabel.text = "SELL"
-        sellLabel.position = CGPoint(x: 1280, y: 600)
+        sellLabel.position = CGPoint(x: 1250, y: topBarY - 90)
         addChild(sellLabel)
         
         // Add border/frame around trash zone for visibility
@@ -352,16 +355,16 @@ final class HUDNode: SKNode {
         trashFrame.fillColor = .clear
         trashFrame.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
         trashFrame.lineWidth = 2
-        trashFrame.position = CGPoint(x: 1280, y: 650)
+        trashFrame.position = CGPoint(x: 1250, y: topBarY - 40)
         trashFrame.zPosition = 99
         addChild(trashFrame)
         
         // Large money display on right side of screen (vertical center)
-        let bigMoneyBg = SKShapeNode(rectOf: CGSize(width: 100, height: 50), cornerRadius: 8)
+        let bigMoneyBg = SKShapeNode(rectOf: CGSize(width: 120, height: 48), cornerRadius: 8)
         bigMoneyBg.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.1, alpha: 0.9)
         bigMoneyBg.strokeColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.8)
         bigMoneyBg.lineWidth = 2
-        bigMoneyBg.position = CGPoint(x: 1280, y: 375)  // Right side, vertical center
+        bigMoneyBg.position = CGPoint(x: 1120, y: topBarY)
         bigMoneyBg.zPosition = 100
         bigMoneyBg.name = "bigMoneyBg"
         addChild(bigMoneyBg)

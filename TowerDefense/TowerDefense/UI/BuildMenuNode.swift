@@ -7,7 +7,7 @@ protocol BuildMenuNodeDelegate: AnyObject {
     func canAfford(_ cost: Int) -> Bool
 }
 
-/// Tower selection menu - HORIZONTAL at top of screen, below HUD
+/// Tower selection menu - HORIZONTAL bar along the bottom of the screen
 final class BuildMenuNode: SKNode {
     
     // MARK: - Properties
@@ -19,7 +19,7 @@ final class BuildMenuNode: SKNode {
     
     private let menuBackground: SKShapeNode
     private let menuWidth: CGFloat = 1200
-    private let menuHeight: CGFloat = 65
+    private let menuHeight: CGFloat = 70
     
     private let moneyLabel: SKLabelNode
     private let moneyIcon: SKLabelNode
@@ -27,11 +27,11 @@ final class BuildMenuNode: SKNode {
     // MARK: - Initialization
     
     override init() {
-        // Background panel - horizontal bar below HUD
-        menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 5)
+        // Background panel - horizontal bar at bottom of screen
+        menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 8)
         menuBackground.fillColor = SKColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 0.95)
-        menuBackground.strokeColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
-        menuBackground.lineWidth = 2
+        menuBackground.strokeColor = SKColor(red: 0.45, green: 0.45, blue: 0.6, alpha: 1.0)
+        menuBackground.lineWidth = 3
         
         // Money display
         moneyIcon = SKLabelNode(fontNamed: "Helvetica-Bold")
@@ -59,8 +59,10 @@ final class BuildMenuNode: SKNode {
     }
     
     private func setupMenu() {
-        // Position menu below HUD (at y=650, leaving room for HUD at 710)
-        menuBackground.position = CGPoint(x: 667, y: 650)
+        // Position menu along the bottom edge with slight padding from the playfield
+        let bottomPadding: CGFloat = 45
+        let centerX: CGFloat = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width / 2 + 10
+        menuBackground.position = CGPoint(x: centerX, y: GameConstants.playFieldOrigin.y - bottomPadding)
         addChild(menuBackground)
         
         // Title on left
@@ -86,7 +88,6 @@ final class BuildMenuNode: SKNode {
             xOffset += buttonSpacing
         }
         
-        // Money display removed from build menu - now in HUD at right side of screen
     }
     
     func updateMoney(_ amount: Int) {
@@ -145,8 +146,10 @@ final class BuildMenuNode: SKNode {
     }
     
     func isInMenuArea(_ location: CGPoint) -> Bool {
-        // Check if point is in the top menu bar area
-        return location.y > 630
+        // Check if point is in the bottom build bar area
+        let localPos = convert(location, to: menuBackground)
+        let menuFrame = CGRect(x: -menuWidth/2, y: -menuHeight/2, width: menuWidth, height: menuHeight)
+        return menuFrame.contains(localPos)
     }
 }
 
