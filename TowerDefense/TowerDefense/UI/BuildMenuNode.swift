@@ -1,4 +1,5 @@
 import SpriteKit
+import UIKit
 
 /// Delegate for build menu interactions
 protocol BuildMenuNodeDelegate: AnyObject {
@@ -7,35 +8,37 @@ protocol BuildMenuNodeDelegate: AnyObject {
     func canAfford(_ cost: Int) -> Bool
 }
 
-/// Tower selection menu - HORIZONTAL at the bottom of the screen
+/// Tower selection menu - HORIZONTAL bar along the bottom of the screen
 final class BuildMenuNode: SKNode {
-
+    
     // MARK: - Properties
-
+    
     weak var delegate: BuildMenuNodeDelegate?
-
+    
     private var towerButtons: [TowerType: TowerButton] = [:]
     private var selectedTower: TowerType?
 
     private let menuBackground: SKShapeNode
+    private let menuWidth: CGFloat
     private let menuHeight: CGFloat = 70
-    private let bottomPadding: CGFloat = 24
-    private let safeHorizontalPadding: CGFloat = 20
-    private let maxMenuWidth: CGFloat = 1200
-    private var menuWidth: CGFloat
-
+    private var layoutSize: CGSize = .zero
+    private var safeAreaInsets: UIEdgeInsets = .zero
+    
     private let moneyLabel: SKLabelNode
     private let moneyIcon: SKLabelNode
-
+    
     // MARK: - Initialization
-
-    init(sceneSize: CGSize) {
-        // Background panel - horizontal bar anchored to the bottom
-        menuWidth = min(sceneSize.width - safeHorizontalPadding * 2, maxMenuWidth)
-        menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 5)
+    
+    init(sceneSize: CGSize, safeAreaInsets: UIEdgeInsets) {
+        layoutSize = sceneSize
+        self.safeAreaInsets = safeAreaInsets
+        let widthPadding = safeAreaInsets.left + safeAreaInsets.right + 30
+        menuWidth = min(sceneSize.width - widthPadding, 1200)
+        // Background panel - horizontal bar at bottom of screen
+        menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 8)
         menuBackground.fillColor = SKColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 0.95)
-        menuBackground.strokeColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
-        menuBackground.lineWidth = 2
+        menuBackground.strokeColor = SKColor(red: 0.45, green: 0.45, blue: 0.6, alpha: 1.0)
+        menuBackground.lineWidth = 3
         
         // Money display
         moneyIcon = SKLabelNode(fontNamed: "Helvetica-Bold")
@@ -44,17 +47,17 @@ final class BuildMenuNode: SKNode {
         moneyIcon.text = "💰"
         moneyIcon.verticalAlignmentMode = .center
         moneyIcon.horizontalAlignmentMode = .right
-
+        
         moneyLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         moneyLabel.fontSize = 16
         moneyLabel.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
         moneyLabel.text = "$500"
         moneyLabel.verticalAlignmentMode = .center
         moneyLabel.horizontalAlignmentMode = .left
-
+        
         super.init()
-
-        setupMenu(sceneSize: sceneSize)
+        
+        setupMenu()
         zPosition = GameConstants.ZPosition.ui.rawValue
     }
     
@@ -62,11 +65,13 @@ final class BuildMenuNode: SKNode {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func setupMenu(sceneSize: CGSize) {
-        // Position menu along the bottom (above safe area)
-        menuBackground.position = CGPoint(x: sceneSize.width / 2, y: menuHeight / 2 + bottomPadding)
+    private func setupMenu() {
+        // Position menu along the bottom edge with slight padding from the playfield and screen edges
+        let bottomPadding: CGFloat = max(24, safeAreaInsets.bottom + 20)
+        let menuY = max(menuHeight / 2 + bottomPadding, GameConstants.playFieldOrigin.y - bottomPadding)
+        menuBackground.position = CGPoint(x: layoutSize.width / 2, y: menuY)
         addChild(menuBackground)
-
+        
         // Title on left
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
         title.fontSize = 11
@@ -76,16 +81,12 @@ final class BuildMenuNode: SKNode {
         title.position = CGPoint(x: -menuWidth/2 + 15, y: -3)
         menuBackground.addChild(title)
 
-        // Create buttons for each tower type horizontally
-        let towerCount = TowerType.allCases.count
-        let usableWidth = menuWidth - 240  // Leave room for label and padding
-        let buttonSpacing: CGFloat
-        if towerCount > 1 {
-            buttonSpacing = usableWidth / CGFloat(towerCount - 1)
-        } else {
-            buttonSpacing = 0
-        }
-        var xOffset: CGFloat = -menuWidth/2 + 120
+        // Create buttons for each tower type, spaced to fit the available width
+        let towerCount = CGFloat(TowerType.allCases.count)
+        let horizontalInset: CGFloat = 80
+        let buttonAreaWidth = max(200, menuWidth - horizontalInset * 2)
+        let buttonSpacing: CGFloat = towerCount > 1 ? buttonAreaWidth / (towerCount - 1) : 0
+        var xOffset: CGFloat = -buttonAreaWidth / 2
 
         for towerType in TowerType.allCases {
             let button = TowerButton(type: towerType)
@@ -93,11 +94,10 @@ final class BuildMenuNode: SKNode {
             button.name = "towerButton_\(towerType.rawValue)"
             menuBackground.addChild(button)
             towerButtons[towerType] = button
-            
+
             xOffset += buttonSpacing
         }
-        
-        // Money display removed from build menu - now in HUD at right side of screen
+
     }
     
     func updateMoney(_ amount: Int) {
@@ -132,7 +132,7 @@ final class BuildMenuNode: SKNode {
     func handleTouch(at location: CGPoint) -> Bool {
         // Convert to menu coordinates
         let menuLocation = convert(location, to: menuBackground)
-        
+
         // Check if in menu background area first
         let menuFrame = CGRect(x: -menuWidth/2, y: -menuHeight/2, width: menuWidth, height: menuHeight)
         guard menuFrame.contains(menuLocation) else { return false }
@@ -156,11 +156,10 @@ final class BuildMenuNode: SKNode {
     }
     
     func isInMenuArea(_ location: CGPoint) -> Bool {
-        // Check if point is in the bottom menu bar area
-        let menuFrame = CGRect(x: -menuWidth / 2, y: -menuHeight / 2, width: menuWidth, height: menuHeight)
-        let menuPosition = menuBackground.position
-        let localPoint = CGPoint(x: location.x - menuPosition.x, y: location.y - menuPosition.y)
-        return menuFrame.contains(localPoint)
+        // Check if point is in the bottom build bar area
+        let localPos = convert(location, to: menuBackground)
+        let menuFrame = CGRect(x: -menuWidth/2, y: -menuHeight/2, width: menuWidth, height: menuHeight)
+        return menuFrame.contains(localPos)
     }
 }
 
