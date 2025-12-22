@@ -80,12 +80,12 @@ final class GameScene: SKScene {
     
     private func setupUI() {
         // HUD
-        hudNode = HUDNode()
+        hudNode = HUDNode(sceneSize: size)
         hudNode.delegate = self
         uiLayer.addChild(hudNode)
-        
+
         // Build Menu
-        buildMenuNode = BuildMenuNode()
+        buildMenuNode = BuildMenuNode(sceneSize: size)
         buildMenuNode.delegate = self
         uiLayer.addChild(buildMenuNode)
         
@@ -811,6 +811,7 @@ extension GameScene: HUDNodeDelegate {
             td["gridY"] = tower.gridPosition.y
             td["upgradeLevel"] = tower.upgradeLevel
             td["totalInvested"] = tower.totalInvested
+            td["targetPriority"] = tower.targetPriority.rawValue
             towerData.append(td)
         }
         saveData["towers"] = towerData
@@ -911,6 +912,10 @@ extension GameScene: HUDNodeDelegate {
                     if let totalInvested = td["totalInvested"] as? Int {
                         tower.totalInvested = totalInvested
                     }
+                    if let priorityRaw = td["targetPriority"] as? String,
+                       let priority = TargetPriority(rawValue: priorityRaw) {
+                        tower.targetPriority = priority
+                    }
                     
                     towers.append(tower)
                     towerLayer.addChild(tower)
@@ -996,6 +1001,20 @@ extension GameScene: TowerInfoNodeDelegate {
         // Show conversion menu for wall tower
         guard tower.towerType == .wall else { return }
         showConversionMenu(for: tower)
+    }
+
+    func towerInfoDidChangePriority(_ tower: Tower, priority: TargetPriority) {
+        tower.targetPriority = priority
+        towerInfoNode.updateContent()
+    }
+
+    func towerInfoDidRequestMineDetonation(_ tower: MineTower) {
+        tower.detonateAllMines()
+    }
+
+    func towerInfoDidRequestMineClear(_ tower: MineTower) {
+        tower.clearAllMines()
+        towerInfoNode.updateContent()
     }
     
     private func showConversionMenu(for wallTower: Tower) {

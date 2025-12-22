@@ -7,7 +7,7 @@ import SpriteKit
 final class SplashTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 32,     // 4x damage (2x base + 2x extra) - big explosions
+        damage: 25.6,     // 20% global damage reduction
         range: 160,
         fireRate: 0.175 // /4 fire rate - very slow but devastating
     )
@@ -66,11 +66,12 @@ final class SplashTower: Tower {
             currentTarget = nil
             return
         }
-        
+
+        let prioritizedTarget = selectTarget(from: groundEnemies)
+        var bestTarget: Enemy? = prioritizedTarget
+        var bestScore = prioritizedTarget == nil ? 0 : 1
+
         // Find the position that would hit the most enemies
-        var bestTarget: Enemy?
-        var bestScore = 0
-        
         for enemy in groundEnemies {
             var score = 1
             // Count how many other ground enemies would be hit by splash
@@ -83,7 +84,7 @@ final class SplashTower: Tower {
                 }
             }
             
-            if score > bestScore {
+            if score > bestScore || (score == bestScore && prioritizedTarget?.id == enemy.id) {
                 bestScore = score
                 bestTarget = enemy
             }
