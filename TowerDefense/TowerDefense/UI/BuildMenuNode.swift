@@ -16,17 +16,20 @@ final class BuildMenuNode: SKNode {
     
     private var towerButtons: [TowerType: TowerButton] = [:]
     private var selectedTower: TowerType?
-    
+
     private let menuBackground: SKShapeNode
-    private let menuWidth: CGFloat = 1200
+    private let menuWidth: CGFloat
     private let menuHeight: CGFloat = 70
+    private var layoutSize: CGSize = .zero
     
     private let moneyLabel: SKLabelNode
     private let moneyIcon: SKLabelNode
     
     // MARK: - Initialization
     
-    override init() {
+    init(sceneSize: CGSize) {
+        layoutSize = sceneSize
+        menuWidth = min(sceneSize.width - 40, 1200)
         // Background panel - horizontal bar at bottom of screen
         menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 8)
         menuBackground.fillColor = SKColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 0.95)
@@ -59,10 +62,10 @@ final class BuildMenuNode: SKNode {
     }
     
     private func setupMenu() {
-        // Position menu along the bottom edge with slight padding from the playfield
-        let bottomPadding: CGFloat = 45
-        let centerX: CGFloat = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width / 2 + 10
-        menuBackground.position = CGPoint(x: centerX, y: GameConstants.playFieldOrigin.y - bottomPadding)
+        // Position menu along the bottom edge with slight padding from the playfield and screen edges
+        let bottomPadding: CGFloat = 35
+        let menuY = max(menuHeight / 2 + 10, GameConstants.playFieldOrigin.y - bottomPadding)
+        menuBackground.position = CGPoint(x: layoutSize.width / 2, y: menuY)
         addChild(menuBackground)
         
         // Title on left
@@ -73,21 +76,24 @@ final class BuildMenuNode: SKNode {
         title.horizontalAlignmentMode = .left
         title.position = CGPoint(x: -menuWidth/2 + 15, y: -3)
         menuBackground.addChild(title)
-        
-        // Create buttons for each tower type horizontally
-        let buttonSpacing: CGFloat = 115
-        var xOffset: CGFloat = -menuWidth/2 + 120
-        
+
+        // Create buttons for each tower type, spaced to fit the available width
+        let towerCount = CGFloat(TowerType.allCases.count)
+        let horizontalInset: CGFloat = 80
+        let buttonAreaWidth = max(200, menuWidth - horizontalInset * 2)
+        let buttonSpacing: CGFloat = towerCount > 1 ? buttonAreaWidth / (towerCount - 1) : 0
+        var xOffset: CGFloat = -buttonAreaWidth / 2
+
         for towerType in TowerType.allCases {
             let button = TowerButton(type: towerType)
             button.position = CGPoint(x: xOffset, y: 0)
             button.name = "towerButton_\(towerType.rawValue)"
             menuBackground.addChild(button)
             towerButtons[towerType] = button
-            
+
             xOffset += buttonSpacing
         }
-        
+
     }
     
     func updateMoney(_ amount: Int) {
@@ -122,7 +128,7 @@ final class BuildMenuNode: SKNode {
     func handleTouch(at location: CGPoint) -> Bool {
         // Convert to menu coordinates
         let menuLocation = convert(location, to: menuBackground)
-        
+
         // Check if in menu background area first
         let menuFrame = CGRect(x: -menuWidth/2, y: -menuHeight/2, width: menuWidth, height: menuHeight)
         guard menuFrame.contains(menuLocation) else { return false }

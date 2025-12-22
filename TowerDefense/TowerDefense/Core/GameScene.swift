@@ -80,12 +80,12 @@ final class GameScene: SKScene {
     
     private func setupUI() {
         // HUD
-        hudNode = HUDNode()
+        hudNode = HUDNode(sceneSize: size)
         hudNode.delegate = self
         uiLayer.addChild(hudNode)
-        
+
         // Build Menu
-        buildMenuNode = BuildMenuNode()
+        buildMenuNode = BuildMenuNode(sceneSize: size)
         buildMenuNode.delegate = self
         uiLayer.addChild(buildMenuNode)
         

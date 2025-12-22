@@ -18,9 +18,9 @@ protocol HUDNodeDelegate: AnyObject {
 final class HUDNode: SKNode {
     
     // MARK: - Properties
-    
+
     weak var delegate: HUDNodeDelegate?
-    
+
     private let livesLabel: SKLabelNode
     private let livesIcon: SKShapeNode
     private let moneyLabel: SKLabelNode
@@ -31,22 +31,23 @@ final class HUDNode: SKNode {
     private let startWaveLabel: SKLabelNode
     private let speedButton: SKShapeNode
     private let speedLabel: SKLabelNode
-    
+
     private let hudBackground: SKShapeNode
     private let trashZone: SKShapeNode
     private let trashLabel: SKLabelNode
-    
+    private var layoutSize: CGSize = .zero
+
     private var speedMultiplier: CGFloat = 1.0  // 1x, 2x, or 4x
     private(set) var isTrashHighlighted = false
     private(set) var isAutoStartEnabled = false
     private var isWaveActive = false
-    
+
     // Booze power
     private let boozeButton: SKShapeNode
     private let boozeLabel: SKLabelNode
     private let boozeCooldownRing: SKShapeNode
     private let boozeActiveRing: SKShapeNode
-    
+
     // Lava power
     private let lavaButton: SKShapeNode
     private let lavaLabel: SKLabelNode
@@ -56,9 +57,10 @@ final class HUDNode: SKNode {
     
     // MARK: - Initialization
     
-    override init() {
+    init(sceneSize: CGSize) {
+        layoutSize = sceneSize
         // Background bar
-        let hudWidth: CGFloat = 1334
+        let hudWidth: CGFloat = max(400, sceneSize.width - 40)
         let hudHeight: CGFloat = 50
         hudBackground = SKShapeNode(rectOf: CGSize(width: hudWidth, height: hudHeight))
         hudBackground.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.9)
@@ -210,22 +212,25 @@ final class HUDNode: SKNode {
     }
     
     private func setupHUD() {
-        let screenCenterX: CGFloat = 667
-        let topBarY: CGFloat = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height + 90
+        let leftPadding: CGFloat = 30
+        let rightPadding: CGFloat = 30
+        let topPadding: CGFloat = 30
+        let screenCenterX: CGFloat = layoutSize.width / 2
+        let topBarY: CGFloat = layoutSize.height - topPadding
 
         // Position background at top (lowered for safe area)
         hudBackground.position = CGPoint(x: screenCenterX, y: topBarY)
         addChild(hudBackground)
 
         // Lives (left side)
-        livesIcon.position = CGPoint(x: GameConstants.playFieldOrigin.x - 40, y: topBarY)
+        livesIcon.position = CGPoint(x: leftPadding + 12, y: topBarY)
         addChild(livesIcon)
 
-        livesLabel.position = CGPoint(x: GameConstants.playFieldOrigin.x - 20, y: topBarY)
+        livesLabel.position = CGPoint(x: livesIcon.position.x + 20, y: topBarY)
         addChild(livesLabel)
 
         // Money (next to lives)
-        moneyIcon.position = CGPoint(x: GameConstants.playFieldOrigin.x + 60, y: topBarY)
+        moneyIcon.position = CGPoint(x: livesLabel.position.x + 70, y: topBarY)
         addChild(moneyIcon)
 
         // Add coin symbol
@@ -237,7 +242,7 @@ final class HUDNode: SKNode {
         coinSymbol.verticalAlignmentMode = .center
         moneyIcon.addChild(coinSymbol)
 
-        moneyLabel.position = CGPoint(x: GameConstants.playFieldOrigin.x + 80, y: topBarY)
+        moneyLabel.position = CGPoint(x: moneyIcon.position.x + 18, y: topBarY)
         addChild(moneyLabel)
 
         // Wave info (center) - larger and more visible
@@ -246,17 +251,17 @@ final class HUDNode: SKNode {
         addChild(waveLabel)
 
         // Start wave button - BIGGER and more prominent
-        startWaveButton.position = CGPoint(x: screenCenterX + 80, y: topBarY)
+        startWaveButton.position = CGPoint(x: screenCenterX + 60, y: topBarY)
         startWaveButton.addChild(startWaveLabel)
         addChild(startWaveButton)
 
         // Speed button
-        speedButton.position = CGPoint(x: screenCenterX + 190, y: topBarY)
+        speedButton.position = CGPoint(x: startWaveButton.position.x + 110, y: topBarY)
         speedButton.addChild(speedLabel)
         addChild(speedButton)
 
         // Pause button
-        pauseButton.position = CGPoint(x: screenCenterX + 260, y: topBarY)
+        pauseButton.position = CGPoint(x: speedButton.position.x + 70, y: topBarY)
         
         // Pause icon (two vertical bars)
         let bar1 = SKShapeNode(rectOf: CGSize(width: 4, height: 15))
@@ -284,11 +289,11 @@ final class HUDNode: SKNode {
         livesIcon.addChild(heart)
         
         // Control panel (bottom-left)
-        setupControlPanel()
-        
+        setupControlPanel(leftPadding: leftPadding)
+
         // Booze power button (top-left cluster)
-        let boozeX: CGFloat = GameConstants.playFieldOrigin.x - 40
-        let boozeY: CGFloat = topBarY - 90
+        let boozeX: CGFloat = leftPadding + 35
+        let boozeY: CGFloat = max(GameConstants.playFieldOrigin.y + GameConstants.cellSize, topBarY - 90)
         
         boozeCooldownRing.position = CGPoint(x: boozeX, y: boozeY)
         boozeCooldownRing.zPosition = 99
@@ -313,7 +318,7 @@ final class HUDNode: SKNode {
 
         // Lava power button (below booze)
         let lavaX: CGFloat = boozeX
-        let lavaY: CGFloat = boozeY - 110
+        let lavaY: CGFloat = max(GameConstants.playFieldOrigin.y + GameConstants.cellSize, boozeY - 110)
         
         lavaCooldownRing.position = CGPoint(x: lavaX, y: lavaY)
         lavaCooldownRing.zPosition = 99
@@ -337,7 +342,8 @@ final class HUDNode: SKNode {
         addChild(lavaTitleLabel)
         
         // Trash zone (top-right corner, near HUD)
-        trashZone.position = CGPoint(x: 1250, y: topBarY - 40)
+        let trashX = layoutSize.width - rightPadding - 40
+        trashZone.position = CGPoint(x: trashX, y: topBarY - 10)
         trashZone.zPosition = 100  // Above other elements
         trashZone.addChild(trashLabel)
         addChild(trashZone)
@@ -347,7 +353,7 @@ final class HUDNode: SKNode {
         sellLabel.fontSize = 10
         sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
         sellLabel.text = "SELL"
-        sellLabel.position = CGPoint(x: 1250, y: topBarY - 90)
+        sellLabel.position = CGPoint(x: trashX, y: topBarY - 60)
         addChild(sellLabel)
         
         // Add border/frame around trash zone for visibility
@@ -355,7 +361,7 @@ final class HUDNode: SKNode {
         trashFrame.fillColor = .clear
         trashFrame.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
         trashFrame.lineWidth = 2
-        trashFrame.position = CGPoint(x: 1250, y: topBarY - 40)
+        trashFrame.position = CGPoint(x: trashX, y: topBarY - 10)
         trashFrame.zPosition = 99
         addChild(trashFrame)
         
@@ -364,7 +370,7 @@ final class HUDNode: SKNode {
         bigMoneyBg.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.1, alpha: 0.9)
         bigMoneyBg.strokeColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.8)
         bigMoneyBg.lineWidth = 2
-        bigMoneyBg.position = CGPoint(x: 1120, y: topBarY)
+        bigMoneyBg.position = CGPoint(x: trashX - 120, y: topBarY)
         bigMoneyBg.zPosition = 100
         bigMoneyBg.name = "bigMoneyBg"
         addChild(bigMoneyBg)
@@ -390,7 +396,7 @@ final class HUDNode: SKNode {
         updateWave(0, total: 10, active: false)
     }
     
-    private func setupControlPanel() {
+    private func setupControlPanel(leftPadding: CGFloat) {
         // Floating control panel in bottom-left corner - with visible border
         let panelWidth: CGFloat = 180
         let panelHeight: CGFloat = 50
@@ -399,7 +405,7 @@ final class HUDNode: SKNode {
         controlPanel.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.95)
         controlPanel.strokeColor = SKColor(red: 0.4, green: 0.7, blue: 0.4, alpha: 1.0)
         controlPanel.lineWidth = 3
-        controlPanel.position = CGPoint(x: 110, y: 80)  // Higher up, more visible
+        controlPanel.position = CGPoint(x: leftPadding + panelWidth / 2, y: GameConstants.playFieldOrigin.y + 40)
         controlPanel.name = "controlPanel"
         controlPanel.zPosition = 100  // Above other elements
         addChild(controlPanel)
