@@ -112,13 +112,9 @@ class Projectile: SKNode {
         guard !hasHit else { return }
         
         guard let target = target, target.isAlive else {
-            // Target lost - continue in current direction briefly then remove
-            let continueAction = SKAction.sequence([
-                SKAction.move(by: CGVector(dx: cos(zRotation) * 50, dy: sin(zRotation) * 50), duration: 0.2),
-                SKAction.fadeOut(withDuration: 0.1),
-                SKAction.removeFromParent()
-            ])
-            run(continueAction)
+            // Target lost - immediately remove projectile (no chasing dead targets)
+            hasHit = true
+            removeFromParent()
             return
         }
         

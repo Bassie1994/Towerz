@@ -7,7 +7,7 @@ import SpriteKit
 final class AntiAirTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 12,      // 2x damage - harder hits
+        damage: 9.6,      // 20% global damage reduction
         range: 200,      // Good range for air coverage
         fireRate: 1.5    // /2 fire rate - slower but stronger
     )
@@ -124,10 +124,7 @@ final class AntiAirTower: Tower {
             return
         }
         
-        // Target closest flying enemy
-        currentTarget = flyingEnemies.min {
-            position.distance(to: $0.position) < position.distance(to: $1.position)
-        }
+        currentTarget = selectTarget(from: flyingEnemies)
         
         // Show targeting beams
         if currentTarget != nil {
@@ -174,13 +171,18 @@ final class AntiAirTower: Tower {
         // Calculate damage with flying bonus
         let effectiveDamage = damage * damageMultiplier * flyingDamageMultiplier
         
-        // Create homing missile
+        // Create homing missile - add to scene's gameLayer for proper update
         let missile = AntiAirMissile(
             from: position,
             to: target,
             damage: effectiveDamage
         )
-        parent?.addChild(missile)
+        // Add to parent's parent (gameLayer) so it gets updated properly
+        if let towerLayer = parent, let gameLayer = towerLayer.parent {
+            gameLayer.addChild(missile)
+        } else {
+            parent?.addChild(missile)
+        }
         
         // Launch effect
         for i in 0..<2 {

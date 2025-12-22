@@ -79,7 +79,7 @@ struct GameConfig {
             upgradeCostMultiplier: 0.0
         ),
         .machineGun: TowerStats(
-            damage: 4,        // NERFED from 8 (50%)
+            damage: 3.2,        // 20% global damage reduction from previous 4
             range: 150,
             fireRate: 8.0,
             cost: 50,
@@ -89,7 +89,7 @@ struct GameConfig {
             upgradeCostMultiplier: 0.5
         ),
         .cannon: TowerStats(
-            damage: 30,       // NERFED from 60 (50%)
+            damage: 24,       // Global 20% damage reduction from previous 30
             range: 70,        // NERFED from 180 - SHORT range
             fireRate: 0.8,
             cost: 80,
@@ -118,10 +118,10 @@ struct GameConfig {
             fireRateScaling: 0.0,
             upgradeCostMultiplier: 0.6
         ),
-        .shotgun: TowerStats(
-            damage: 6,        // NERFED from 12 (50%)
-            range: 60,        // NERFED from 100 - VERY SHORT range
-            fireRate: 1.5,
+        .mine: TowerStats(
+            damage: 20,       // Mine explosion damage after global reduction
+            range: 72,       // Adjacent cells only (1.5 * cell size)
+            fireRate: 0.5,    // 1 mine every 2 seconds
             cost: 70,
             damageScaling: 0.20,
             rangeScaling: 0.08,
@@ -129,7 +129,7 @@ struct GameConfig {
             upgradeCostMultiplier: 0.5
         ),
         .splash: TowerStats(
-            damage: 15,       // NERFED from 30 (50%)
+            damage: 12,       // 20% global damage reduction from previous 15
             range: 160,
             fireRate: 0.7,
             cost: 90,
@@ -139,17 +139,17 @@ struct GameConfig {
             upgradeCostMultiplier: 0.55
         ),
         .laser: TowerStats(
-            damage: 7,        // NERFED from 15 (50%)
-            range: 1300,      // BUFFED - FULL FIELD range
-            fireRate: 10.0,
-            cost: 120,
-            damageScaling: 0.35,
+            damage: 300,      // Sniper rail damage after global + sniper reduction
+            range: 1300,      // Full field range - true sniper
+            fireRate: 0.08,   // ~1 shot every 12.5s - very slow
+            cost: 150,        // Expensive - high value per shot
+            damageScaling: 0.30,
             rangeScaling: 0.0,  // Already max range
-            fireRateScaling: 0.15,
+            fireRateScaling: 0.08,
             upgradeCostMultiplier: 0.5
         ),
         .antiAir: TowerStats(
-            damage: 12,       // NERFED from 25 (50%)
+            damage: 9.6,       // 20% global damage reduction from previous 12
             range: 200,
             fireRate: 3.0,
             cost: 75,

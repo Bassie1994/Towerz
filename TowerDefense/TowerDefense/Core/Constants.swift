@@ -51,12 +51,14 @@ enum EnemyType: String, CaseIterable, Codable {
     case infantry
     case cavalry
     case flying
+    case boss
     
     var displayName: String {
         switch self {
         case .infantry: return "Infantry"
         case .cavalry: return "Cavalry"
         case .flying: return "Flying"
+        case .boss: return "BOSS"
         }
     }
     
@@ -65,6 +67,7 @@ enum EnemyType: String, CaseIterable, Codable {
         case .infantry: return .green
         case .cavalry: return .orange
         case .flying: return .cyan
+        case .boss: return SKColor(red: 0.8, green: 0.1, blue: 0.1, alpha: 1.0)
         }
     }
     
@@ -94,7 +97,7 @@ enum TowerType: String, CaseIterable {
         case .buff: return "Buff"
         case .mine: return "Mine"
         case .splash: return "Splash"
-        case .laser: return "Laser"
+        case .laser: return "Sniper"
         case .antiAir: return "AA"
         }
     }

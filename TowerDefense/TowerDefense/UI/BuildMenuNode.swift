@@ -7,27 +7,31 @@ protocol BuildMenuNodeDelegate: AnyObject {
     func canAfford(_ cost: Int) -> Bool
 }
 
-/// Tower selection menu - HORIZONTAL at top of screen, below HUD
+/// Tower selection menu - HORIZONTAL at the bottom of the screen
 final class BuildMenuNode: SKNode {
-    
+
     // MARK: - Properties
-    
+
     weak var delegate: BuildMenuNodeDelegate?
-    
+
     private var towerButtons: [TowerType: TowerButton] = [:]
     private var selectedTower: TowerType?
-    
+
     private let menuBackground: SKShapeNode
-    private let menuWidth: CGFloat = 1200
-    private let menuHeight: CGFloat = 65
-    
+    private let menuHeight: CGFloat = 70
+    private let bottomPadding: CGFloat = 24
+    private let safeHorizontalPadding: CGFloat = 20
+    private let maxMenuWidth: CGFloat = 1200
+    private var menuWidth: CGFloat
+
     private let moneyLabel: SKLabelNode
     private let moneyIcon: SKLabelNode
-    
+
     // MARK: - Initialization
-    
-    override init() {
-        // Background panel - horizontal bar below HUD
+
+    init(sceneSize: CGSize) {
+        // Background panel - horizontal bar anchored to the bottom
+        menuWidth = min(sceneSize.width - safeHorizontalPadding * 2, maxMenuWidth)
         menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 5)
         menuBackground.fillColor = SKColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 0.95)
         menuBackground.strokeColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
@@ -40,17 +44,17 @@ final class BuildMenuNode: SKNode {
         moneyIcon.text = "💰"
         moneyIcon.verticalAlignmentMode = .center
         moneyIcon.horizontalAlignmentMode = .right
-        
+
         moneyLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         moneyLabel.fontSize = 16
         moneyLabel.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
         moneyLabel.text = "$500"
         moneyLabel.verticalAlignmentMode = .center
         moneyLabel.horizontalAlignmentMode = .left
-        
+
         super.init()
-        
-        setupMenu()
+
+        setupMenu(sceneSize: sceneSize)
         zPosition = GameConstants.ZPosition.ui.rawValue
     }
     
@@ -58,11 +62,11 @@ final class BuildMenuNode: SKNode {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func setupMenu() {
-        // Position menu below HUD (at y=650, leaving room for HUD at 710)
-        menuBackground.position = CGPoint(x: 667, y: 650)
+    private func setupMenu(sceneSize: CGSize) {
+        // Position menu along the bottom (above safe area)
+        menuBackground.position = CGPoint(x: sceneSize.width / 2, y: menuHeight / 2 + bottomPadding)
         addChild(menuBackground)
-        
+
         // Title on left
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
         title.fontSize = 11
@@ -71,11 +75,18 @@ final class BuildMenuNode: SKNode {
         title.horizontalAlignmentMode = .left
         title.position = CGPoint(x: -menuWidth/2 + 15, y: -3)
         menuBackground.addChild(title)
-        
+
         // Create buttons for each tower type horizontally
-        let buttonSpacing: CGFloat = 115
+        let towerCount = TowerType.allCases.count
+        let usableWidth = menuWidth - 240  // Leave room for label and padding
+        let buttonSpacing: CGFloat
+        if towerCount > 1 {
+            buttonSpacing = usableWidth / CGFloat(towerCount - 1)
+        } else {
+            buttonSpacing = 0
+        }
         var xOffset: CGFloat = -menuWidth/2 + 120
-        
+
         for towerType in TowerType.allCases {
             let button = TowerButton(type: towerType)
             button.position = CGPoint(x: xOffset, y: 0)
@@ -145,8 +156,11 @@ final class BuildMenuNode: SKNode {
     }
     
     func isInMenuArea(_ location: CGPoint) -> Bool {
-        // Check if point is in the top menu bar area
-        return location.y > 630
+        // Check if point is in the bottom menu bar area
+        let menuFrame = CGRect(x: -menuWidth / 2, y: -menuHeight / 2, width: menuWidth, height: menuHeight)
+        let menuPosition = menuBackground.position
+        let localPoint = CGPoint(x: location.x - menuPosition.x, y: location.y - menuPosition.y)
+        return menuFrame.contains(localPoint)
     }
 }
 
@@ -226,12 +240,12 @@ private class TowerButton: SKNode {
             symbol.text = "❄"
         case .buff:
             symbol.text = "★"
-        case .shotgun:
-            symbol.text = "⋮"
+        case .mine:
+            symbol.text = "💣"
         case .splash:
             symbol.text = "◎"
         case .laser:
-            symbol.text = "═"
+            symbol.text = "🎯"  // Sniper crosshair
         case .antiAir:
             symbol.text = "↑"
         }

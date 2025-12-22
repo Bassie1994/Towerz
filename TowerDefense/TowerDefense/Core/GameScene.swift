@@ -80,12 +80,12 @@ final class GameScene: SKScene {
     
     private func setupUI() {
         // HUD
-        hudNode = HUDNode()
+        hudNode = HUDNode(sceneSize: size)
         hudNode.delegate = self
         uiLayer.addChild(hudNode)
-        
+
         // Build Menu
-        buildMenuNode = BuildMenuNode()
+        buildMenuNode = BuildMenuNode(sceneSize: size)
         buildMenuNode.delegate = self
         uiLayer.addChild(buildMenuNode)
         
@@ -250,7 +250,13 @@ final class GameScene: SKScene {
         }
         
         // Update AA missiles (they need to track moving targets)
+        // Check both gameLayer and towerLayer for missiles
         for child in gameLayer.children {
+            if let missile = child as? AntiAirMissile {
+                missile.update(currentTime: gameTime)
+            }
+        }
+        for child in towerLayer.children {
             if let missile = child as? AntiAirMissile {
                 missile.update(currentTime: gameTime)
             }
@@ -610,7 +616,8 @@ final class GameScene: SKScene {
     
     func spawnEnemy(type: EnemyType, level: Int) {
         // Safety: limit max enemies on screen to prevent memory issues
-        guard enemies.count < 150 else { return }
+        // (bosses bypass this check)
+        guard enemies.count < 150 || type == .boss else { return }
         
         let enemy: Enemy
         
@@ -621,14 +628,27 @@ final class GameScene: SKScene {
             enemy = CavalryEnemy(level: max(1, level))
         case .flying:
             enemy = FlyingEnemy(level: max(1, level))
+        case .boss:
+            // Level >= 1000 means it encodes HP in thousands
+            if level >= 1000 {
+                let encodedHP = CGFloat(level - 1000) * 1000
+                enemy = BossEnemy(level: 1, customHP: max(5000, encodedHP))
+            } else {
+                enemy = BossEnemy(level: max(1, level))
+            }
         }
         
         enemy.delegate = self
         
-        // Random spawn position (with safety bounds)
+        // Spawn position - boss spawns in center, others random
         let minY = GameConstants.playFieldOrigin.y + 50
         let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - 50
-        let spawnY = CGFloat.random(in: minY...max(minY + 1, maxY))
+        let spawnY: CGFloat
+        if type == .boss {
+            spawnY = (minY + maxY) / 2  // Boss spawns in center
+        } else {
+            spawnY = CGFloat.random(in: minY...max(minY + 1, maxY))
+        }
         
         enemy.position = CGPoint(
             x: GameConstants.playFieldOrigin.x + GameConstants.cellSize,
@@ -791,6 +811,7 @@ extension GameScene: HUDNodeDelegate {
             td["gridY"] = tower.gridPosition.y
             td["upgradeLevel"] = tower.upgradeLevel
             td["totalInvested"] = tower.totalInvested
+            td["targetPriority"] = tower.targetPriority.rawValue
             towerData.append(td)
         }
         saveData["towers"] = towerData
@@ -832,7 +853,6 @@ extension GameScene: HUDNodeDelegate {
             towers.removeAll()
             
             // Reset managers
-            MineTower.currentMineCount = 0
             BoozeManager.shared.reset()
             LavaManager.shared.reset()
             
@@ -864,7 +884,7 @@ extension GameScene: HUDNodeDelegate {
                     let gridPos = GridPosition(x: gridX, y: gridY)
                     
                     // Block the grid cell
-                    gameManager.pathfindingGrid.blockCell(at: gridPos)
+                    gameManager.pathfindingGrid.blockCell(gridPos)
                     
                     // Create tower (using createTower would add it to array twice)
                     let tower: Tower
@@ -891,6 +911,10 @@ extension GameScene: HUDNodeDelegate {
                     }
                     if let totalInvested = td["totalInvested"] as? Int {
                         tower.totalInvested = totalInvested
+                    }
+                    if let priorityRaw = td["targetPriority"] as? String,
+                       let priority = TargetPriority(rawValue: priorityRaw) {
+                        tower.targetPriority = priority
                     }
                     
                     towers.append(tower)
@@ -978,6 +1002,20 @@ extension GameScene: TowerInfoNodeDelegate {
         guard tower.towerType == .wall else { return }
         showConversionMenu(for: tower)
     }
+
+    func towerInfoDidChangePriority(_ tower: Tower, priority: TargetPriority) {
+        tower.targetPriority = priority
+        towerInfoNode.updateContent()
+    }
+
+    func towerInfoDidRequestMineDetonation(_ tower: MineTower) {
+        tower.detonateAllMines()
+    }
+
+    func towerInfoDidRequestMineClear(_ tower: MineTower) {
+        tower.clearAllMines()
+        towerInfoNode.updateContent()
+    }
     
     private func showConversionMenu(for wallTower: Tower) {
         // Create a simple conversion overlay
@@ -1012,7 +1050,7 @@ extension GameScene: TowerInfoNodeDelegate {
         panel.addChild(title)
         
         // Tower buttons - excluding wall
-        let convertibleTypes: [TowerType] = [.machineGun, .cannon, .slow, .buff, .shotgun, .splash, .laser, .antiAir]
+        let convertibleTypes: [TowerType] = [.machineGun, .cannon, .slow, .buff, .mine, .splash, .laser, .antiAir]
         let buttonWidth: CGFloat = 170
         let buttonHeight: CGFloat = 45
         let startY: CGFloat = panelHeight / 2 - 80

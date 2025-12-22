@@ -269,6 +269,36 @@ final class FlowField {
     func isAtExit(_ position: GridPosition) -> Bool {
         return position.isInExitZone()
     }
+
+    /// Find the nearest reachable cell within a search radius
+    /// Useful for teleporting stuck units back onto the valid flow
+    func nearestReachableCell(from position: GridPosition, maxSearchRadius: Int = 6) -> GridPosition? {
+        guard grid.isValidPosition(position) else { return nil }
+
+        var visited: Set<GridPosition> = [position]
+        var queue: [(GridPosition, Int)] = [(position, 0)]
+
+        while !queue.isEmpty {
+            let (current, depth) = queue.removeFirst()
+
+            // If this cell is on the valid flow, return it immediately
+            if hasPath(from: current) && (grid.isWalkable(current) || current.isInSpawnZone() || current.isInExitZone()) {
+                return current
+            }
+
+            // Stop searching once we exceed the allowed radius
+            guard depth < maxSearchRadius else { continue }
+
+            for neighbor in current.neighbors(in: grid) {
+                if !visited.contains(neighbor) {
+                    visited.insert(neighbor)
+                    queue.append((neighbor, depth + 1))
+                }
+            }
+        }
+
+        return nil
+    }
     
     /// Debug visualization
     func createDebugVisualization(parent: SKNode) {

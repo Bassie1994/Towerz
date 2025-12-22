@@ -1,15 +1,16 @@
 import SpriteKit
 
-/// Laser Tower
-/// Role: Continuous beam damage in a straight line
-/// Hits all enemies in the beam path
-/// Cannot hit flying units (beam goes under them)
+/// Sniper Tower (was Laser)
+/// Role: Extreme single-target damage, very slow fire rate
+/// Single devastating shot that looks like a laser beam
+/// DPS = ~3x MachineGun (48 DPS: 600 damage * 0.08 rate)
+/// Cannot hit flying units
 final class LaserTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 100,     // 100x damage (2x base * 50x extreme) - devastating beam
-        range: 1300,     // Full field range (26 cells * 48 + buffer)
-        fireRate: 0.2    // /100 fire rate (2x base / 50x extreme) - very slow pulses
+        damage: 300,     // Sniper rail damage after global + sniper reduction
+        range: 1300,     // Full field range - true sniper
+        fireRate: 0.08   // ~1 shot every 12.5 seconds - extremely slow
     )
     
     // Laser state
@@ -110,14 +111,27 @@ final class LaserTower: Tower {
             buffIndicator.isHidden = true
         }
         
-        // Find target (ground enemies only)
+        // Find target (ground enemies only - prioritize highest HP)
         updateTarget()
         
-        if let target = currentTarget, target.isAlive {
-            // Activate laser
-            activateLaser(toward: target, currentTime: currentTime)
-        } else {
-            // Deactivate laser
+        // Aim at target
+        if let target = currentTarget {
+            aimAt(target)
+        }
+        
+        // Fire when ready (single devastating shot)
+        let effectiveFireRate = fireRate * fireRateMultiplier
+        let fireInterval = 1.0 / Double(effectiveFireRate)
+        
+        if currentTime - lastFireTime >= fireInterval {
+            if let target = currentTarget, target.isAlive {
+                fireSniperShot(at: target)
+                lastFireTime = currentTime
+            }
+        }
+        
+        // Hide laser after brief display
+        if isLaserActive && currentTime - lastDamageTime > 0.15 {
             deactivateLaser()
         }
     }
@@ -128,113 +142,117 @@ final class LaserTower: Tower {
             return
         }
         
-        // Filter out flying enemies - laser goes under them
+        // Filter out flying enemies - sniper targets ground only
         let groundEnemies = enemies.filter { $0.isAlive && $0.enemyType != .flying }
-        
-        // Target closest ground enemy
-        currentTarget = groundEnemies.min {
-            position.distance(to: $0.position) < position.distance(to: $1.position)
-        }
+
+        currentTarget = selectTarget(from: groundEnemies)
     }
     
-    private func activateLaser(toward target: Enemy, currentTime: TimeInterval) {
+    private func fireSniperShot(at target: Enemy) {
         isLaserActive = true
-        
-        // Aim at target
-        aimAt(target)
+        lastDamageTime = lastFireTime
+
         laserAngle = turretNode.zRotation
-        
-        // Calculate beam endpoint (extends to range limit or beyond target)
+
+        let beamDirection = CGVector(dx: cos(laserAngle), dy: sin(laserAngle))
+        let beamLength = range * rangeMultiplier
+
+        // Calculate beam endpoint to target
         let beamEnd = CGPoint(
-            x: cos(laserAngle) * range,
-            y: sin(laserAngle) * range
+            x: beamDirection.dx * beamLength,
+            y: beamDirection.dy * beamLength
         )
         
-        // Update beam visual
+        // Update beam visual - brief intense flash
         let beamPath = CGMutablePath()
         beamPath.move(to: CGPoint(x: towerSize * 0.4, y: 0))
         beamPath.addLine(to: beamEnd)
         
         laserBeam?.path = beamPath
         laserBeam?.isHidden = false
+        laserBeam?.alpha = 1.0
+        laserBeam?.lineWidth = 6  // Thicker for sniper shot
+        
         laserGlow?.path = beamPath
         laserGlow?.isHidden = false
+        laserGlow?.alpha = 0.8
+        laserGlow?.lineWidth = 16
         
-        // Position impact at target
-        laserImpact?.position = CGPoint(
-            x: target.position.x - position.x,
-            y: target.position.y - position.y
-        )
+        // Impact marker at target
+        laserImpact?.position = beamEnd
         laserImpact?.isHidden = false
         
-        // Apply damage to all enemies in beam path
-        let effectiveFireRate = fireRate * fireRateMultiplier
-        let damageInterval = 1.0 / Double(effectiveFireRate)
-        
-        if currentTime - lastDamageTime >= damageInterval {
-            applyBeamDamage(angle: laserAngle)
-            lastDamageTime = currentTime
-            
-            // Play sound occasionally
-            if Int(currentTime * 10) % 3 == 0 {
-                // AudioManager.shared.playSound(.laserFire)
-            }
-        }
-        
-        // Beam flicker effect
-        let flicker = CGFloat.random(in: 0.8...1.0)
-        laserBeam?.alpha = flicker
-        laserGlow?.alpha = flicker * 0.5
-    }
-    
-    private func applyBeamDamage(angle: CGFloat) {
-        guard let enemies = delegate?.getEnemiesInRange(of: self) else { return }
-        
+        // Apply damage to every grounded enemy along the rail path
         let effectiveDamage = damage * damageMultiplier
-        let beamWidth: CGFloat = 20 // How wide the beam hitbox is
-        
-        for enemy in enemies where enemy.isAlive && enemy.enemyType != .flying {
-            // Check if enemy is in beam path
-            let relativePos = CGPoint(
-                x: enemy.position.x - position.x,
-                y: enemy.position.y - position.y
-            )
-            
-            let distance = sqrt(relativePos.x * relativePos.x + relativePos.y * relativePos.y)
-            guard distance <= range else { continue }
-            
-            // Calculate perpendicular distance from beam
-            let enemyAngle = atan2(relativePos.y, relativePos.x)
-            let angleDiff = abs(enemyAngle - angle)
-            let perpDistance = distance * sin(angleDiff)
-            
-            if perpDistance <= beamWidth {
-                // Enemy is in beam - apply damage
-                // Damage is consistent along beam (no falloff)
+        if let enemies = delegate?.getEnemiesInRange(of: self) {
+            let hitEnemies = enemies
+                .filter { $0.isAlive && $0.enemyType != .flying }
+                .filter { enemy in
+                    let relative = CGVector(
+                        dx: enemy.position.x - position.x,
+                        dy: enemy.position.y - position.y
+                    )
+
+                    let distanceAlong = relative.dx * beamDirection.dx + relative.dy * beamDirection.dy
+                    guard distanceAlong >= 0 && distanceAlong <= beamLength else { return false }
+
+                    let perpendicular = abs(relative.dx * beamDirection.dy - relative.dy * beamDirection.dx)
+                    return perpendicular <= 20
+                }
+
+            for enemy in hitEnemies {
                 enemy.takeDamage(effectiveDamage)
-                
-                // Spark effect on hit enemy
-                spawnSpark(at: enemy.position)
+                spawnSniperImpact(at: enemy.position)
             }
         }
+
+        // Screen shake effect (subtle)
+        let shake = SKAction.sequence([
+            SKAction.moveBy(x: 2, y: 0, duration: 0.02),
+            SKAction.moveBy(x: -4, y: 0, duration: 0.02),
+            SKAction.moveBy(x: 2, y: 0, duration: 0.02)
+        ])
+        parent?.run(shake)
+        
+        delegate?.towerDidFire(self, at: target)
     }
     
-    private func spawnSpark(at worldPos: CGPoint) {
-        let spark = SKShapeNode(circleOfRadius: 3)
-        spark.fillColor = .yellow
-        spark.strokeColor = .clear
-        spark.position = CGPoint(x: worldPos.x - position.x, y: worldPos.y - position.y)
-        spark.zPosition = GameConstants.ZPosition.effects.rawValue
-        addChild(spark)
+    private func spawnSniperImpact(at worldPos: CGPoint) {
+        guard let parentNode = parent else { return }
         
-        let animation = SKAction.sequence([
+        // Big impact flash
+        let flash = SKShapeNode(circleOfRadius: 25)
+        flash.fillColor = .white
+        flash.strokeColor = .red
+        flash.lineWidth = 4
+        flash.position = worldPos
+        flash.zPosition = GameConstants.ZPosition.effects.rawValue + 1
+        parentNode.addChild(flash)
+        
+        flash.run(SKAction.sequence([
             SKAction.group([
-                SKAction.scale(to: 0.1, duration: 0.1),
-                SKAction.fadeOut(withDuration: 0.1)
+                SKAction.scale(to: 2.0, duration: 0.1),
+                SKAction.fadeOut(withDuration: 0.15)
             ]),
             SKAction.removeFromParent()
-        ])
-        spark.run(animation)
+        ]))
+        
+        // Ring effect
+        let ring = SKShapeNode(circleOfRadius: 15)
+        ring.fillColor = .clear
+        ring.strokeColor = SKColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 0.8)
+        ring.lineWidth = 3
+        ring.position = worldPos
+        ring.zPosition = GameConstants.ZPosition.effects.rawValue
+        parentNode.addChild(ring)
+        
+        ring.run(SKAction.sequence([
+            SKAction.group([
+                SKAction.scale(to: 4.0, duration: 0.2),
+                SKAction.fadeOut(withDuration: 0.2)
+            ]),
+            SKAction.removeFromParent()
+        ]))
     }
     
     private func deactivateLaser() {
@@ -244,17 +262,18 @@ final class LaserTower: Tower {
         laserImpact?.isHidden = true
     }
     
-    // Laser tower doesn't use normal fire method
+    // Sniper handles its own firing in update
     override func fire(at target: Enemy, currentTime: TimeInterval) {
-        // Damage is applied in activateLaser
+        // Handled in fireSniperShot
     }
     
     override func getStats() -> [String: String] {
         var stats = super.getStats()
-        stats["Type"] = "Laser"
+        stats["Type"] = "Sniper"
         stats["DPS"] = String(format: "%.0f", damage * damageMultiplier * fireRate * fireRateMultiplier)
-        stats["Special"] = "Piercing beam"
+        stats["Special"] = "Piercing rail (highest HP priority)"
         stats["Note"] = "Cannot hit Flying"
+        stats["Hint"] = "~12s between shots"
         return stats
     }
 }

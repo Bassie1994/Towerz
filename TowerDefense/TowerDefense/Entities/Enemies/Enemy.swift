@@ -52,6 +52,8 @@ class Enemy: SKNode {
     private var isInRecoveryMode: Bool = false
     private var recoveryCellsRemaining: Int = 0
     private var recoveryTargetCenter: CGPoint = .zero
+    private var lastDistanceToExit: Int = Int.max
+    private var progressStallTime: TimeInterval = 0
     
     // Size
     let enemySize: CGFloat = 30
@@ -126,6 +128,8 @@ class Enemy: SKNode {
             indicator.text = "C"
         case .flying:
             indicator.text = "F"
+        case .boss:
+            indicator.text = "💀"
             // Add wing indicators for flying
             let wing1 = SKShapeNode(ellipseOf: CGSize(width: 12, height: 6))
             wing1.fillColor = enemyType.color.withAlphaComponent(0.6)
@@ -191,10 +195,14 @@ class Enemy: SKNode {
         // Apply separation from other enemies
         let separation = calculateSeparation(from: enemies)
         
-        // Combine forces
+        // Apply corridor centering - keep units in middle 25% of available path
+        let centering = calculateCorridorCentering()
+        
+        // Combine forces (centering is stronger for larger units)
+        let centeringStrength: CGFloat = enemyType == .boss ? 0.6 : (enemyType == .cavalry ? 0.5 : 0.4)
         var combinedDirection = CGVector(
-            dx: direction.dx + separation.dx * 0.3,
-            dy: direction.dy + separation.dy * 0.3
+            dx: direction.dx + separation.dx * 0.3 + centering.dx * centeringStrength,
+            dy: direction.dy + separation.dy * 0.3 + centering.dy * centeringStrength
         )
         
         // Safety: ensure combined direction is valid before normalizing
@@ -245,124 +253,19 @@ class Enemy: SKNode {
         }
         
         // Move (actualSpeed already calculated at start of update)
-        let movement = CGVector(
-            dx: currentDirection.dx * actualSpeed * CGFloat(deltaTime),
-            dy: currentDirection.dy * actualSpeed * CGFloat(deltaTime)
-        )
+        let moveDistance = actualSpeed * CGFloat(deltaTime)
         
-        // Calculate new position
+        // Calculate desired new position
         var newPosition = CGPoint(
-            x: position.x + movement.dx,
-            y: position.y + movement.dy
+            x: position.x + currentDirection.dx * moveDistance,
+            y: position.y + currentDirection.dy * moveDistance
         )
         
-        // Collision detection with towers/blocked cells
-        let newGridPos = newPosition.toGridPosition()
-        if newGridPos.x >= 0 && newGridPos.x < GameConstants.gridWidth &&
-           newGridPos.y >= 0 && newGridPos.y < GameConstants.gridHeight {
-            
-            // Check if new position is blocked
-            if let flowField = delegate?.getFlowField() {
-                let isBlocked = flowField.getDirection(at: newGridPos) == nil && 
-                                !newGridPos.isInSpawnZone() && 
-                                !newGridPos.isInExitZone()
-                
-                if isBlocked {
-                    // Try multiple alternatives to find a way around
-                    let moveDistance = actualSpeed * CGFloat(deltaTime)
-                    
-                    // Calculate direction to exit for smarter pathing
-                    let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width
-                    let exitY = GameConstants.playFieldOrigin.y + GameConstants.cellSize * 2
-                    let toExitX = exitX - position.x
-                    let toExitY = exitY - position.y
-                    let preferDown = toExitY < 0
-                    
-                    // Try directions in priority order based on where exit is
-                    var alternatives: [(CGFloat, CGFloat)] = []
-                    
-                    if preferDown {
-                        // Exit is below - prefer going down and right
-                        alternatives = [
-                            (moveDistance, -moveDistance),  // Down-right diagonal
-                            (0, -moveDistance),             // Pure down
-                            (moveDistance, 0),              // Pure right
-                            (moveDistance, -moveDistance * 2), // Steep down-right
-                            (-moveDistance, -moveDistance), // Down-left diagonal
-                            (0, -moveDistance * 2),         // Double down
-                            (moveDistance * 2, 0),          // Double right
-                            (-moveDistance, 0),             // Left (escape)
-                            (0, moveDistance),              // Up (escape)
-                        ]
-                    } else {
-                        // Exit is above or level - prefer going up and right
-                        alternatives = [
-                            (moveDistance, moveDistance),   // Up-right diagonal
-                            (0, moveDistance),              // Pure up
-                            (moveDistance, 0),              // Pure right
-                            (moveDistance, moveDistance * 2), // Steep up-right
-                            (-moveDistance, moveDistance),  // Up-left diagonal
-                            (0, moveDistance * 2),          // Double up
-                            (moveDistance * 2, 0),          // Double right
-                            (-moveDistance, 0),             // Left (escape)
-                            (0, -moveDistance),             // Down (escape)
-                        ]
-                    }
-                    
-                    var foundPath = false
-                    for (dx, dy) in alternatives {
-                        let testPos = CGPoint(x: position.x + dx, y: position.y + dy)
-                        let testGrid = testPos.toGridPosition()
-                        
-                        // Check bounds
-                        guard testGrid.x >= 0 && testGrid.x < GameConstants.gridWidth &&
-                              testGrid.y >= 0 && testGrid.y < GameConstants.gridHeight else { continue }
-                        
-                        let testBlocked = flowField.getDirection(at: testGrid) == nil &&
-                                         !testGrid.isInSpawnZone() && !testGrid.isInExitZone()
-                        
-                        if !testBlocked {
-                            newPosition = testPos
-                            foundPath = true
-                            break
-                        }
-                    }
-                    
-                    if !foundPath {
-                        // Still stuck - try sliding along the tower edge
-                        let currentGrid = position.toGridPosition()
-                        
-                        // Check which adjacent cells are free
-                        let cellSize = GameConstants.cellSize
-                        let cellCenterX = GameConstants.playFieldOrigin.x + CGFloat(newGridPos.x) * cellSize + cellSize / 2
-                        let cellCenterY = GameConstants.playFieldOrigin.y + CGFloat(newGridPos.y) * cellSize + cellSize / 2
-                        
-                        // Push away from the blocked cell center
-                        let pushX = position.x - cellCenterX
-                        let pushY = position.y - cellCenterY
-                        let pushMag = sqrt(pushX * pushX + pushY * pushY)
-                        
-                        if pushMag > 0 {
-                            // Slide perpendicular to the push direction, biased toward exit
-                            let slideX = preferDown ? moveDistance : moveDistance
-                            let slideY = preferDown ? -moveDistance * 0.5 : moveDistance * 0.5
-                            newPosition = CGPoint(
-                                x: position.x + slideX + (pushX / pushMag) * moveDistance * 0.3,
-                                y: position.y + slideY + (pushY / pushMag) * moveDistance * 0.3
-                            )
-                        } else if let escapeDir = flowField.getDirection(at: currentGrid) {
-                            newPosition = CGPoint(
-                                x: position.x + escapeDir.dx * moveDistance * 0.5,
-                                y: position.y + escapeDir.dy * moveDistance * 0.5
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        // HARD COLLISION: Check if new position is in a blocked cell
+        newPosition = validateAndAdjustPosition(newPosition, moveDistance: moveDistance)
         
         position = newPosition
-        
+
         // Clamp to playfield bounds
         let minY = GameConstants.playFieldOrigin.y + enemySize / 2
         let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - enemySize / 2
@@ -370,7 +273,31 @@ class Enemy: SKNode {
         let maxX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - enemySize / 2
         position.y = max(minY, min(maxY, position.y))
         position.x = max(minX, min(maxX, position.x))
-        
+
+        // Track progress toward the exit; if it stalls, snap back onto the flow field
+        if let flowField = delegate?.getFlowField() {
+            let currentGrid = position.toGridPosition()
+            let currentDistance = flowField.getDistance(at: currentGrid)
+
+            if currentDistance < lastDistanceToExit {
+                progressStallTime = 0
+            } else {
+                progressStallTime += deltaTime
+            }
+
+            lastDistanceToExit = currentDistance
+
+            if progressStallTime > 3.0, let reachable = flowField.nearestReachableCell(from: currentGrid, maxSearchRadius: 8) {
+                position = reachable.toWorldPosition()
+                lastPosition = position
+                stuckTime = 0
+                progressStallTime = 0
+                isInRecoveryMode = false
+                recoveryCellsRemaining = 0
+                currentDirection = CGVector(dx: 1, dy: 0)
+            }
+        }
+
         // Time-based stuck detection (7 seconds triggers recovery mode)
         let movedDistance = position.distance(to: lastPosition)
         let cellSize = GameConstants.cellSize
@@ -383,7 +310,8 @@ class Enemy: SKNode {
                 // Enter recovery mode - snap to current cell center and follow path centers
                 isInRecoveryMode = true
                 recoveryCellsRemaining = 6
-                
+                progressStallTime = 0
+
                 // Find current cell center
                 let currentGrid = position.toGridPosition()
                 recoveryTargetCenter = CGPoint(
@@ -586,6 +514,203 @@ class Enemy: SKNode {
         return .zero
     }
     
+    /// Calculate force to keep unit in middle 25% of corridor
+    /// Checks perpendicular distance to walls (blocked cells) and steers away from edges
+    private func calculateCorridorCentering() -> CGVector {
+        let gridPos = position.toGridPosition()
+        
+        // Scan perpendicular to movement to find corridor width
+        // We'll check up/down (vertical corridor width)
+        var openUp: CGFloat = 0
+        var openDown: CGFloat = 0
+        var openLeft: CGFloat = 0
+        var openRight: CGFloat = 0
+        
+        let maxScan = 4  // Check up to 4 cells in each direction
+        
+        // Scan up
+        for i in 1...maxScan {
+            let checkPos = GridPosition(x: gridPos.x, y: gridPos.y + i)
+            if checkPos.y < GameConstants.gridHeight {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) != nil || checkPos.isInExitZone() || checkPos.isInSpawnZone() {
+                    openUp = CGFloat(i)
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // Scan down
+        for i in 1...maxScan {
+            let checkPos = GridPosition(x: gridPos.x, y: gridPos.y - i)
+            if checkPos.y >= 0 {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) != nil || checkPos.isInExitZone() || checkPos.isInSpawnZone() {
+                    openDown = CGFloat(i)
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // Scan left
+        for i in 1...maxScan {
+            let checkPos = GridPosition(x: gridPos.x - i, y: gridPos.y)
+            if checkPos.x >= 0 {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) != nil || checkPos.isInExitZone() || checkPos.isInSpawnZone() {
+                    openLeft = CGFloat(i)
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // Scan right
+        for i in 1...maxScan {
+            let checkPos = GridPosition(x: gridPos.x + i, y: gridPos.y)
+            if checkPos.x < GameConstants.gridWidth {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) != nil || checkPos.isInExitZone() || checkPos.isInSpawnZone() {
+                    openRight = CGFloat(i)
+                } else {
+                    break
+                }
+            }
+        }
+        
+        // Calculate offset from center of corridor
+        var centeringForce = CGVector.zero
+        
+        // Vertical centering
+        let verticalCorridor = openUp + openDown + 1
+        if verticalCorridor > 1 {
+            let verticalCenter = openDown - openUp  // Positive = above center, negative = below
+            // Only apply force if not in middle 25%
+            let threshold = verticalCorridor * 0.375  // 37.5% from edge = middle 25%
+            if abs(verticalCenter) > threshold {
+                centeringForce.dy = -verticalCenter / verticalCorridor  // Push toward center
+            }
+        }
+        
+        // Horizontal centering (less aggressive since we want to move forward)
+        let horizontalCorridor = openLeft + openRight + 1
+        if horizontalCorridor > 1 {
+            let horizontalCenter = openRight - openLeft  // Positive = left of center
+            let threshold = horizontalCorridor * 0.375
+            if abs(horizontalCenter) > threshold {
+                centeringForce.dx = horizontalCenter / horizontalCorridor * 0.5  // Half strength for horizontal
+            }
+        }
+        
+        // Also add wall avoidance for immediate neighbors (stronger)
+        let immediateCheck = 1
+        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+            let checkPos = GridPosition(x: gridPos.x + dx * immediateCheck, y: gridPos.y + dy * immediateCheck)
+            if checkPos.x >= 0 && checkPos.x < GameConstants.gridWidth &&
+               checkPos.y >= 0 && checkPos.y < GameConstants.gridHeight {
+                if let flowField = delegate?.getFlowField(),
+                   flowField.getDirection(at: checkPos) == nil && !checkPos.isInExitZone() && !checkPos.isInSpawnZone() {
+                    // Wall nearby - push away
+                    centeringForce.dx -= CGFloat(dx) * 0.8
+                    centeringForce.dy -= CGFloat(dy) * 0.8
+                }
+            }
+        }
+        
+        // Normalize if significant
+        let len = sqrt(centeringForce.dx * centeringForce.dx + centeringForce.dy * centeringForce.dy)
+        if len > 0.1 {
+            return CGVector(dx: centeringForce.dx / len, dy: centeringForce.dy / len)
+        }
+        return .zero
+    }
+    
+    /// SIMPLE MAZE COLLISION: Validate position and slide along walls if blocked
+    private func validateAndAdjustPosition(_ desiredPos: CGPoint, moveDistance: CGFloat) -> CGPoint {
+        let cellSize = GameConstants.cellSize
+        let origin = GameConstants.playFieldOrigin
+        
+        // Helper to check if a grid cell is blocked
+        func isBlocked(_ gridPos: GridPosition) -> Bool {
+            guard gridPos.x >= 0 && gridPos.x < GameConstants.gridWidth &&
+                  gridPos.y >= 0 && gridPos.y < GameConstants.gridHeight else { return true }
+            if gridPos.isInSpawnZone() || gridPos.isInExitZone() { return false }
+            guard let flowField = delegate?.getFlowField() else { return true }
+            return flowField.getDirection(at: gridPos) == nil
+        }
+        
+        // Helper to get cell center
+        func cellCenter(_ gridPos: GridPosition) -> CGPoint {
+            return CGPoint(
+                x: origin.x + CGFloat(gridPos.x) * cellSize + cellSize / 2,
+                y: origin.y + CGFloat(gridPos.y) * cellSize + cellSize / 2
+            )
+        }
+        
+        let desiredGridPos = desiredPos.toGridPosition()
+        let currentGridPos = position.toGridPosition()
+        
+        // If desired position is not blocked, allow it
+        if !isBlocked(desiredGridPos) {
+            return desiredPos
+        }
+        
+        // Desired cell is blocked - try to slide along the wall
+        // Try moving only in X
+        let xOnlyPos = CGPoint(x: desiredPos.x, y: position.y)
+        let xOnlyGrid = xOnlyPos.toGridPosition()
+        if !isBlocked(xOnlyGrid) {
+            return xOnlyPos
+        }
+        
+        // Try moving only in Y
+        let yOnlyPos = CGPoint(x: position.x, y: desiredPos.y)
+        let yOnlyGrid = yOnlyPos.toGridPosition()
+        if !isBlocked(yOnlyGrid) {
+            return yOnlyPos
+        }
+        
+        // Both X and Y blocked - try diagonal slides
+        let directions: [(CGFloat, CGFloat)] = [
+            (moveDistance, 0),    // Right
+            (-moveDistance, 0),   // Left  
+            (0, moveDistance),    // Up
+            (0, -moveDistance),   // Down
+            (moveDistance, moveDistance),    // Up-Right
+            (moveDistance, -moveDistance),   // Down-Right
+            (-moveDistance, moveDistance),   // Up-Left
+            (-moveDistance, -moveDistance),  // Down-Left
+        ]
+        
+        for (dx, dy) in directions {
+            let testPos = CGPoint(x: position.x + dx, y: position.y + dy)
+            let testGrid = testPos.toGridPosition()
+            if !isBlocked(testGrid) {
+                return testPos
+            }
+        }
+        
+        // Completely stuck - push away from current cell center toward the last valid cell
+        if !isBlocked(currentGridPos) {
+            // We're in a valid cell, just stay put but nudge toward center
+            let center = cellCenter(currentGridPos)
+            let toCenterX = center.x - position.x
+            let toCenterY = center.y - position.y
+            let dist = sqrt(toCenterX * toCenterX + toCenterY * toCenterY)
+            if dist > 1 {
+                return CGPoint(
+                    x: position.x + (toCenterX / dist) * moveDistance * 0.5,
+                    y: position.y + (toCenterY / dist) * moveDistance * 0.5
+                )
+            }
+        }
+        
+        // Absolute fallback - don't move
+        return position
+    }
+    
     private func hasReachedExit() -> Bool {
         // Exit is in bottom-right corner
         let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
@@ -669,7 +794,7 @@ class Enemy: SKNode {
     
     // MARK: - Death & Exit
     
-    private func die() {
+    func die() {
         guard isAlive else { return }
         isAlive = false
         
