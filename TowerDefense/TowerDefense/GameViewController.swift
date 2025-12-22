@@ -12,8 +12,10 @@ class GameViewController: UIViewController {
             return skView
         }() as SKView? else { return }
         
-        let scene = GameScene(size: CGSize(width: 1334, height: 750))
-        scene.scaleMode = .aspectFill
+        let sceneSize = view.bounds.size
+        let scene = GameScene(size: sceneSize)
+        scene.safeAreaInsets = view.safeAreaInsets
+        scene.scaleMode = .resizeFill
         
         view.presentScene(scene)
         view.ignoresSiblingOrder = true

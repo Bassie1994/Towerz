@@ -1,13 +1,17 @@
 import SpriteKit
+import UIKit
 
 /// Main game scene - integrates all systems
 final class GameScene: SKScene {
-    
+
     // MARK: - Properties
-    
+
     // Game management
     private var gameManager: GameManager!
     private var targetingSystem: TargetingSystem!
+
+    // Safe area from the hosting view (for responsive HUD/borders)
+    var safeAreaInsets: UIEdgeInsets = .zero
     
     // Containers
     private let gameLayer = SKNode()
@@ -80,12 +84,12 @@ final class GameScene: SKScene {
     
     private func setupUI() {
         // HUD
-        hudNode = HUDNode(sceneSize: size)
+        hudNode = HUDNode(sceneSize: size, safeAreaInsets: safeAreaInsets)
         hudNode.delegate = self
         uiLayer.addChild(hudNode)
 
         // Build Menu
-        buildMenuNode = BuildMenuNode(sceneSize: size)
+        buildMenuNode = BuildMenuNode(sceneSize: size, safeAreaInsets: safeAreaInsets)
         buildMenuNode.delegate = self
         uiLayer.addChild(buildMenuNode)
         
@@ -811,7 +815,6 @@ extension GameScene: HUDNodeDelegate {
             td["gridY"] = tower.gridPosition.y
             td["upgradeLevel"] = tower.upgradeLevel
             td["totalInvested"] = tower.totalInvested
-            td["targetPriority"] = tower.targetPriority.rawValue
             towerData.append(td)
         }
         saveData["towers"] = towerData
@@ -912,10 +915,6 @@ extension GameScene: HUDNodeDelegate {
                     if let totalInvested = td["totalInvested"] as? Int {
                         tower.totalInvested = totalInvested
                     }
-                    if let priorityRaw = td["targetPriority"] as? String,
-                       let priority = TargetPriority(rawValue: priorityRaw) {
-                        tower.targetPriority = priority
-                    }
                     
                     towers.append(tower)
                     towerLayer.addChild(tower)
@@ -1001,20 +1000,6 @@ extension GameScene: TowerInfoNodeDelegate {
         // Show conversion menu for wall tower
         guard tower.towerType == .wall else { return }
         showConversionMenu(for: tower)
-    }
-
-    func towerInfoDidChangePriority(_ tower: Tower, priority: TargetPriority) {
-        tower.targetPriority = priority
-        towerInfoNode.updateContent()
-    }
-
-    func towerInfoDidRequestMineDetonation(_ tower: MineTower) {
-        tower.detonateAllMines()
-    }
-
-    func towerInfoDidRequestMineClear(_ tower: MineTower) {
-        tower.clearAllMines()
-        towerInfoNode.updateContent()
     }
     
     private func showConversionMenu(for wallTower: Tower) {
