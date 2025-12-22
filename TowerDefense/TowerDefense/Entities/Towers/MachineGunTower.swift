@@ -7,7 +7,7 @@ import SpriteKit
 final class MachineGunTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 4,      // 2x damage, slower but harder hits
+        damage: 3.2,      // 20% global damage reduction
         range: 150,
         fireRate: 4.0   // /2 fire rate - 4 shots per second
     )
@@ -60,15 +60,9 @@ final class MachineGunTower: Tower {
         let flyingEnemies = aliveEnemies.filter { $0.enemyType == .flying }
         
         if !flyingEnemies.isEmpty {
-            // Target closest flying enemy
-            currentTarget = flyingEnemies.min {
-                position.distance(to: $0.position) < position.distance(to: $1.position)
-            }
+            currentTarget = selectTarget(from: flyingEnemies)
         } else {
-            // Target closest any enemy
-            currentTarget = aliveEnemies.min {
-                position.distance(to: $0.position) < position.distance(to: $1.position)
-            }
+            currentTarget = selectTarget(from: aliveEnemies)
         }
     }
     

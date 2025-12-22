@@ -8,7 +8,7 @@ import SpriteKit
 final class LaserTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 600,     // Massive single-shot damage
+        damage: 300,     // Sniper rail damage after global + sniper reduction
         range: 1300,     // Full field range - true sniper
         fireRate: 0.08   // ~1 shot every 12.5 seconds - extremely slow
     )
@@ -144,21 +144,23 @@ final class LaserTower: Tower {
         
         // Filter out flying enemies - sniper targets ground only
         let groundEnemies = enemies.filter { $0.isAlive && $0.enemyType != .flying }
-        
-        // Prioritize highest HP enemy (sniper should take out big threats)
-        currentTarget = groundEnemies.max { $0.currentHealth < $1.currentHealth }
+
+        currentTarget = selectTarget(from: groundEnemies)
     }
     
     private func fireSniperShot(at target: Enemy) {
         isLaserActive = true
         lastDamageTime = lastFireTime
-        
+
         laserAngle = turretNode.zRotation
-        
+
+        let beamDirection = CGVector(dx: cos(laserAngle), dy: sin(laserAngle))
+        let beamLength = range * rangeMultiplier
+
         // Calculate beam endpoint to target
         let beamEnd = CGPoint(
-            x: target.position.x - position.x,
-            y: target.position.y - position.y
+            x: beamDirection.dx * beamLength,
+            y: beamDirection.dy * beamLength
         )
         
         // Update beam visual - brief intense flash
@@ -180,13 +182,30 @@ final class LaserTower: Tower {
         laserImpact?.position = beamEnd
         laserImpact?.isHidden = false
         
-        // Apply damage to single target (sniper = single target only)
+        // Apply damage to every grounded enemy along the rail path
         let effectiveDamage = damage * damageMultiplier
-        target.takeDamage(effectiveDamage)
-        
-        // Big impact effect
-        spawnSniperImpact(at: target.position)
-        
+        if let enemies = delegate?.getEnemiesInRange(of: self) {
+            let hitEnemies = enemies
+                .filter { $0.isAlive && $0.enemyType != .flying }
+                .filter { enemy in
+                    let relative = CGVector(
+                        dx: enemy.position.x - position.x,
+                        dy: enemy.position.y - position.y
+                    )
+
+                    let distanceAlong = relative.dx * beamDirection.dx + relative.dy * beamDirection.dy
+                    guard distanceAlong >= 0 && distanceAlong <= beamLength else { return false }
+
+                    let perpendicular = abs(relative.dx * beamDirection.dy - relative.dy * beamDirection.dx)
+                    return perpendicular <= 20
+                }
+
+            for enemy in hitEnemies {
+                enemy.takeDamage(effectiveDamage)
+                spawnSniperImpact(at: enemy.position)
+            }
+        }
+
         // Screen shake effect (subtle)
         let shake = SKAction.sequence([
             SKAction.moveBy(x: 2, y: 0, duration: 0.02),
@@ -252,7 +271,7 @@ final class LaserTower: Tower {
         var stats = super.getStats()
         stats["Type"] = "Sniper"
         stats["DPS"] = String(format: "%.0f", damage * damageMultiplier * fireRate * fireRateMultiplier)
-        stats["Special"] = "Targets highest HP"
+        stats["Special"] = "Piercing rail (highest HP priority)"
         stats["Note"] = "Cannot hit Flying"
         stats["Hint"] = "~12s between shots"
         return stats

@@ -7,16 +7,25 @@ import SpriteKit
 final class MineTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 25,      // Damage per mine explosion
-        range: 120,      // Range to place mines
+        damage: 20,      // Damage per mine explosion (20% reduction)
+        range: GameConstants.cellSize * 1.5,      // Adjacent cells only
         fireRate: 0.5    // 1 mine every 2 seconds
     )
-    
+
     var splashRadius: CGFloat = 50
+    static let mineLifetime: TimeInterval = 30
     private var mines: [Mine] = []
     private let maxMinesPerTower = 50  // Max 50 mines per tower, no global limit
-    
+    private var pendingMineRemovals: [Mine] = []
+    private let mineCounterLabel: SKLabelNode
+
     init(gridPosition: GridPosition) {
+        mineCounterLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        mineCounterLabel.fontSize = 12
+        mineCounterLabel.fontColor = .white
+        mineCounterLabel.position = CGPoint(x: 0, y: GameConstants.cellSize * 0.4)
+        mineCounterLabel.text = "0"
+
         super.init(
             type: .mine,
             gridPosition: gridPosition,
@@ -24,6 +33,8 @@ final class MineTower: Tower {
             range: MineTower.stats.range,
             fireRate: MineTower.stats.fireRate
         )
+
+        addChild(mineCounterLabel)
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -79,6 +90,9 @@ final class MineTower: Tower {
         
         // Check mines for enemy proximity
         checkMinesForDetonation()
+
+        // Clean up any mines that detonated or degraded this frame
+        processPendingMineRemovals()
         
         // Place new mines periodically
         let effectiveFireRate = fireRate * fireRateMultiplier
@@ -108,58 +122,48 @@ final class MineTower: Tower {
         mine.owner = self
         parent?.addChild(mine)
         mines.append(mine)
+        updateMineCounter()
         
         // Show launch animation from tower to mine
         spawnLaunchAnimation(to: validPosition)
     }
     
     private func findValidMinePosition() -> CGPoint? {
-        // Try random positions within range
-        for _ in 0..<20 {
-            let angle = CGFloat.random(in: 0...(2 * .pi))
-            let distance = CGFloat.random(in: 30...range)
-            
-            let candidatePos = CGPoint(
-                x: position.x + cos(angle) * distance,
-                y: position.y + sin(angle) * distance
-            )
-            
-            // Convert to grid position
-            let gridX = Int((candidatePos.x - GameConstants.playFieldOrigin.x) / GameConstants.cellSize)
-            let gridY = Int((candidatePos.y - GameConstants.playFieldOrigin.y) / GameConstants.cellSize)
-            
-            // Check bounds
-            guard gridX >= 0 && gridX < GameConstants.gridWidth &&
-                  gridY >= 0 && gridY < GameConstants.gridHeight else { continue }
-            
-            // Check if there's a tower here (mines can only be on non-tower cells)
-            let cellCenter = CGPoint(
-                x: GameConstants.playFieldOrigin.x + CGFloat(gridX) * GameConstants.cellSize + GameConstants.cellSize / 2,
-                y: GameConstants.playFieldOrigin.y + CGFloat(gridY) * GameConstants.cellSize + GameConstants.cellSize / 2
-            )
-            
-            var hasTower = false
-            if let allTowers = delegate?.getAllTowers() {
-                for tower in allTowers {
-                    if tower.position.distance(to: cellCenter) < GameConstants.cellSize * 0.6 {
+        var availableCells: [GridPosition] = []
+
+        for dx in -1...1 {
+            for dy in -1...1 {
+                if dx == 0 && dy == 0 { continue }
+                let candidate = GridPosition(x: gridPosition.x + dx, y: gridPosition.y + dy)
+
+                guard candidate.x >= 0 && candidate.x < GameConstants.gridWidth &&
+                        candidate.y >= 0 && candidate.y < GameConstants.gridHeight else { continue }
+
+                let cellCenter = candidate.toWorldPosition()
+
+                var hasTower = false
+                if let allTowers = delegate?.getAllTowers() {
+                    for tower in allTowers where tower.position.distance(to: cellCenter) < GameConstants.cellSize * 0.4 {
                         hasTower = true
                         break
                     }
                 }
-            }
-            
-            // Mines CAN stack - no check for existing mines
-            if !hasTower {
-                // Add small random offset for visual stacking variety
-                let stackOffset = CGPoint(
-                    x: CGFloat.random(in: -8...8),
-                    y: CGFloat.random(in: -8...8)
-                )
-                return CGPoint(x: cellCenter.x + stackOffset.x, y: cellCenter.y + stackOffset.y)
+
+                if !hasTower {
+                    availableCells.append(candidate)
+                }
             }
         }
-        
-        return nil
+
+        guard let candidate = availableCells.randomElement() else { return nil }
+
+        // Add small random offset for visual stacking variety
+        let stackOffset = CGPoint(
+            x: CGFloat.random(in: -8...8),
+            y: CGFloat.random(in: -8...8)
+        )
+        let cellCenter = candidate.toWorldPosition()
+        return CGPoint(x: cellCenter.x + stackOffset.x, y: cellCenter.y + stackOffset.y)
     }
     
     private func checkMinesForDetonation() {
@@ -180,8 +184,26 @@ final class MineTower: Tower {
         
         // Clean up detonated mines
         for mine in minesToRemove {
-            mines.removeAll { $0 === mine }
+            queueMineRemoval(mine)
         }
+    }
+
+    func detonateAllMines() {
+        guard let enemies = delegate?.getEnemiesInRange(of: self) else { return }
+        for mine in mines { mine.detonate(enemies: enemies) }
+    }
+
+    func clearAllMines() {
+        for mine in mines {
+            mine.fadeOut()
+        }
+        mines.removeAll()
+        pendingMineRemovals.removeAll()
+        updateMineCounter()
+    }
+
+    func getActiveMineCount() -> Int {
+        return mines.count
     }
     
     /// Animate mine launching from tower to target position
@@ -286,6 +308,29 @@ final class MineTower: Tower {
             mine.removeFromParent()
         }
         mines.removeAll()
+        pendingMineRemovals.removeAll()
+        updateMineCounter()
+    }
+
+    func queueMineRemoval(_ mine: Mine) {
+        pendingMineRemovals.append(mine)
+    }
+
+    private func processPendingMineRemovals() {
+        guard !pendingMineRemovals.isEmpty else { return }
+
+        for mine in pendingMineRemovals {
+            mines.removeAll { $0 === mine }
+        }
+
+        pendingMineRemovals.removeAll()
+        updateMineCounter()
+    }
+
+    private func updateMineCounter() {
+        mineCounterLabel.text = "\(mines.count)"
+        let fillRatio = CGFloat(mines.count) / CGFloat(maxMinesPerTower)
+        mineCounterLabel.fontColor = fillRatio > 0.8 ? .red : .white
     }
     
     // Not used for mine tower
@@ -298,6 +343,7 @@ final class MineTower: Tower {
         stats["Type"] = "Mine Layer"
         stats["Splash Radius"] = String(format: "%.0f", splashRadius + CGFloat(upgradeLevel) * 10)
         stats["Mines Active"] = "\(mines.count)/\(maxMinesPerTower)"
+        stats["Lifetime"] = String(format: "%.0fs", MineTower.mineLifetime)
         stats["Best vs"] = "Groups"
         stats["Note"] = "Cannot hit Flying"
         return stats
@@ -314,22 +360,29 @@ class Mine: SKNode {
     
     private let mineNode: SKShapeNode
     private var hasDetonated = false
-    
+    private let lifetimeRing: SKShapeNode
+
     init(position: CGPoint, damage: CGFloat, splashRadius: CGFloat) {
         self.damage = damage
         self.splashRadius = splashRadius
-        
+
         // Create mine visual
         mineNode = SKShapeNode(circleOfRadius: 8)
         mineNode.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.3, alpha: 1.0)
         mineNode.strokeColor = .red
         mineNode.lineWidth = 2
-        
+
+        lifetimeRing = SKShapeNode(circleOfRadius: 12)
+        lifetimeRing.strokeColor = SKColor.yellow.withAlphaComponent(0.3)
+        lifetimeRing.fillColor = .clear
+        lifetimeRing.lineWidth = 2
+
         super.init()
-        
+
         self.position = position
         zPosition = GameConstants.ZPosition.grid.rawValue + 2
         addChild(mineNode)
+        addChild(lifetimeRing)
         
         // Add detail - trigger plate
         let trigger = SKShapeNode(circleOfRadius: 4)
@@ -358,6 +411,10 @@ class Mine: SKNode {
             SKAction.scale(to: 1.0, duration: 0.2)
         ])
         run(enter)
+
+        animateLifetimeRing()
+
+        startDegradeCountdown()
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -381,10 +438,24 @@ class Mine: SKNode {
         // Explosion visual
         createExplosion()
         
-        // Remove mine
+        owner?.queueMineRemoval(self)
         removeFromParent()
     }
-    
+
+    func fadeOut() {
+        guard !hasDetonated else { return }
+        hasDetonated = true
+        let fade = SKAction.sequence([
+            SKAction.group([
+                SKAction.fadeOut(withDuration: 0.3),
+                SKAction.scale(to: 0.2, duration: 0.3)
+            ]),
+            SKAction.removeFromParent()
+        ])
+        owner?.queueMineRemoval(self)
+        run(fade)
+    }
+
     private func createExplosion() {
         guard let parent = parent else { return }
         
@@ -450,5 +521,41 @@ class Mine: SKNode {
             SKAction.removeFromParent()
         ])
         ring.run(ringAnimation)
+    }
+
+    private func startDegradeCountdown() {
+        let degradeAction = SKAction.sequence([
+            SKAction.wait(forDuration: MineTower.mineLifetime),
+            SKAction.run { [weak self] in
+                self?.degrade()
+            }
+        ])
+
+        run(degradeAction, withKey: "degrade")
+    }
+
+    private func animateLifetimeRing() {
+        let shrink = SKAction.sequence([
+            SKAction.scale(to: 0.1, duration: MineTower.mineLifetime),
+            SKAction.removeFromParent()
+        ])
+        lifetimeRing.run(shrink)
+    }
+
+    private func degrade() {
+        guard !hasDetonated else { return }
+        hasDetonated = true
+
+        // Visual fade to indicate deterioration
+        let fadeOut = SKAction.sequence([
+            SKAction.group([
+                SKAction.fadeAlpha(to: 0.2, duration: 0.5),
+                SKAction.scale(to: 0.5, duration: 0.5)
+            ]),
+            SKAction.removeFromParent()
+        ])
+
+        owner?.queueMineRemoval(self)
+        run(fadeOut)
     }
 }

@@ -52,6 +52,8 @@ class Enemy: SKNode {
     private var isInRecoveryMode: Bool = false
     private var recoveryCellsRemaining: Int = 0
     private var recoveryTargetCenter: CGPoint = .zero
+    private var lastDistanceToExit: Int = Int.max
+    private var progressStallTime: TimeInterval = 0
     
     // Size
     let enemySize: CGFloat = 30
@@ -263,7 +265,7 @@ class Enemy: SKNode {
         newPosition = validateAndAdjustPosition(newPosition, moveDistance: moveDistance)
         
         position = newPosition
-        
+
         // Clamp to playfield bounds
         let minY = GameConstants.playFieldOrigin.y + enemySize / 2
         let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - enemySize / 2
@@ -271,7 +273,31 @@ class Enemy: SKNode {
         let maxX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - enemySize / 2
         position.y = max(minY, min(maxY, position.y))
         position.x = max(minX, min(maxX, position.x))
-        
+
+        // Track progress toward the exit; if it stalls, snap back onto the flow field
+        if let flowField = delegate?.getFlowField() {
+            let currentGrid = position.toGridPosition()
+            let currentDistance = flowField.getDistance(at: currentGrid)
+
+            if currentDistance < lastDistanceToExit {
+                progressStallTime = 0
+            } else {
+                progressStallTime += deltaTime
+            }
+
+            lastDistanceToExit = currentDistance
+
+            if progressStallTime > 3.0, let reachable = flowField.nearestReachableCell(from: currentGrid, maxSearchRadius: 8) {
+                position = reachable.toWorldPosition()
+                lastPosition = position
+                stuckTime = 0
+                progressStallTime = 0
+                isInRecoveryMode = false
+                recoveryCellsRemaining = 0
+                currentDirection = CGVector(dx: 1, dy: 0)
+            }
+        }
+
         // Time-based stuck detection (7 seconds triggers recovery mode)
         let movedDistance = position.distance(to: lastPosition)
         let cellSize = GameConstants.cellSize
@@ -284,7 +310,8 @@ class Enemy: SKNode {
                 // Enter recovery mode - snap to current cell center and follow path centers
                 isInRecoveryMode = true
                 recoveryCellsRemaining = 6
-                
+                progressStallTime = 0
+
                 // Find current cell center
                 let currentGrid = position.toGridPosition()
                 recoveryTargetCenter = CGPoint(

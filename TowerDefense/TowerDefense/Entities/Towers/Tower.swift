@@ -7,6 +7,25 @@ protocol TowerDelegate: AnyObject {
     func getAllTowers() -> [Tower]
 }
 
+/// Player-selectable target priorities for towers
+enum TargetPriority: String, CaseIterable {
+    case first
+    case last
+    case strongest
+    case weakest
+    case fastest
+
+    var displayName: String {
+        switch self {
+        case .first: return "First"
+        case .last: return "Last"
+        case .strongest: return "Strongest"
+        case .weakest: return "Weakest"
+        case .fastest: return "Fastest"
+        }
+    }
+}
+
 /// Base class for all tower types
 class Tower: SKNode {
     
@@ -40,6 +59,7 @@ class Tower: SKNode {
     var lastFireTime: TimeInterval = 0
     var currentTarget: Enemy?
     var isSelected: Bool = false
+    var targetPriority: TargetPriority = .first
     
     // Visual components
     let baseNode: SKShapeNode
@@ -183,11 +203,26 @@ class Tower: SKNode {
             currentTarget = nil
             return
         }
-        
-        // Default: target closest enemy
-        currentTarget = enemies
-            .filter { $0.isAlive }
-            .min { position.distance(to: $0.position) < position.distance(to: $1.position) }
+
+        // Default: respect configurable priority
+        currentTarget = selectTarget(from: enemies)
+    }
+
+    func selectTarget(from enemies: [Enemy]) -> Enemy? {
+        let alive = enemies.filter { $0.isAlive }
+
+        switch targetPriority {
+        case .first:
+            return alive.max { lhs, rhs in lhs.position.x < rhs.position.x }
+        case .last:
+            return alive.min { lhs, rhs in lhs.position.x < rhs.position.x }
+        case .strongest:
+            return alive.max { lhs, rhs in lhs.currentHealth < rhs.currentHealth }
+        case .weakest:
+            return alive.min { lhs, rhs in lhs.currentHealth < rhs.currentHealth }
+        case .fastest:
+            return alive.max { lhs, rhs in lhs.moveSpeed * lhs.slowMultiplier < rhs.moveSpeed * rhs.slowMultiplier }
+        }
     }
     
     func aimAt(_ target: Enemy) {
@@ -373,6 +408,11 @@ class Tower: SKNode {
             // Golden/buff color glow on base
             baseNode.strokeColor = SKColor.buffEffect
             baseNode.lineWidth = 3
+
+            let intensity = max(damageMultiplier, fireRateMultiplier)
+            buffIndicator.lineWidth = 2 + min(intensity - 1.0, 1.0) * 3
+            buffIndicator.alpha = 0.4 + min(intensity - 1.0, 1.0) * 0.4
+            buffIndicator.strokeColor = SKColor.buffEffect.withAlphaComponent(0.8)
             
             // Add subtle glow effect
             if baseNode.childNode(withName: "buffGlow") == nil {
@@ -395,6 +435,9 @@ class Tower: SKNode {
             // Reset to normal
             baseNode.strokeColor = isSelected ? .yellow : .white
             baseNode.lineWidth = isSelected ? 3 : 2
+
+            buffIndicator.lineWidth = 2
+            buffIndicator.alpha = 1.0
             
             // Remove glow
             baseNode.childNode(withName: "buffGlow")?.removeFromParent()
@@ -414,6 +457,7 @@ class Tower: SKNode {
             "Damage": String(format: "%.0f", damage * damageMultiplier),
             "Range": String(format: "%.0f", getEffectiveRange()),
             "Fire Rate": String(format: "%.1f/s", fireRate * fireRateMultiplier),
+            "Target": targetPriority.displayName,
             "Level": "\(upgradeLevel + 1)/\(maxUpgradeLevel + 1)",
             "Sell Value": "\(sellValue)"
         ]

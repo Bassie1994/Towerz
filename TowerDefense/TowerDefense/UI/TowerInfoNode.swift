@@ -5,6 +5,9 @@ protocol TowerInfoNodeDelegate: AnyObject {
     func towerInfoDidTapUpgrade(_ tower: Tower)
     func towerInfoDidTapSell(_ tower: Tower)
     func towerInfoDidTapConvert(_ tower: Tower)
+    func towerInfoDidChangePriority(_ tower: Tower, priority: TargetPriority)
+    func towerInfoDidRequestMineDetonation(_ tower: MineTower)
+    func towerInfoDidRequestMineClear(_ tower: MineTower)
     func towerInfoDidClose()
 }
 
@@ -25,9 +28,14 @@ final class TowerInfoNode: SKNode {
     private let sellButton: SKShapeNode
     private let sellLabel: SKLabelNode
     private let closeButton: SKShapeNode
-    
-    private let panelWidth: CGFloat = 200
-    private let panelHeight: CGFloat = 280
+    private let targetingLabel: SKLabelNode
+    private var targetingButtons: [TargetPriority: SKShapeNode] = [:]
+    private let mineActionContainer: SKNode
+    private let detonateButton: SKShapeNode
+    private let clearButton: SKShapeNode
+
+    private let panelWidth: CGFloat = 220
+    private let panelHeight: CGFloat = 330
     
     // MARK: - Initialization
     
@@ -83,6 +91,26 @@ final class TowerInfoNode: SKNode {
         closeButton.lineWidth = 1
         closeButton.position = CGPoint(x: panelWidth / 2 - 20, y: panelHeight / 2 - 20)
         closeButton.name = "closeButton"
+
+        targetingLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        targetingLabel.fontSize = 13
+        targetingLabel.fontColor = .white
+        targetingLabel.horizontalAlignmentMode = .left
+        targetingLabel.text = "Targeting:"
+
+        mineActionContainer = SKNode()
+
+        detonateButton = SKShapeNode(rectOf: CGSize(width: 90, height: 32), cornerRadius: 6)
+        detonateButton.fillColor = SKColor(red: 0.65, green: 0.35, blue: 0.15, alpha: 1.0)
+        detonateButton.strokeColor = .white
+        detonateButton.lineWidth = 1
+        detonateButton.name = "detonateButton"
+
+        clearButton = SKShapeNode(rectOf: CGSize(width: 90, height: 32), cornerRadius: 6)
+        clearButton.fillColor = SKColor(red: 0.35, green: 0.35, blue: 0.35, alpha: 1.0)
+        clearButton.strokeColor = .white
+        clearButton.lineWidth = 1
+        clearButton.name = "clearButton"
         
         super.init()
         
@@ -99,7 +127,11 @@ final class TowerInfoNode: SKNode {
         addChild(panelBackground)
         panelBackground.addChild(titleLabel)
         panelBackground.addChild(statsContainer)
-        
+
+        targetingLabel.position = CGPoint(x: -panelWidth / 2 + 20, y: -30)
+        panelBackground.addChild(targetingLabel)
+        setupTargetingButtons()
+
         upgradeButton.addChild(upgradeLabel)
         panelBackground.addChild(upgradeButton)
         
@@ -115,6 +147,63 @@ final class TowerInfoNode: SKNode {
         xLabel.horizontalAlignmentMode = .center
         closeButton.addChild(xLabel)
         panelBackground.addChild(closeButton)
+
+        setupMineActionButtons()
+    }
+
+    private func setupTargetingButtons() {
+        let startX = -panelWidth / 2 + 20
+        let startY: CGFloat = -55
+        let buttonSize = CGSize(width: 45, height: 26)
+        let spacing: CGFloat = 5
+
+        for (index, priority) in TargetPriority.allCases.enumerated() {
+            let button = SKShapeNode(rectOf: buttonSize, cornerRadius: 5)
+            button.fillColor = SKColor(white: 0.18, alpha: 1.0)
+            button.strokeColor = .white
+            button.lineWidth = 1
+            button.position = CGPoint(
+                x: startX + CGFloat(index) * (buttonSize.width + spacing) + buttonSize.width / 2,
+                y: startY
+            )
+            button.name = "priority_\(priority.rawValue)"
+
+            let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+            label.fontSize = 11
+            label.fontColor = .white
+            label.text = priority.displayName.prefix(1).uppercased()
+            label.verticalAlignmentMode = .center
+            button.addChild(label)
+
+            targetingButtons[priority] = button
+            panelBackground.addChild(button)
+        }
+    }
+
+    private func setupMineActionButtons() {
+        mineActionContainer.position = CGPoint(x: 0, y: -panelHeight / 2 + 90)
+
+        let detonateLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        detonateLabel.fontSize = 12
+        detonateLabel.fontColor = .white
+        detonateLabel.text = "Detonate"
+        detonateLabel.verticalAlignmentMode = .center
+        detonateButton.addChild(detonateLabel)
+
+        let clearLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        clearLabel.fontSize = 12
+        clearLabel.fontColor = .white
+        clearLabel.text = "Clear"
+        clearLabel.verticalAlignmentMode = .center
+        clearButton.addChild(clearLabel)
+
+        detonateButton.position = CGPoint(x: -55, y: 0)
+        clearButton.position = CGPoint(x: 55, y: 0)
+
+        mineActionContainer.addChild(detonateButton)
+        mineActionContainer.addChild(clearButton)
+        panelBackground.addChild(mineActionContainer)
+        mineActionContainer.isHidden = true
     }
     
     // MARK: - Show/Hide
@@ -175,6 +264,9 @@ final class TowerInfoNode: SKNode {
                 yOffset -= lineHeight
             }
         }
+
+        updateTargetingUI(for: tower)
+        updateMineActions(for: tower)
         
         // Update upgrade button - show "Convert" for wall towers
         if tower.towerType == .wall {
@@ -193,6 +285,31 @@ final class TowerInfoNode: SKNode {
         
         // Update sell button
         sellLabel.text = "Sell $\(tower.sellValue)"
+    }
+
+    private func updateTargetingUI(for tower: Tower) {
+        let supportsTargeting = !(tower is BuffTower) && !(tower is MineTower) && tower.towerType != .wall
+        targetingLabel.isHidden = !supportsTargeting
+
+        for (priority, button) in targetingButtons {
+            button.isHidden = !supportsTargeting
+            let isSelected = tower.targetPriority == priority
+            button.fillColor = isSelected ? SKColor(red: 0.3, green: 0.55, blue: 0.85, alpha: 1.0) : SKColor(white: 0.18, alpha: 1.0)
+            button.strokeColor = isSelected ? .white : SKColor(white: 0.6, alpha: 1.0)
+        }
+    }
+
+    private func updateMineActions(for tower: Tower) {
+        guard let mineTower = tower as? MineTower else {
+            mineActionContainer.isHidden = true
+            return
+        }
+
+        mineActionContainer.isHidden = false
+        let isEmpty = mineTower.getActiveMineCount() == 0
+        detonateButton.alpha = isEmpty ? 0.4 : 1.0
+        detonateButton.isUserInteractionEnabled = !isEmpty
+        clearButton.alpha = isEmpty ? 0.7 : 1.0
     }
     
     // MARK: - Touch Handling
@@ -235,6 +352,34 @@ final class TowerInfoNode: SKNode {
             animateButton(closeButton)
             hide()
             return true
+        }
+
+        // Targeting priority buttons
+        for (priority, button) in targetingButtons {
+            guard !button.isHidden else { continue }
+            if button.contains(localPoint) {
+                delegate?.towerInfoDidChangePriority(tower, priority: priority)
+                animateButton(button)
+                updateContent()
+                return true
+            }
+        }
+
+        // Mine management buttons
+        if let mineTower = tower as? MineTower, !mineActionContainer.isHidden {
+            let pointInContainer = mineActionContainer.convert(localPoint, from: self)
+            let pointForButtons = pointInContainer
+            if detonateButton.contains(pointForButtons) && mineTower.getActiveMineCount() > 0 {
+                delegate?.towerInfoDidRequestMineDetonation(mineTower)
+                animateButton(detonateButton)
+                return true
+            }
+            if clearButton.contains(pointForButtons) {
+                delegate?.towerInfoDidRequestMineClear(mineTower)
+                animateButton(clearButton)
+                updateContent()
+                return true
+            }
         }
         
         // Check upgrade button (rectangular)

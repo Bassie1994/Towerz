@@ -7,7 +7,7 @@ import SpriteKit
 final class CannonTower: Tower {
     
     static let stats: (damage: CGFloat, range: CGFloat, fireRate: CGFloat) = (
-        damage: 60,     // 4x damage (2x base + 2x extra) - devastating hits
+        damage: 48,     // 20% global damage reduction
         range: 70,      // Short range
         fireRate: 0.2   // /4 fire rate - very slow but powerful
     )
@@ -63,13 +63,11 @@ final class CannonTower: Tower {
         
         // Prioritize armored enemies (cavalry)
         let armoredEnemies = groundEnemies.filter { $0.armor > 0 }
-        
+
         if !armoredEnemies.isEmpty {
-            // Target cavalry with most armor
-            currentTarget = armoredEnemies.max { $0.armor < $1.armor }
+            currentTarget = selectTarget(from: armoredEnemies)
         } else {
-            // Target enemy with most health
-            currentTarget = groundEnemies.max { $0.currentHealth < $1.currentHealth }
+            currentTarget = selectTarget(from: groundEnemies)
         }
     }
     

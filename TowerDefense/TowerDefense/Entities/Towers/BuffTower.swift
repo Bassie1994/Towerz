@@ -117,12 +117,14 @@ final class BuffTower: Tower {
     
     private func updateBuffedTowers() {
         guard let allTowers = delegate?.getAllTowers() else { return }
-        
+
         let effectiveDamageBuff = 1.0 + damageBuffPercent * (1.0 + CGFloat(upgradeLevel) * 0.5)
         let effectiveFireRateBuff = 1.0 + fireRateBuffPercent * (1.0 + CGFloat(upgradeLevel) * 0.5)
         // Range buff: same scaling as damage/fire rate buffs
         let effectiveRangeBuff = 1.0 + (damageBuffPercent * 0.5) * (1.0 + CGFloat(upgradeLevel) * 0.5)  // Half the damage buff for range
-        
+
+        updateBuffVisualIntensity(strength: max(effectiveDamageBuff, effectiveFireRateBuff))
+
         var newBuffedTowers = Set<UUID>()
         
         for tower in allTowers {
@@ -146,6 +148,17 @@ final class BuffTower: Tower {
         }
         
         buffedTowers = newBuffedTowers
+    }
+
+    private func updateBuffVisualIntensity(strength: CGFloat) {
+        let clamped = min(max(strength - 1.0, 0.0), 1.0)
+        buffFieldNode.alpha = 0.05 + clamped * 0.25
+        buffFieldNode.lineWidth = 2 + clamped * 2
+
+        for (index, beam) in buffBeams.enumerated() {
+            beam.lineWidth = 2 + CGFloat(index) * 0.1 * clamped
+            beam.alpha = 0.2 + clamped * 0.3
+        }
     }
     
     private func updateBuffBeams() {
