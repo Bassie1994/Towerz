@@ -1,4 +1,5 @@
 import SpriteKit
+import UIKit
 
 /// Delegate for build menu interactions
 protocol BuildMenuNodeDelegate: AnyObject {
@@ -21,15 +22,18 @@ final class BuildMenuNode: SKNode {
     private let menuWidth: CGFloat
     private let menuHeight: CGFloat = 70
     private var layoutSize: CGSize = .zero
+    private var safeAreaInsets: UIEdgeInsets = .zero
     
     private let moneyLabel: SKLabelNode
     private let moneyIcon: SKLabelNode
     
     // MARK: - Initialization
     
-    init(sceneSize: CGSize) {
+    init(sceneSize: CGSize, safeAreaInsets: UIEdgeInsets) {
         layoutSize = sceneSize
-        menuWidth = min(sceneSize.width - 40, 1200)
+        self.safeAreaInsets = safeAreaInsets
+        let widthPadding = safeAreaInsets.left + safeAreaInsets.right + 30
+        menuWidth = min(sceneSize.width - widthPadding, 1200)
         // Background panel - horizontal bar at bottom of screen
         menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 8)
         menuBackground.fillColor = SKColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 0.95)
@@ -63,8 +67,8 @@ final class BuildMenuNode: SKNode {
     
     private func setupMenu() {
         // Position menu along the bottom edge with slight padding from the playfield and screen edges
-        let bottomPadding: CGFloat = 35
-        let menuY = max(menuHeight / 2 + 10, GameConstants.playFieldOrigin.y - bottomPadding)
+        let bottomPadding: CGFloat = max(24, safeAreaInsets.bottom + 20)
+        let menuY = max(menuHeight / 2 + bottomPadding, GameConstants.playFieldOrigin.y - bottomPadding)
         menuBackground.position = CGPoint(x: layoutSize.width / 2, y: menuY)
         addChild(menuBackground)
         

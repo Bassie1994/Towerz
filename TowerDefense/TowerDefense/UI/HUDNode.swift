@@ -1,4 +1,5 @@
 import SpriteKit
+import UIKit
 
 /// Delegate for HUD interactions
 protocol HUDNodeDelegate: AnyObject {
@@ -36,6 +37,7 @@ final class HUDNode: SKNode {
     private let trashZone: SKShapeNode
     private let trashLabel: SKLabelNode
     private var layoutSize: CGSize = .zero
+    private var safeAreaInsets: UIEdgeInsets = .zero
 
     private var speedMultiplier: CGFloat = 1.0  // 1x, 2x, or 4x
     private(set) var isTrashHighlighted = false
@@ -57,10 +59,12 @@ final class HUDNode: SKNode {
     
     // MARK: - Initialization
     
-    init(sceneSize: CGSize) {
+    init(sceneSize: CGSize, safeAreaInsets: UIEdgeInsets) {
         layoutSize = sceneSize
+        self.safeAreaInsets = safeAreaInsets
         // Background bar
-        let hudWidth: CGFloat = max(400, sceneSize.width - 40)
+        let horizontalPadding = safeAreaInsets.left + safeAreaInsets.right + 40
+        let hudWidth: CGFloat = max(400, sceneSize.width - horizontalPadding)
         let hudHeight: CGFloat = 50
         hudBackground = SKShapeNode(rectOf: CGSize(width: hudWidth, height: hudHeight))
         hudBackground.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.9)
@@ -212,9 +216,9 @@ final class HUDNode: SKNode {
     }
     
     private func setupHUD() {
-        let leftPadding: CGFloat = 30
-        let rightPadding: CGFloat = 30
-        let topPadding: CGFloat = 30
+        let leftPadding: CGFloat = max(24, 20 + safeAreaInsets.left)
+        let rightPadding: CGFloat = max(24, 20 + safeAreaInsets.right)
+        let topPadding: CGFloat = max(24, 20 + safeAreaInsets.top)
         let screenCenterX: CGFloat = layoutSize.width / 2
         let topBarY: CGFloat = layoutSize.height - topPadding
 
@@ -343,7 +347,7 @@ final class HUDNode: SKNode {
         
         // Trash zone (top-right corner, near HUD)
         let trashX = layoutSize.width - rightPadding - 40
-        trashZone.position = CGPoint(x: trashX, y: topBarY - 10)
+        trashZone.position = CGPoint(x: trashX, y: max(GameConstants.playFieldOrigin.y + 60, topBarY - 10))
         trashZone.zPosition = 100  // Above other elements
         trashZone.addChild(trashLabel)
         addChild(trashZone)
@@ -370,7 +374,8 @@ final class HUDNode: SKNode {
         bigMoneyBg.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.1, alpha: 0.9)
         bigMoneyBg.strokeColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.8)
         bigMoneyBg.lineWidth = 2
-        bigMoneyBg.position = CGPoint(x: trashX - 120, y: topBarY)
+        let bigMoneyX = min(trashX - 120, layoutSize.width - rightPadding - 120)
+        bigMoneyBg.position = CGPoint(x: bigMoneyX, y: topBarY)
         bigMoneyBg.zPosition = 100
         bigMoneyBg.name = "bigMoneyBg"
         addChild(bigMoneyBg)

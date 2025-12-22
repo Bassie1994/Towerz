@@ -1,13 +1,17 @@
 import SpriteKit
+import UIKit
 
 /// Main game scene - integrates all systems
 final class GameScene: SKScene {
-    
+
     // MARK: - Properties
-    
+
     // Game management
     private var gameManager: GameManager!
     private var targetingSystem: TargetingSystem!
+
+    // Safe area from the hosting view (for responsive HUD/borders)
+    var safeAreaInsets: UIEdgeInsets = .zero
     
     // Containers
     private let gameLayer = SKNode()
@@ -80,12 +84,12 @@ final class GameScene: SKScene {
     
     private func setupUI() {
         // HUD
-        hudNode = HUDNode(sceneSize: size)
+        hudNode = HUDNode(sceneSize: size, safeAreaInsets: safeAreaInsets)
         hudNode.delegate = self
         uiLayer.addChild(hudNode)
 
         // Build Menu
-        buildMenuNode = BuildMenuNode(sceneSize: size)
+        buildMenuNode = BuildMenuNode(sceneSize: size, safeAreaInsets: safeAreaInsets)
         buildMenuNode.delegate = self
         uiLayer.addChild(buildMenuNode)
         
