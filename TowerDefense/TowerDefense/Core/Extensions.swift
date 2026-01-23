@@ -48,13 +48,16 @@ extension GridPosition {
     }
     
     func isInSpawnZone() -> Bool {
-        return x < GameConstants.spawnZoneWidth
+        // Spawn zone is top-left corner (first 2 columns, top 4 rows)
+        let inSpawnColumns = x < GameConstants.spawnZoneWidth
+        let inSpawnRows = y >= GameConstants.gridHeight - GameConstants.spawnZoneHeight
+        return inSpawnColumns && inSpawnRows
     }
     
     func isInExitZone() -> Bool {
         // Exit zone is bottom-right corner (last 2 columns, bottom 4 rows)
         let inExitColumns = x >= GameConstants.gridWidth - GameConstants.exitZoneWidth
-        let inExitRows = y < 4  // Bottom 4 rows
+        let inExitRows = y < GameConstants.exitZoneHeight
         return inExitColumns && inExitRows
     }
     

@@ -20,7 +20,7 @@ final class BuildMenuNode: SKNode {
 
     private let menuBackground: SKShapeNode
     private let menuWidth: CGFloat
-    private let menuHeight: CGFloat = 70
+    private let menuHeight: CGFloat = 80
     private var layoutSize: CGSize = .zero
     
     private let moneyLabel: SKLabelNode
@@ -66,32 +66,33 @@ final class BuildMenuNode: SKNode {
     
     private func setupMenu() {
         // Position menu along the bottom edge
-        let bottomPadding: CGFloat = 20
+        let bottomPadding: CGFloat = 15
         menuBackground.position = CGPoint(x: layoutSize.width / 2, y: menuHeight / 2 + bottomPadding)
         addChild(menuBackground)
         
         // Title on left
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
-        title.fontSize = 11
+        title.fontSize = 12
         title.fontColor = .gray
         title.text = "TOWERS:"
         title.horizontalAlignmentMode = .left
-        title.position = CGPoint(x: -menuWidth/2 + 15, y: -3)
+        title.position = CGPoint(x: -menuWidth/2 + 15, y: 0)
         menuBackground.addChild(title)
 
         // Create buttons for each tower type with proper spacing
         let towerTypes = TowerType.allCases
         let towerCount = CGFloat(towerTypes.count)
-        let buttonWidth: CGFloat = 85  // Slightly smaller buttons
+        let buttonWidth: CGFloat = 110  // Bigger buttons for clearer text
+        let buttonHeight: CGFloat = 60
+        let availableWidth = menuWidth - 90  // Leave margin for title
         let totalButtonWidth = buttonWidth * towerCount
-        let availableWidth = menuWidth - 100  // Leave margin for title
-        let spacing = (availableWidth - totalButtonWidth) / max(1, towerCount - 1)
+        let spacing = max(5, (availableWidth - totalButtonWidth) / max(1, towerCount - 1))
         
         // Start position (centered in available area)
-        let startX = -availableWidth / 2 + buttonWidth / 2 + 30
+        let startX = -availableWidth / 2 + buttonWidth / 2 + 25
 
         for (index, towerType) in towerTypes.enumerated() {
-            let button = TowerButton(type: towerType, buttonWidth: buttonWidth)
+            let button = TowerButton(type: towerType, buttonWidth: buttonWidth, buttonHeight: buttonHeight)
             let xPos = startX + CGFloat(index) * (buttonWidth + spacing)
             button.position = CGPoint(x: xPos, y: 0)
             button.name = "towerButton_\(towerType.rawValue)"
@@ -173,44 +174,45 @@ private class TowerButton: SKNode {
     private let nameLabel: SKLabelNode
     private let costLabel: SKLabelNode
     private let buttonWidth: CGFloat
-    private let buttonHeight: CGFloat = 50
+    private let buttonHeight: CGFloat
     
     private var isAffordable = true
     private var isButtonSelected = false
     
-    init(type: TowerType, buttonWidth: CGFloat = 85) {
+    init(type: TowerType, buttonWidth: CGFloat = 110, buttonHeight: CGFloat = 60) {
         self.towerType = type
         self.buttonWidth = buttonWidth
+        self.buttonHeight = buttonHeight
         
         // Button size
-        background = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 6)
+        background = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 8)
         background.fillColor = type.color.withAlphaComponent(0.3)
         background.strokeColor = type.color
         background.lineWidth = 2
         
         // Icon/symbol - centered at left side of button
         iconLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        iconLabel.fontSize = 18
+        iconLabel.fontSize = 22
         iconLabel.fontColor = .white
         iconLabel.verticalAlignmentMode = .center
         iconLabel.horizontalAlignmentMode = .center
-        iconLabel.position = CGPoint(x: -buttonWidth/2 + 18, y: 0)
+        iconLabel.position = CGPoint(x: -buttonWidth/2 + 22, y: 0)
         
-        // Tower name - to the right of icon
+        // Tower name - to the right of icon, larger font
         nameLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        nameLabel.fontSize = 10
+        nameLabel.fontSize = 14
         nameLabel.fontColor = .white
         nameLabel.verticalAlignmentMode = .center
         nameLabel.horizontalAlignmentMode = .left
-        nameLabel.position = CGPoint(x: -buttonWidth/2 + 32, y: 8)
+        nameLabel.position = CGPoint(x: -buttonWidth/2 + 40, y: 10)
         
-        // Cost - below name
-        costLabel = SKLabelNode(fontNamed: "Helvetica")
-        costLabel.fontSize = 9
+        // Cost - below name, larger font
+        costLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        costLabel.fontSize = 12
         costLabel.fontColor = .yellow
         costLabel.verticalAlignmentMode = .center
         costLabel.horizontalAlignmentMode = .left
-        costLabel.position = CGPoint(x: -buttonWidth/2 + 32, y: -8)
+        costLabel.position = CGPoint(x: -buttonWidth/2 + 40, y: -10)
         
         super.init()
         

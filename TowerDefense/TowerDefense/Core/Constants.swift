@@ -3,20 +3,24 @@ import SpriteKit
 // MARK: - Game Constants
 enum GameConstants {
     // Field dimensions (in grid cells)
-    static let gridWidth = 24   // Reduced by 2 columns
-    static let gridHeight = 11  // Reduced by 1 row
+    static let gridWidth = 24
+    static let gridHeight = 11
     static let cellSize: CGFloat = 48
     
-    // Playfield bounds (adjusted for UI padding)
-    static let playFieldOrigin = CGPoint(x: 100, y: 90)
+    // Playfield bounds (adjusted for UI padding) - moved up for better visibility
+    static let playFieldOrigin = CGPoint(x: 100, y: 110)
     static let playFieldSize = CGSize(
         width: CGFloat(gridWidth) * cellSize,
         height: CGFloat(gridHeight) * cellSize
     )
     
-    // Spawn and exit zones
-    static let spawnZoneWidth: Int = 2  // leftmost columns
-    static let exitZoneWidth: Int = 2   // rightmost columns
+    // Spawn zone: top-left corner (2 columns x 4 rows)
+    static let spawnZoneWidth: Int = 2
+    static let spawnZoneHeight: Int = 4
+    
+    // Exit zone: bottom-right corner (2 columns x 4 rows)  
+    static let exitZoneWidth: Int = 2
+    static let exitZoneHeight: Int = 4
     
     // Starting resources
     static let startingLives = 20

@@ -120,23 +120,44 @@ final class GameScene: SKScene {
         // Draw grid
         drawGrid()
         
-        // Draw spawn zone
-        drawZone(
-            startX: 0,
-            endX: GameConstants.spawnZoneWidth,
-            color: SKColor(red: 0.2, green: 0.4, blue: 0.2, alpha: 0.3),
-            label: "SPAWN"
-        )
+        // Draw spawn zone in top-left corner
+        drawSpawnZone()
         
         // Draw exit zone in bottom-right corner only
         drawExitZone()
         
     }
     
+    private func drawSpawnZone() {
+        // Spawn zone is top-left: first 2 columns, top 4 rows
+        let width = CGFloat(GameConstants.spawnZoneWidth) * GameConstants.cellSize
+        let height = CGFloat(GameConstants.spawnZoneHeight) * GameConstants.cellSize
+        let color = SKColor(red: 0.2, green: 0.4, blue: 0.2, alpha: 0.4)
+        
+        let zone = SKShapeNode(rectOf: CGSize(width: width, height: height))
+        zone.fillColor = color
+        zone.strokeColor = SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0)
+        zone.lineWidth = 3
+        zone.position = CGPoint(
+            x: GameConstants.playFieldOrigin.x + width / 2,
+            y: GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - height / 2
+        )
+        zone.zPosition = GameConstants.ZPosition.grid.rawValue - 1
+        gameLayer.addChild(zone)
+        
+        // Label
+        let labelNode = SKLabelNode(fontNamed: "Helvetica-Bold")
+        labelNode.fontSize = 14
+        labelNode.fontColor = .white
+        labelNode.text = "SPAWN"
+        labelNode.position = CGPoint(x: 0, y: 0)
+        zone.addChild(labelNode)
+    }
+    
     private func drawExitZone() {
         // Exit zone is bottom-right: last 2 columns, bottom 4 rows
         let width = CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
-        let height = CGFloat(4) * GameConstants.cellSize  // 4 rows
+        let height = CGFloat(GameConstants.exitZoneHeight) * GameConstants.cellSize
         let color = SKColor(red: 0.4, green: 0.2, blue: 0.2, alpha: 0.4)
         
         let zone = SKShapeNode(rectOf: CGSize(width: width, height: height))
@@ -266,9 +287,9 @@ final class GameScene: SKScene {
             }
         }
         
-        // Update booze power
-        BoozeManager.shared.update(currentTime: gameTime)
-        hudNode.updateBooze(currentTime: gameTime)
+        // Update block power
+        BlockManager.shared.update(currentTime: gameTime)
+        hudNode.updateBlock(currentTime: gameTime)
         
         // Update lava power and deal damage
         LavaManager.shared.update(currentTime: gameTime, enemies: enemies)
@@ -388,6 +409,23 @@ final class GameScene: SKScene {
             } else {
                 // Cancel placement if clicked outside
                 hudNode.cancelLavaPlacement()
+            }
+            return
+        }
+        
+        // Check for block placement mode
+        if hudNode.isBlockPlacementMode {
+            // Check if click is in playfield
+            let playFieldRect = CGRect(
+                origin: GameConstants.playFieldOrigin,
+                size: GameConstants.playFieldSize
+            )
+            if playFieldRect.contains(location) {
+                placeBlockObstacle(at: location)
+                hudNode.cancelBlockPlacement()
+            } else {
+                // Cancel placement if clicked outside
+                hudNode.cancelBlockPlacement()
             }
             return
         }
@@ -641,14 +679,14 @@ final class GameScene: SKScene {
         
         enemy.delegate = self
         
-        // Spawn position - boss spawns in center, others random
-        let minY = GameConstants.playFieldOrigin.y + 50
-        let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - 50
+        // Spawn position - top-left corner (spawn zone: top 4 rows, first 2 columns)
+        let spawnZoneMinY = GameConstants.playFieldOrigin.y + CGFloat(GameConstants.gridHeight - GameConstants.spawnZoneHeight) * GameConstants.cellSize
+        let spawnZoneMaxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - GameConstants.cellSize / 2
         let spawnY: CGFloat
         if type == .boss {
-            spawnY = (minY + maxY) / 2  // Boss spawns in center
+            spawnY = (spawnZoneMinY + spawnZoneMaxY) / 2  // Boss spawns in center of spawn zone
         } else {
-            spawnY = CGFloat.random(in: minY...max(minY + 1, maxY))
+            spawnY = CGFloat.random(in: spawnZoneMinY...spawnZoneMaxY)
         }
         
         enemy.position = CGPoint(
@@ -706,7 +744,7 @@ final class GameScene: SKScene {
         gameSpeed = 1.0
         
         // Reset powers
-        BoozeManager.shared.reset()
+        BlockManager.shared.reset()
         LavaManager.shared.reset()
         
         // Reset managers
@@ -756,10 +794,9 @@ extension GameScene: HUDNodeDelegate {
         gameSpeed = hudNode.getSpeedMultiplier()
     }
     
-    func hudDidTapBooze() {
-        if BoozeManager.shared.canActivate(currentTime: gameTime) {
-            BoozeManager.shared.activate(currentTime: gameTime)
-        }
+    func hudDidTapBlock() {
+        // Block button was tapped - HUD handles the placement mode toggle
+        // The actual placement happens in touchesBegan when tapping the grid
     }
     
     func hudDidDropInTrash() {
@@ -782,6 +819,75 @@ extension GameScene: HUDNodeDelegate {
         if LavaManager.shared.canActivate(currentTime: gameTime) {
             LavaManager.shared.activate(currentTime: gameTime, position: position)
             spawnLavaEffect(at: position)
+        }
+    }
+    
+    /// Place a temporary block obstacle that blocks enemies for 7 seconds
+    private func placeBlockObstacle(at location: CGPoint) {
+        guard BlockManager.shared.canActivate(currentTime: gameTime) else { return }
+        
+        let gridPos = gameManager.placementValidator.snapToGrid(worldPosition: location)
+        
+        // Can't place in spawn or exit zones
+        if gridPos.isInSpawnZone() || gridPos.isInExitZone() { return }
+        
+        // Can't place where a tower already is
+        if pathfindingGrid.isBlocked(gridPos) { return }
+        
+        // Activate the block power
+        BlockManager.shared.activate(currentTime: gameTime, gridPosition: gridPos)
+        
+        // Block the cell in pathfinding
+        pathfindingGrid.blockCell(gridPos)
+        
+        // Recalculate flow field
+        recalculateFlowField()
+        
+        // Create visual obstacle
+        let worldPos = gridPos.toWorldPosition()
+        let blockNode = SKShapeNode(rectOf: CGSize(width: GameConstants.cellSize - 4, height: GameConstants.cellSize - 4), cornerRadius: 6)
+        blockNode.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.7, alpha: 0.8)
+        blockNode.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 1.0, alpha: 1.0)
+        blockNode.lineWidth = 3
+        blockNode.position = worldPos
+        blockNode.zPosition = GameConstants.ZPosition.tower.rawValue
+        blockNode.name = "blockObstacle"
+        addChild(blockNode)
+        
+        // Add icon
+        let icon = SKLabelNode(fontNamed: "Helvetica-Bold")
+        icon.fontSize = 24
+        icon.text = "🧱"
+        icon.verticalAlignmentMode = .center
+        icon.horizontalAlignmentMode = .center
+        blockNode.addChild(icon)
+        
+        // Pulsing animation
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.05, duration: 0.5),
+            SKAction.scale(to: 1.0, duration: 0.5)
+        ])
+        blockNode.run(SKAction.repeatForever(pulse), withKey: "blockPulse")
+        
+        // Set up callback to remove block when it expires
+        BlockManager.shared.onBlockExpired = { [weak self] expiredPos in
+            guard let self = self else { return }
+            
+            // Unblock the cell
+            self.pathfindingGrid.unblockCell(expiredPos)
+            self.recalculateFlowField()
+            
+            // Remove visual
+            if let obstacle = self.childNode(withName: "blockObstacle") {
+                let fadeOut = SKAction.sequence([
+                    SKAction.group([
+                        SKAction.fadeOut(withDuration: 0.3),
+                        SKAction.scale(to: 0.5, duration: 0.3)
+                    ]),
+                    SKAction.removeFromParent()
+                ])
+                obstacle.run(fadeOut)
+            }
         }
     }
     
@@ -941,11 +1047,14 @@ extension GameScene: HUDNodeDelegate {
         towers.removeAll()
         
         // Reset managers
-        BoozeManager.shared.reset()
+        BlockManager.shared.reset()
         LavaManager.shared.reset()
         
         // Clear effects
         effectsLayer.removeAllChildren()
+        
+        // Remove any active block obstacle
+        childNode(withName: "blockObstacle")?.removeFromParent()
     }
     
     /// Create a tower of the specified type at the given position

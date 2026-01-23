@@ -8,7 +8,7 @@ protocol HUDNodeDelegate: AnyObject {
     func hudDidTapAutoStart()
     func hudDidTapFastForward()
     func hudDidDropInTrash()
-    func hudDidTapBooze()
+    func hudDidTapBlock()
     func hudDidTapRestart()
     func hudDidTapLava(at position: CGPoint)
     func hudDidTapSave()
@@ -44,11 +44,12 @@ final class HUDNode: SKNode {
     private(set) var isAutoStartEnabled = false
     private var isWaveActive = false
 
-    // Booze power
-    private let boozeButton: SKShapeNode
-    private let boozeLabel: SKLabelNode
-    private let boozeCooldownRing: SKShapeNode
-    private let boozeActiveRing: SKShapeNode
+    // Block power
+    private let blockButton: SKShapeNode
+    private let blockLabel: SKLabelNode
+    private let blockCooldownRing: SKShapeNode
+    private let blockActiveRing: SKShapeNode
+    private(set) var isBlockPlacementMode: Bool = false
 
     // Lava power
     private let lavaButton: SKShapeNode
@@ -150,32 +151,32 @@ final class HUDNode: SKNode {
         trashLabel.verticalAlignmentMode = .center
         trashLabel.horizontalAlignmentMode = .center
         
-        // Booze power button
-        boozeButton = SKShapeNode(circleOfRadius: 35)
-        boozeButton.fillColor = SKColor(red: 0.4, green: 0.25, blue: 0.1, alpha: 0.9)
-        boozeButton.strokeColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
-        boozeButton.lineWidth = 3
-        boozeButton.name = "boozeButton"
+        // Block power button
+        blockButton = SKShapeNode(circleOfRadius: 35)
+        blockButton.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 0.9)
+        blockButton.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.8, alpha: 1.0)
+        blockButton.lineWidth = 3
+        blockButton.name = "blockButton"
         
-        boozeLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        boozeLabel.fontSize = 28
-        boozeLabel.fontColor = .white
-        boozeLabel.text = "🍺"
-        boozeLabel.verticalAlignmentMode = .center
-        boozeLabel.horizontalAlignmentMode = .center
+        blockLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        blockLabel.fontSize = 20
+        blockLabel.fontColor = .white
+        blockLabel.text = "🧱"
+        blockLabel.verticalAlignmentMode = .center
+        blockLabel.horizontalAlignmentMode = .center
         
         // Cooldown ring (transparent clock effect)
-        boozeCooldownRing = SKShapeNode(circleOfRadius: 38)
-        boozeCooldownRing.fillColor = .clear
-        boozeCooldownRing.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5)
-        boozeCooldownRing.lineWidth = 4
+        blockCooldownRing = SKShapeNode(circleOfRadius: 38)
+        blockCooldownRing.fillColor = .clear
+        blockCooldownRing.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5)
+        blockCooldownRing.lineWidth = 4
         
-        // Active ring (glowing when booze is active)
-        boozeActiveRing = SKShapeNode(circleOfRadius: 42)
-        boozeActiveRing.fillColor = .clear
-        boozeActiveRing.strokeColor = SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 0.8)
-        boozeActiveRing.lineWidth = 3
-        boozeActiveRing.isHidden = true
+        // Active ring (glowing when block is active)
+        blockActiveRing = SKShapeNode(circleOfRadius: 42)
+        blockActiveRing.fillColor = .clear
+        blockActiveRing.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 1.0, alpha: 0.8)
+        blockActiveRing.lineWidth = 3
+        blockActiveRing.isHidden = true
         
         // Lava power button
         lavaButton = SKShapeNode(circleOfRadius: 35)
@@ -225,46 +226,23 @@ final class HUDNode: SKNode {
         hudBackground.position = CGPoint(x: screenCenterX, y: topBarY)
         addChild(hudBackground)
 
-        // Lives (left side)
-        livesIcon.position = CGPoint(x: leftPadding + 12, y: topBarY)
-        addChild(livesIcon)
-
-        livesLabel.position = CGPoint(x: livesIcon.position.x + 20, y: topBarY)
-        addChild(livesLabel)
-
-        // Money (next to lives)
-        moneyIcon.position = CGPoint(x: livesLabel.position.x + 70, y: topBarY)
-        addChild(moneyIcon)
-
-        // Add coin symbol
-        let coinSymbol = SKLabelNode(fontNamed: "Helvetica-Bold")
-        coinSymbol.fontSize = 12
-        coinSymbol.fontColor = .orange
-        coinSymbol.text = "$"
-        coinSymbol.horizontalAlignmentMode = .center
-        coinSymbol.verticalAlignmentMode = .center
-        moneyIcon.addChild(coinSymbol)
-
-        moneyLabel.position = CGPoint(x: moneyIcon.position.x + 18, y: topBarY)
-        addChild(moneyLabel)
-
-        // Wave info (center) - larger and more visible
-        waveLabel.position = CGPoint(x: screenCenterX - 80, y: topBarY)
+        // Wave info (left side of top bar)
+        waveLabel.position = CGPoint(x: leftPadding + 80, y: topBarY)
         waveLabel.fontSize = 18
         addChild(waveLabel)
 
-        // Start wave button - BIGGER and more prominent
-        startWaveButton.position = CGPoint(x: screenCenterX + 60, y: topBarY)
+        // Start wave button
+        startWaveButton.position = CGPoint(x: leftPadding + 230, y: topBarY)
         startWaveButton.addChild(startWaveLabel)
         addChild(startWaveButton)
 
-        // Speed button
-        speedButton.position = CGPoint(x: startWaveButton.position.x + 110, y: topBarY)
+        // Speed button (next to start)
+        speedButton.position = CGPoint(x: startWaveButton.position.x + 100, y: topBarY)
         speedButton.addChild(speedLabel)
         addChild(speedButton)
 
-        // Pause button
-        pauseButton.position = CGPoint(x: speedButton.position.x + 70, y: topBarY)
+        // Pause button (next to speed)
+        pauseButton.position = CGPoint(x: speedButton.position.x + 60, y: topBarY)
         
         // Pause icon (two vertical bars)
         let bar1 = SKShapeNode(rectOf: CGSize(width: 4, height: 15))
@@ -280,6 +258,9 @@ final class HUDNode: SKNode {
         pauseButton.addChild(bar2)
         
         addChild(pauseButton)
+
+        // Lives (right side - shifted more to the right)
+        let livesX = screenCenterX + 180
         
         // Heart icon in lives
         livesIcon.removeAllChildren()
@@ -291,37 +272,56 @@ final class HUDNode: SKNode {
         heart.verticalAlignmentMode = .center
         livesIcon.addChild(heart)
         
-        // Control panel (bottom-left)
-        setupControlPanel(leftPadding: leftPadding)
+        livesIcon.position = CGPoint(x: livesX, y: topBarY)
+        addChild(livesIcon)
 
-        // Booze power button (top-left cluster)
-        let boozeX: CGFloat = leftPadding + 35
-        let boozeY: CGFloat = max(GameConstants.playFieldOrigin.y + GameConstants.cellSize, topBarY - 90)
-        
-        boozeCooldownRing.position = CGPoint(x: boozeX, y: boozeY)
-        boozeCooldownRing.zPosition = 99
-        addChild(boozeCooldownRing)
-        
-        boozeActiveRing.position = CGPoint(x: boozeX, y: boozeY)
-        boozeActiveRing.zPosition = 99
-        addChild(boozeActiveRing)
-        
-        boozeButton.position = CGPoint(x: boozeX, y: boozeY)
-        boozeButton.zPosition = 100
-        boozeButton.addChild(boozeLabel)
-        addChild(boozeButton)
-        
-        // Label under booze button
-        let boozeTitleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        boozeTitleLabel.fontSize = 10
-        boozeTitleLabel.fontColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
-        boozeTitleLabel.text = "BOOZE"
-        boozeTitleLabel.position = CGPoint(x: boozeX, y: boozeY - 50)
-        addChild(boozeTitleLabel)
+        livesLabel.position = CGPoint(x: livesIcon.position.x + 20, y: topBarY)
+        addChild(livesLabel)
 
-        // Lava power button (below booze)
-        let lavaX: CGFloat = boozeX
-        let lavaY: CGFloat = max(GameConstants.playFieldOrigin.y + GameConstants.cellSize, boozeY - 110)
+        // Money (next to lives, also shifted right)
+        moneyIcon.position = CGPoint(x: livesLabel.position.x + 60, y: topBarY)
+        addChild(moneyIcon)
+
+        // Add coin symbol
+        let coinSymbol = SKLabelNode(fontNamed: "Helvetica-Bold")
+        coinSymbol.fontSize = 12
+        coinSymbol.fontColor = .orange
+        coinSymbol.text = "$"
+        coinSymbol.horizontalAlignmentMode = .center
+        coinSymbol.verticalAlignmentMode = .center
+        moneyIcon.addChild(coinSymbol)
+
+        moneyLabel.position = CGPoint(x: moneyIcon.position.x + 18, y: topBarY)
+        addChild(moneyLabel)
+
+        // Block power button (left side, below top bar)
+        let blockX: CGFloat = leftPadding + 35
+        let blockY: CGFloat = topBarY - 80
+        
+        blockCooldownRing.position = CGPoint(x: blockX, y: blockY)
+        blockCooldownRing.zPosition = 99
+        addChild(blockCooldownRing)
+        
+        blockActiveRing.position = CGPoint(x: blockX, y: blockY)
+        blockActiveRing.zPosition = 99
+        addChild(blockActiveRing)
+        
+        blockButton.position = CGPoint(x: blockX, y: blockY)
+        blockButton.zPosition = 100
+        blockButton.addChild(blockLabel)
+        addChild(blockButton)
+        
+        // Label under block button
+        let blockTitleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        blockTitleLabel.fontSize = 10
+        blockTitleLabel.fontColor = SKColor(red: 0.5, green: 0.5, blue: 0.8, alpha: 1.0)
+        blockTitleLabel.text = "BLOCK"
+        blockTitleLabel.position = CGPoint(x: blockX, y: blockY - 50)
+        addChild(blockTitleLabel)
+
+        // Lava power button (below block)
+        let lavaX: CGFloat = blockX
+        let lavaY: CGFloat = blockY - 100
         
         lavaCooldownRing.position = CGPoint(x: lavaX, y: lavaY)
         lavaCooldownRing.zPosition = 99
@@ -344,132 +344,30 @@ final class HUDNode: SKNode {
         lavaTitleLabel.position = CGPoint(x: lavaX, y: lavaY - 50)
         addChild(lavaTitleLabel)
         
-        // Trash zone (top-right corner, near HUD)
-        let trashX = layoutSize.width - rightPadding - 40
-        trashZone.position = CGPoint(x: trashX, y: max(GameConstants.playFieldOrigin.y + 60, topBarY - 10))
-        trashZone.zPosition = 100  // Above other elements
+        // Trash/Sell zone - top-right corner, solid background
+        let trashX = layoutSize.width - rightPadding - 35
+        let trashY = topBarY - 50
+        
+        trashZone.fillColor = SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 1.0)  // Solid red background
+        trashZone.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 1.0)
+        trashZone.lineWidth = 3
+        trashZone.position = CGPoint(x: trashX, y: trashY)
+        trashZone.zPosition = 100
         trashZone.addChild(trashLabel)
         addChild(trashZone)
         
-        // Add "SELL" text below trash
+        // Add "SELL" text inside the trash zone
         let sellLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        sellLabel.fontSize = 10
-        sellLabel.fontColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        sellLabel.fontSize = 12
+        sellLabel.fontColor = .white
         sellLabel.text = "SELL"
-        sellLabel.position = CGPoint(x: trashX, y: topBarY - 60)
-        addChild(sellLabel)
-        
-        // Add border/frame around trash zone for visibility
-        let trashFrame = SKShapeNode(rectOf: CGSize(width: 70, height: 70), cornerRadius: 10)
-        trashFrame.fillColor = .clear
-        trashFrame.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 0.8)
-        trashFrame.lineWidth = 2
-        trashFrame.position = CGPoint(x: trashX, y: topBarY - 10)
-        trashFrame.zPosition = 99
-        addChild(trashFrame)
-        
-        // Large money display on right side of screen (vertical center)
-        let bigMoneyBg = SKShapeNode(rectOf: CGSize(width: 120, height: 48), cornerRadius: 8)
-        bigMoneyBg.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.1, alpha: 0.9)
-        bigMoneyBg.strokeColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.8)
-        bigMoneyBg.lineWidth = 2
-        let bigMoneyX = min(trashX - 120, layoutSize.width - rightPadding - 120)
-        bigMoneyBg.position = CGPoint(x: bigMoneyX, y: topBarY)
-        bigMoneyBg.zPosition = 100
-        bigMoneyBg.name = "bigMoneyBg"
-        addChild(bigMoneyBg)
-        
-        let bigMoneyIcon = SKLabelNode(fontNamed: "Helvetica-Bold")
-        bigMoneyIcon.fontSize = 24
-        bigMoneyIcon.text = "💰"
-        bigMoneyIcon.position = CGPoint(x: -30, y: -8)
-        bigMoneyBg.addChild(bigMoneyIcon)
-        
-        let bigMoneyLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        bigMoneyLabel.fontSize = 20
-        bigMoneyLabel.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
-        bigMoneyLabel.text = "$500"
-        bigMoneyLabel.horizontalAlignmentMode = .left
-        bigMoneyLabel.position = CGPoint(x: -15, y: -8)
-        bigMoneyLabel.name = "bigMoneyLabel"
-        bigMoneyBg.addChild(bigMoneyLabel)
+        sellLabel.position = CGPoint(x: 0, y: -25)
+        trashZone.addChild(sellLabel)
         
         // Initial values
         updateLives(GameConstants.startingLives)
         updateMoney(GameConstants.startingMoney)
         updateWave(0, total: 10, active: false)
-    }
-    
-    private func setupControlPanel(leftPadding: CGFloat) {
-        // Floating control panel in bottom-left corner - with visible border
-        let panelWidth: CGFloat = 180
-        let panelHeight: CGFloat = 50
-        
-        let controlPanel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 8)
-        controlPanel.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.95)
-        controlPanel.strokeColor = SKColor(red: 0.4, green: 0.7, blue: 0.4, alpha: 1.0)
-        controlPanel.lineWidth = 3
-        controlPanel.position = CGPoint(x: leftPadding + panelWidth / 2, y: GameConstants.playFieldOrigin.y + 40)
-        controlPanel.name = "controlPanel"
-        controlPanel.zPosition = 100  // Above other elements
-        addChild(controlPanel)
-        
-        // Add "CONTROLS" label above panel
-        let headerLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        headerLabel.fontSize = 9
-        headerLabel.fontColor = .gray
-        headerLabel.text = "CONTROLS"
-        headerLabel.position = CGPoint(x: 0, y: 32)
-        controlPanel.addChild(headerLabel)
-        
-        // Start button
-        let startBtn = SKShapeNode(rectOf: CGSize(width: 50, height: 35), cornerRadius: 5)
-        startBtn.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
-        startBtn.strokeColor = .white
-        startBtn.lineWidth = 1
-        startBtn.position = CGPoint(x: -55, y: 0)
-        startBtn.name = "ctrlStartBtn"
-        controlPanel.addChild(startBtn)
-        
-        let startLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
-        startLbl.fontSize = 10
-        startLbl.fontColor = .white
-        startLbl.text = "▶ START"
-        startLbl.verticalAlignmentMode = .center
-        startBtn.addChild(startLbl)
-        
-        // Pause button
-        let pauseBtn = SKShapeNode(rectOf: CGSize(width: 40, height: 35), cornerRadius: 5)
-        pauseBtn.fillColor = SKColor(red: 0.5, green: 0.5, blue: 0.2, alpha: 1.0)
-        pauseBtn.strokeColor = .white
-        pauseBtn.lineWidth = 1
-        pauseBtn.position = CGPoint(x: 5, y: 0)
-        pauseBtn.name = "ctrlPauseBtn"
-        controlPanel.addChild(pauseBtn)
-        
-        let pauseLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
-        pauseLbl.fontSize = 14
-        pauseLbl.fontColor = .white
-        pauseLbl.text = "⏸"
-        pauseLbl.verticalAlignmentMode = .center
-        pauseBtn.addChild(pauseLbl)
-        
-        // Speed button
-        let speedBtn = SKShapeNode(rectOf: CGSize(width: 40, height: 35), cornerRadius: 5)
-        speedBtn.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 1.0)
-        speedBtn.strokeColor = .white
-        speedBtn.lineWidth = 1
-        speedBtn.position = CGPoint(x: 55, y: 0)
-        speedBtn.name = "ctrlSpeedBtn"
-        controlPanel.addChild(speedBtn)
-        
-        let speedLbl = SKLabelNode(fontNamed: "Helvetica-Bold")
-        speedLbl.fontSize = 12
-        speedLbl.fontColor = .white
-        speedLbl.text = "1x"
-        speedLbl.verticalAlignmentMode = .center
-        speedLbl.name = "ctrlSpeedLbl"
-        speedBtn.addChild(speedLbl)
     }
     
     // MARK: - Updates
@@ -493,13 +391,7 @@ final class HUDNode: SKNode {
     }
     
     func updateMoney(_ money: Int) {
-        moneyLabel.text = "\(money)"
-        
-        // Update big money display on right side
-        if let bigMoneyBg = childNode(withName: "bigMoneyBg"),
-           let bigMoneyLabel = bigMoneyBg.childNode(withName: "bigMoneyLabel") as? SKLabelNode {
-            bigMoneyLabel.text = "$\(money)"
-        }
+        moneyLabel.text = "$\(money)"
         
         // Animate when money changes
         let pop = SKAction.sequence([
@@ -533,50 +425,56 @@ final class HUDNode: SKNode {
         }
     }
     
-    func updateBooze(currentTime: TimeInterval) {
-        let booze = BoozeManager.shared
+    func updateBlock(currentTime: TimeInterval) {
+        let block = BlockManager.shared
         
         // Update active ring visibility
-        boozeActiveRing.isHidden = !booze.isActive
+        blockActiveRing.isHidden = !block.isActive
         
         // Update button appearance based on state
-        if booze.isActive {
-            // Active - show golden glow and remaining time
-            boozeButton.fillColor = SKColor(red: 0.8, green: 0.6, blue: 0.1, alpha: 1.0)
-            boozeButton.strokeColor = SKColor(red: 1.0, green: 0.9, blue: 0.3, alpha: 1.0)
+        if block.isActive {
+            // Active - show blue glow and remaining time
+            blockButton.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.8, alpha: 1.0)
+            blockButton.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 1.0, alpha: 1.0)
+            isBlockPlacementMode = false
             
             // Pulsing active ring
-            if boozeActiveRing.action(forKey: "pulse") == nil {
+            if blockActiveRing.action(forKey: "blockPulse") == nil {
                 let pulse = SKAction.sequence([
                     SKAction.scale(to: 1.1, duration: 0.3),
                     SKAction.scale(to: 1.0, duration: 0.3)
                 ])
-                boozeActiveRing.run(SKAction.repeatForever(pulse), withKey: "pulse")
+                blockActiveRing.run(SKAction.repeatForever(pulse), withKey: "blockPulse")
             }
             
             // Update cooldown ring to show remaining active time
-            let remaining = booze.getRemainingActiveTime(currentTime: currentTime)
-            let progress = CGFloat(remaining / booze.boozeDuration)
-            updateCooldownRing(progress: progress, color: SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 0.8))
+            let remaining = block.getRemainingActiveTime(currentTime: currentTime)
+            let progress = CGFloat(remaining / block.blockDuration)
+            updateBlockCooldownRing(progress: progress, color: SKColor(red: 0.5, green: 0.5, blue: 1.0, alpha: 0.8))
             
-        } else if booze.canActivate(currentTime: currentTime) {
+        } else if block.canActivate(currentTime: currentTime) {
             // Ready to use
-            boozeButton.fillColor = SKColor(red: 0.4, green: 0.25, blue: 0.1, alpha: 0.9)
-            boozeButton.strokeColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
-            boozeActiveRing.removeAction(forKey: "pulse")
+            blockButton.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 0.9)
+            if !isBlockPlacementMode {
+                blockButton.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.8, alpha: 1.0)
+                blockButton.lineWidth = 3
+            }
+            blockActiveRing.removeAction(forKey: "blockPulse")
             
             // Full cooldown ring
-            updateCooldownRing(progress: 1.0, color: SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.8))
+            updateBlockCooldownRing(progress: 1.0, color: SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.8))
             
         } else {
             // On cooldown
-            boozeButton.fillColor = SKColor(red: 0.3, green: 0.2, blue: 0.1, alpha: 0.6)
-            boozeButton.strokeColor = SKColor(red: 0.5, green: 0.3, blue: 0.15, alpha: 0.8)
-            boozeActiveRing.removeAction(forKey: "pulse")
+            blockButton.fillColor = SKColor(red: 0.2, green: 0.2, blue: 0.3, alpha: 0.6)
+            blockButton.strokeColor = SKColor(red: 0.3, green: 0.3, blue: 0.5, alpha: 0.8)
+            blockButton.lineWidth = 3
+            blockActiveRing.removeAction(forKey: "blockPulse")
+            isBlockPlacementMode = false
             
             // Show cooldown progress
-            let progress = booze.getCooldownProgress(currentTime: currentTime)
-            updateCooldownRing(progress: progress, color: SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.6))
+            let progress = block.getCooldownProgress(currentTime: currentTime)
+            updateBlockCooldownRing(progress: progress, color: SKColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.6))
         }
     }
     
@@ -633,8 +531,8 @@ final class HUDNode: SKNode {
         }
     }
     
-    private func updateCooldownRing(progress: CGFloat, color: SKColor) {
-        // Create a partial circle path based on progress for booze
+    private func updateBlockCooldownRing(progress: CGFloat, color: SKColor) {
+        // Create a partial circle path based on progress for block
         let radius: CGFloat = 38
         let startAngle: CGFloat = .pi / 2  // Start at top
         let endAngle = startAngle - (2 * .pi * progress)
@@ -642,8 +540,8 @@ final class HUDNode: SKNode {
         let path = CGMutablePath()
         path.addArc(center: .zero, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: true)
         
-        boozeCooldownRing.path = path
-        boozeCooldownRing.strokeColor = color
+        blockCooldownRing.path = path
+        blockCooldownRing.strokeColor = color
     }
     
     private func updateLavaCooldownRing(progress: CGFloat, color: SKColor) {
@@ -663,6 +561,12 @@ final class HUDNode: SKNode {
         isLavaPlacementMode = false
         lavaButton.strokeColor = SKColor(red: 1.0, green: 0.4, blue: 0.0, alpha: 1.0)
         lavaButton.lineWidth = 3
+    }
+    
+    func cancelBlockPlacement() {
+        isBlockPlacementMode = false
+        blockButton.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.8, alpha: 1.0)
+        blockButton.lineWidth = 3
     }
     
     private func updateAutoStartButton() {
@@ -751,49 +655,45 @@ final class HUDNode: SKNode {
             return handlePauseMenuTouch(at: location)
         }
         
-        // Check control panel buttons (bottom-left)
-        if let controlPanel = childNode(withName: "controlPanel") {
-            let localPos = convert(location, to: controlPanel)
-            
-            // Start button in control panel
-            if let startBtn = controlPanel.childNode(withName: "ctrlStartBtn") as? SKShapeNode {
-                if startBtn.contains(localPos) {
-                    if isWaveActive {
-                        toggleAutoStart()
-                        delegate?.hudDidTapAutoStart()
-                    } else {
-                        delegate?.hudDidTapStartWave()
-                    }
-                    animateButtonPress(startBtn)
-                    return true
-                }
+        // Check top bar buttons - start wave
+        let startLocalPos = convert(location, to: startWaveButton)
+        if startWaveButton.contains(startLocalPos) {
+            if isWaveActive {
+                toggleAutoStart()
+                delegate?.hudDidTapAutoStart()
+            } else {
+                delegate?.hudDidTapStartWave()
             }
-            
-            // Pause button in control panel - opens menu
-            if let pauseBtn = controlPanel.childNode(withName: "ctrlPauseBtn") as? SKShapeNode {
-                if pauseBtn.contains(localPos) {
-                    showPauseMenu()
-                    animateButtonPress(pauseBtn)
-                    return true
-                }
-            }
-            
-            // Speed button in control panel
-            if let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode {
-                if speedBtn.contains(localPos) {
-                    toggleFastForward()
-                    delegate?.hudDidTapFastForward()
-                    animateButtonPress(speedBtn)
-                    return true
-                }
-            }
+            animateButtonPress(startWaveButton)
+            return true
         }
         
-        // Check booze button
-        let boozeDistance = sqrt(pow(location.x - boozeButton.position.x, 2) + pow(location.y - boozeButton.position.y, 2))
-        if boozeDistance <= 40 {  // Touch radius slightly larger than button
-            delegate?.hudDidTapBooze()
-            animateButtonPress(boozeButton)
+        // Check speed button
+        let speedLocalPos = convert(location, to: speedButton)
+        if speedButton.contains(speedLocalPos) {
+            toggleFastForward()
+            delegate?.hudDidTapFastForward()
+            animateButtonPress(speedButton)
+            return true
+        }
+        
+        // Check pause button - opens menu
+        let pauseLocalPos = convert(location, to: pauseButton)
+        if pauseButton.contains(pauseLocalPos) {
+            showPauseMenu()
+            animateButtonPress(pauseButton)
+            return true
+        }
+        
+        // Check block button
+        let blockDistance = sqrt(pow(location.x - blockButton.position.x, 2) + pow(location.y - blockButton.position.y, 2))
+        if blockDistance <= 40 {  // Touch radius slightly larger than button
+            if BlockManager.shared.canActivate(currentTime: 0) {  // Will check properly when placed
+                isBlockPlacementMode = true
+                blockButton.strokeColor = .white
+                blockButton.lineWidth = 4
+            }
+            animateButtonPress(blockButton)
             return true
         }
         
@@ -842,14 +742,6 @@ final class HUDNode: SKNode {
             buttonColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
         }
         speedButton.fillColor = buttonColor
-        
-        // Sync control panel speed button
-        if let controlPanel = childNode(withName: "controlPanel"),
-           let speedBtn = controlPanel.childNode(withName: "ctrlSpeedBtn") as? SKShapeNode,
-           let lbl = speedBtn.childNode(withName: "ctrlSpeedLbl") as? SKLabelNode {
-            speedBtn.fillColor = buttonColor
-            lbl.text = "\(Int(speedMultiplier))x"
-        }
     }
     
     private func animateButtonPress(_ button: SKShapeNode) {
