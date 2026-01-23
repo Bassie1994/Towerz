@@ -38,7 +38,6 @@ final class WaveManager {
         // Use generated 50 waves
         waveConfigs = WaveConfig.defaultWaves
         totalWaves = waveConfigs.count
-        print("Loaded \(totalWaves) waves")
     }
     
     // MARK: - Wave Control
@@ -178,47 +177,47 @@ struct WaveConfig: Codable {
         }
     }
     
-    // Generate 50 waves with scaling difficulty + boss every 5 waves
+    // MARK: - Wave Generation Constants
+    
+    /// Enemy distribution ratios for different wave phases
+    private enum EnemyDistribution {
+        /// Waves 1-2: Infantry only
+        static let earlyInfantry: Double = 1.0
+        
+        /// Waves 3-5: Infantry + Flying
+        static let midEarlyInfantry: Double = 0.7
+        static let midEarlyFlying: Double = 0.3
+        
+        /// Waves 6-9: Infantry + Flying + Cavalry
+        static let midInfantry: Double = 0.5
+        static let midFlying: Double = 0.3
+        static let midCavalry: Double = 0.2
+        
+        /// Late game: Mixed composition (default)
+        static let lateInfantry: Double = 0.4
+        static let lateFlying: Double = 0.3
+        static let lateCavalry: Double = 0.3
+    }
+    
+    /// Base HP values for enemy types (for boss HP calculation)
+    private enum EnemyBaseHP {
+        static let infantry: CGFloat = 200
+        static let flying: CGFloat = 80
+        static let cavalry: CGFloat = 600
+        
+        static let infantryScaling: CGFloat = 0.3
+        static let flyingScaling: CGFloat = 0.2
+        static let cavalryScaling: CGFloat = 0.35
+    }
+    
+    // MARK: - Wave Generation
+    
+    /// Generate 50 waves with scaling difficulty + boss every 5 waves
     static var defaultWaves: [WaveConfig] {
-        var waves: [WaveConfig] = []
-        
-        for waveNum in 1...50 {
-            waves.append(generateWave(number: waveNum))
-        }
-        
-        return waves
+        return (1...50).map { generateWave(number: $0) }
     }
     
-    /// Calculate total HP of a wave (for boss calculation)
-    private static func calculateWaveHP(number: Int) -> CGFloat {
-        let (totalEnemies, enemyLevel) = getWaveStats(number: number)
-        
-        // Calculate HP based on enemy distribution
-        var totalHP: CGFloat = 0
-        
-        if number < 3 {
-            // Infantry only
-            totalHP = CGFloat(totalEnemies) * 200 * (1.0 + CGFloat(enemyLevel - 1) * 0.3)
-        } else if number < 6 {
-            // Infantry + Flying
-            let infantryCount = Int(Double(totalEnemies) * 0.7)
-            let flyingCount = totalEnemies - infantryCount
-            totalHP = CGFloat(infantryCount) * 200 * (1.0 + CGFloat(enemyLevel - 1) * 0.3)
-            totalHP += CGFloat(flyingCount) * 80 * (1.0 + CGFloat(max(1, enemyLevel - 1) - 1) * 0.2)
-        } else {
-            // Mixed
-            let infantryCount = Int(Double(totalEnemies) * 0.4)
-            let flyingCount = Int(Double(totalEnemies) * 0.3)
-            let cavalryCount = totalEnemies - infantryCount - flyingCount
-            totalHP = CGFloat(infantryCount) * 200 * (1.0 + CGFloat(enemyLevel - 1) * 0.3)
-            totalHP += CGFloat(flyingCount) * 80 * (1.0 + CGFloat(enemyLevel - 1) * 0.2)
-            totalHP += CGFloat(cavalryCount) * 600 * (1.0 + CGFloat(enemyLevel - 1) * 0.35)
-        }
-        
-        return totalHP
-    }
-    
-    /// Get wave stats without generating full config
+    /// Get wave stats (enemy count and level) for a given wave number
     private static func getWaveStats(number: Int) -> (totalEnemies: Int, enemyLevel: Int) {
         let baseCount: Double
         if number <= 10 {
@@ -232,11 +231,43 @@ struct WaveConfig: Codable {
             baseCount = wave30Base * pow(1.10, Double(number - 30))
         }
         
-        // Cap max enemies per wave for performance (reduced from 200)
+        // Cap max enemies per wave for performance
         let totalEnemies = min(Int(baseCount), 100)
         let enemyLevel = max(1, (number - 1) / 5 + 1)
         
         return (totalEnemies, enemyLevel)
+    }
+    
+    /// Get enemy distribution ratios for a given wave number
+    private static func getEnemyDistribution(waveNumber: Int) -> (infantry: Double, flying: Double, cavalry: Double) {
+        if waveNumber < 3 {
+            return (EnemyDistribution.earlyInfantry, 0.0, 0.0)
+        } else if waveNumber < 6 {
+            return (EnemyDistribution.midEarlyInfantry, EnemyDistribution.midEarlyFlying, 0.0)
+        } else if waveNumber < 10 {
+            return (EnemyDistribution.midInfantry, EnemyDistribution.midFlying, EnemyDistribution.midCavalry)
+        } else {
+            return (EnemyDistribution.lateInfantry, EnemyDistribution.lateFlying, EnemyDistribution.lateCavalry)
+        }
+    }
+    
+    /// Calculate total HP of a wave (for boss HP calculation)
+    private static func calculateWaveHP(number: Int) -> CGFloat {
+        let (totalEnemies, enemyLevel) = getWaveStats(number: number)
+        let distribution = getEnemyDistribution(waveNumber: number)
+        
+        let infantryCount = Int(Double(totalEnemies) * distribution.infantry)
+        let flyingCount = Int(Double(totalEnemies) * distribution.flying)
+        let cavalryCount = totalEnemies - infantryCount - flyingCount
+        
+        let levelMultiplier = CGFloat(enemyLevel - 1)
+        
+        var totalHP: CGFloat = 0
+        totalHP += CGFloat(infantryCount) * EnemyBaseHP.infantry * (1.0 + levelMultiplier * EnemyBaseHP.infantryScaling)
+        totalHP += CGFloat(flyingCount) * EnemyBaseHP.flying * (1.0 + levelMultiplier * EnemyBaseHP.flyingScaling)
+        totalHP += CGFloat(cavalryCount) * EnemyBaseHP.cavalry * (1.0 + levelMultiplier * EnemyBaseHP.cavalryScaling)
+        
+        return totalHP
     }
     
     private static func generateWave(number: Int) -> WaveConfig {
