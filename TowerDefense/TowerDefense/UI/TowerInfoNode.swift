@@ -224,8 +224,6 @@ final class TowerInfoNode: SKNode {
         setScale(1.0)  // Ensure scale is 1.0 for correct touch detection
         alpha = 1.0
         isHidden = false
-        
-        print("TowerInfoNode shown at: \(position), panelSize: \(panelWidth)x\(panelHeight)")
     }
     
     func hide() {
@@ -316,21 +314,11 @@ final class TowerInfoNode: SKNode {
     
     func handleTouch(at location: CGPoint) -> Bool {
         guard !isHidden, let tower = selectedTower else { 
-            print("TowerInfo handleTouch: hidden or no tower")
             return false 
         }
         
         // Convert scene location to local coordinates
         let localPoint = CGPoint(x: location.x - position.x, y: location.y - position.y)
-        
-        print("TowerInfo handleTouch - scene: \(location), local: \(localPoint), pos: \(position)")
-        
-        // Flash the panel to show touch was received (visual debug)
-        let flash = SKAction.sequence([
-            SKAction.colorize(with: .yellow, colorBlendFactor: 0.3, duration: 0.1),
-            SKAction.colorize(withColorBlendFactor: 0, duration: 0.1)
-        ])
-        panelBackground.run(flash)
         
         // Button dimensions (must match init)
         let upgradeSize = CGSize(width: 80, height: 35)
@@ -348,7 +336,6 @@ final class TowerInfoNode: SKNode {
         // Check close button (circular, use distance check)
         let distToClose = sqrt(pow(localPoint.x - closePos.x, 2) + pow(localPoint.y - closePos.y, 2))
         if distToClose <= closeRadius + padding {
-            print("Close button tapped! dist: \(distToClose)")
             animateButton(closeButton)
             hide()
             return true
@@ -390,7 +377,6 @@ final class TowerInfoNode: SKNode {
             height: upgradeSize.height + padding * 2
         )
         if upgradeBounds.contains(localPoint) {
-            print("Upgrade button tapped! localPoint: \(localPoint), bounds: \(upgradeBounds)")
             if tower.towerType == .wall {
                 delegate?.towerInfoDidTapConvert(tower)
                 animateButton(upgradeButton)
@@ -412,7 +398,6 @@ final class TowerInfoNode: SKNode {
             height: sellSize.height + padding * 2
         )
         if sellBounds.contains(localPoint) {
-            print("Sell button tapped! localPoint: \(localPoint), bounds: \(sellBounds)")
             delegate?.towerInfoDidTapSell(tower)
             animateButton(sellButton)
             hide()
@@ -427,8 +412,6 @@ final class TowerInfoNode: SKNode {
             height: panelHeight + padding * 2
         )
         if panelBounds.contains(localPoint) {
-            print("Panel touched but no button hit - local: \(localPoint)")
-            print("upgradeBounds: \(upgradeBounds), sellBounds: \(sellBounds)")
             return true
         }
         
@@ -454,7 +437,6 @@ final class TowerInfoNode: SKNode {
     
     func containsTouchPoint(_ location: CGPoint) -> Bool {
         guard !isHidden else { 
-            print("TowerInfo containsTouchPoint: hidden, returning false")
             return false 
         }
         let localPoint = CGPoint(x: location.x - position.x, y: location.y - position.y)
@@ -464,8 +446,6 @@ final class TowerInfoNode: SKNode {
             width: panelWidth,
             height: panelHeight
         )
-        let contains = panelBounds.contains(localPoint)
-        print("TowerInfo containsTouchPoint: scene=\(location), pos=\(position), local=\(localPoint), bounds=\(panelBounds), contains=\(contains)")
-        return contains
+        return panelBounds.contains(localPoint)
     }
 }

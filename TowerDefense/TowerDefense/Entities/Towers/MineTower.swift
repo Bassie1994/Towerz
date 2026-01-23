@@ -270,26 +270,29 @@ final class MineTower: Tower {
             SKAction.removeFromParent()
         ]))
         
-        // Spawn landing effect at target
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak parentNode] in
-            guard let parent = parentNode else { return }
-            
-            let landEffect = SKShapeNode(circleOfRadius: 8)
-            landEffect.fillColor = .orange
-            landEffect.strokeColor = .yellow
-            landEffect.lineWidth = 2
-            landEffect.position = targetPos
-            landEffect.zPosition = GameConstants.ZPosition.effects.rawValue
-            parent.addChild(landEffect)
-            
-            landEffect.run(SKAction.sequence([
-                SKAction.group([
-                    SKAction.scale(to: 2.5, duration: 0.2),
-                    SKAction.fadeOut(withDuration: 0.2)
-                ]),
-                SKAction.removeFromParent()
-            ]))
-        }
+        // Spawn landing effect at target using SKAction for proper timing
+        let landEffect = SKShapeNode(circleOfRadius: 8)
+        landEffect.fillColor = .orange
+        landEffect.strokeColor = .yellow
+        landEffect.lineWidth = 2
+        landEffect.position = targetPos
+        landEffect.zPosition = GameConstants.ZPosition.effects.rawValue
+        landEffect.setScale(0.1)
+        landEffect.alpha = 0
+        parentNode.addChild(landEffect)
+        
+        landEffect.run(SKAction.sequence([
+            SKAction.wait(forDuration: duration),
+            SKAction.group([
+                SKAction.fadeIn(withDuration: 0.05),
+                SKAction.scale(to: 1.0, duration: 0.05)
+            ]),
+            SKAction.group([
+                SKAction.scale(to: 2.5, duration: 0.2),
+                SKAction.fadeOut(withDuration: 0.2)
+            ]),
+            SKAction.removeFromParent()
+        ]))
     }
     
     override func upgrade() -> Bool {
