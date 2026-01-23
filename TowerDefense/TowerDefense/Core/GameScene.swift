@@ -832,8 +832,8 @@ extension GameScene: HUDNodeDelegate {
         // Can't place in spawn or exit zones
         if gridPos.isInSpawnZone() || gridPos.isInExitZone() { return }
         
-        // Can't place where a tower already is
-        if gameManager.pathfindingGrid.isBlocked(gridPos) { return }
+        // Can't place where a tower already is or cell is blocked
+        if !gameManager.pathfindingGrid.isWalkable(gridPos) { return }
         
         // Activate the block power
         BlockManager.shared.activate(currentTime: gameTime, gridPosition: gridPos)
