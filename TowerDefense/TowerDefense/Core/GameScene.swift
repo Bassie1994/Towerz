@@ -1,13 +1,17 @@
 import SpriteKit
+import UIKit
 
 /// Main game scene - integrates all systems
 final class GameScene: SKScene {
-    
+
     // MARK: - Properties
-    
+
     // Game management
     private var gameManager: GameManager!
     private var targetingSystem: TargetingSystem!
+
+    // Safe area from the hosting view (for responsive HUD/borders)
+    var safeAreaInsets: UIEdgeInsets = .zero
     
     // Containers
     private let gameLayer = SKNode()
@@ -80,12 +84,12 @@ final class GameScene: SKScene {
     
     private func setupUI() {
         // HUD
-        hudNode = HUDNode(sceneSize: size)
+        hudNode = HUDNode(sceneSize: size, safeAreaInsets: safeAreaInsets)
         hudNode.delegate = self
         uiLayer.addChild(hudNode)
 
         // Build Menu
-        buildMenuNode = BuildMenuNode(sceneSize: size)
+        buildMenuNode = BuildMenuNode(sceneSize: size, safeAreaInsets: safeAreaInsets)
         buildMenuNode.delegate = self
         uiLayer.addChild(buildMenuNode)
         
@@ -348,13 +352,10 @@ final class GameScene: SKScene {
         }
         
         // Check tower info panel FIRST (highest priority popup)
-        print("GameScene touch at: \(location), towerInfo hidden: \(towerInfoNode.isHidden)")
         if !towerInfoNode.isHidden {
             let containsTouch = towerInfoNode.containsTouchPoint(location)
-            print("GameScene: towerInfo containsTouch: \(containsTouch)")
             if containsTouch {
-                let handled = towerInfoNode.handleTouch(at: location)
-                print("GameScene: towerInfo handled touch: \(handled)")
+                _ = towerInfoNode.handleTouch(at: location)
                 return
             }
         }
@@ -792,15 +793,21 @@ extension GameScene: HUDNodeDelegate {
         loadGame()
     }
     
+    /// Current save format version for compatibility checking
+    private static let saveFormatVersion = 1
+    
     private func saveGame() {
-        // Create save data
+        // Create save data with version for future compatibility
         var saveData: [String: Any] = [:]
+        saveData["saveVersion"] = GameScene.saveFormatVersion
+        saveData["saveDate"] = Date().timeIntervalSince1970
         
         // Save game state
         saveData["wave"] = gameManager.waveManager.currentWave
         saveData["money"] = gameManager.economyManager.money
         saveData["lives"] = gameManager.lives
         saveData["gameTime"] = gameTime
+        saveData["totalEnemiesKilled"] = gameManager.totalEnemiesKilled
         
         // Save tower positions and types
         var towerData: [[String: Any]] = []
@@ -811,25 +818,22 @@ extension GameScene: HUDNodeDelegate {
             td["gridY"] = tower.gridPosition.y
             td["upgradeLevel"] = tower.upgradeLevel
             td["totalInvested"] = tower.totalInvested
-            td["targetPriority"] = tower.targetPriority.rawValue
             towerData.append(td)
         }
         saveData["towers"] = towerData
         
         // Encode and save
         do {
-            let data = try JSONSerialization.data(withJSONObject: saveData)
+            let data = try JSONSerialization.data(withJSONObject: saveData, options: .prettyPrinted)
             UserDefaults.standard.set(data, forKey: "GameSave")
             UserDefaults.standard.synchronize()
-            print("Game saved successfully")
         } catch {
-            print("Failed to save game: \(error)")
+            // Silently fail - user will see no visual feedback but game continues
         }
     }
     
     private func loadGame() {
         guard let data = UserDefaults.standard.data(forKey: "GameSave") else {
-            print("No save data found")
             return
         }
         
@@ -838,42 +842,38 @@ extension GameScene: HUDNodeDelegate {
                 return
             }
             
-            // Clear current game
-            for enemy in enemies {
-                enemy.removeFromParent()
+            // Check save version compatibility (for future migrations)
+            let saveVersion = saveData["saveVersion"] as? Int ?? 1
+            guard saveVersion <= GameScene.saveFormatVersion else {
+                // Save is from a newer version - can't load
+                return
             }
-            enemies.removeAll()
             
-            for tower in towers {
-                if let mineTower = tower as? MineTower {
-                    mineTower.removeAllMines()
+            // Clear current game state
+            clearGameState()
+            
+            // Reset pathfinding grid before loading towers
+            for x in 0..<GameConstants.gridWidth {
+                for y in 0..<GameConstants.gridHeight {
+                    gameManager.pathfindingGrid.unblockCell(GridPosition(x: x, y: y))
                 }
-                tower.removeFromParent()
             }
-            towers.removeAll()
             
-            // Reset managers
-            BoozeManager.shared.reset()
-            LavaManager.shared.reset()
-            
-            // Clear effects
-            effectsLayer.removeAllChildren()
-            
-            // Load game state
-            if let wave = saveData["wave"] as? Int {
+            // Load game state with validation
+            if let wave = saveData["wave"] as? Int, wave >= 0 {
                 gameManager.waveManager.setWave(wave)
             }
-            if let money = saveData["money"] as? Int {
+            if let money = saveData["money"] as? Int, money >= 0 {
                 gameManager.economyManager.setMoney(money)
             }
-            if let lives = saveData["lives"] as? Int {
+            if let lives = saveData["lives"] as? Int, lives >= 0 {
                 gameManager.setLives(lives)
             }
-            if let savedGameTime = saveData["gameTime"] as? Double {
+            if let savedGameTime = saveData["gameTime"] as? Double, savedGameTime >= 0 {
                 gameTime = savedGameTime
             }
             
-            // Load towers
+            // Load towers with validation
             if let towerDataArray = saveData["towers"] as? [[String: Any]] {
                 for td in towerDataArray {
                     guard let typeRaw = td["type"] as? String,
@@ -881,40 +881,32 @@ extension GameScene: HUDNodeDelegate {
                           let gridX = td["gridX"] as? Int,
                           let gridY = td["gridY"] as? Int else { continue }
                     
+                    // Validate grid position is within bounds
+                    guard gridX >= 0 && gridX < GameConstants.gridWidth &&
+                          gridY >= 0 && gridY < GameConstants.gridHeight else { continue }
+                    
                     let gridPos = GridPosition(x: gridX, y: gridY)
+                    
+                    // Skip if position is in spawn or exit zone
+                    guard !gridPos.isInSpawnZone() && !gridPos.isInExitZone() else { continue }
                     
                     // Block the grid cell
                     gameManager.pathfindingGrid.blockCell(gridPos)
                     
-                    // Create tower (using createTower would add it to array twice)
-                    let tower: Tower
-                    switch type {
-                    case .wall: tower = WallTower(gridPosition: gridPos)
-                    case .machineGun: tower = MachineGunTower(gridPosition: gridPos)
-                    case .cannon: tower = CannonTower(gridPosition: gridPos)
-                    case .slow: tower = SlowTower(gridPosition: gridPos)
-                    case .buff: tower = BuffTower(gridPosition: gridPos)
-                    case .mine: tower = MineTower(gridPosition: gridPos)
-                    case .splash: tower = SplashTower(gridPosition: gridPos)
-                    case .laser: tower = LaserTower(gridPosition: gridPos)
-                    case .antiAir: tower = AntiAirTower(gridPosition: gridPos)
-                    }
-                    
+                    // Create tower
+                    let tower = createTowerOfType(type, at: gridPos)
                     tower.delegate = self
                     tower.position = gridPos.toWorldPosition()
                     
-                    // Apply upgrades
+                    // Apply upgrades (with validation)
                     if let upgradeLevel = td["upgradeLevel"] as? Int {
-                        for _ in 0..<upgradeLevel {
+                        let validLevel = max(0, min(upgradeLevel, tower.maxUpgradeLevel))
+                        for _ in 0..<validLevel {
                             _ = tower.upgrade()
                         }
                     }
-                    if let totalInvested = td["totalInvested"] as? Int {
+                    if let totalInvested = td["totalInvested"] as? Int, totalInvested >= 0 {
                         tower.totalInvested = totalInvested
-                    }
-                    if let priorityRaw = td["targetPriority"] as? String,
-                       let priority = TargetPriority(rawValue: priorityRaw) {
-                        tower.targetPriority = priority
                     }
                     
                     towers.append(tower)
@@ -928,10 +920,46 @@ extension GameScene: HUDNodeDelegate {
             // Update UI
             updateUI()
             
-            print("Game loaded successfully")
-            
         } catch {
-            print("Failed to load game: \(error)")
+            // Load failed - silently continue with current game state
+        }
+    }
+    
+    /// Clear all game state for loading or restart
+    private func clearGameState() {
+        for enemy in enemies {
+            enemy.removeFromParent()
+        }
+        enemies.removeAll()
+        
+        for tower in towers {
+            if let mineTower = tower as? MineTower {
+                mineTower.removeAllMines()
+            }
+            tower.removeFromParent()
+        }
+        towers.removeAll()
+        
+        // Reset managers
+        BoozeManager.shared.reset()
+        LavaManager.shared.reset()
+        
+        // Clear effects
+        effectsLayer.removeAllChildren()
+    }
+    
+    /// Create a tower of the specified type at the given position
+    private func createTowerOfType(_ type: TowerType, at gridPosition: GridPosition) -> Tower {
+        switch type {
+        case .wall: return WallTower(gridPosition: gridPosition)
+        case .machineGun: return MachineGunTower(gridPosition: gridPosition)
+        case .cannon: return CannonTower(gridPosition: gridPosition)
+        case .slow: return SlowTower(gridPosition: gridPosition)
+        case .buff: return BuffTower(gridPosition: gridPosition)
+        case .mine: return MineTower(gridPosition: gridPosition)
+        case .splash: return SplashTower(gridPosition: gridPosition)
+        case .laser: return LaserTower(gridPosition: gridPosition)
+        case .antiAir: return AntiAirTower(gridPosition: gridPosition)
         }
     }
     
@@ -1001,20 +1029,6 @@ extension GameScene: TowerInfoNodeDelegate {
         // Show conversion menu for wall tower
         guard tower.towerType == .wall else { return }
         showConversionMenu(for: tower)
-    }
-
-    func towerInfoDidChangePriority(_ tower: Tower, priority: TargetPriority) {
-        tower.targetPriority = priority
-        towerInfoNode.updateContent()
-    }
-
-    func towerInfoDidRequestMineDetonation(_ tower: MineTower) {
-        tower.detonateAllMines()
-    }
-
-    func towerInfoDidRequestMineClear(_ tower: MineTower) {
-        tower.clearAllMines()
-        towerInfoNode.updateContent()
     }
     
     private func showConversionMenu(for wallTower: Tower) {

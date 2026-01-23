@@ -134,60 +134,80 @@ final class BossEnemy: Enemy {
     
     override func die() {
         // Epic death explosion for boss
-        guard let parent = parent else {
+        guard let parentNode = parent else {
             super.die()
             return
         }
         
-        // Multiple explosions
-        for i in 0..<8 {
-            let delay = Double(i) * 0.1
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak parent, position] in
-                guard let p = parent else { return }
-                
-                let offset = CGPoint(
-                    x: CGFloat.random(in: -30...30),
-                    y: CGFloat.random(in: -30...30)
-                )
-                
-                let explosion = SKShapeNode(circleOfRadius: 20)
-                explosion.fillColor = [.orange, .red, .yellow].randomElement()!
-                explosion.strokeColor = .white
-                explosion.lineWidth = 2
-                explosion.position = CGPoint(x: position.x + offset.x, y: position.y + offset.y)
-                explosion.zPosition = GameConstants.ZPosition.effects.rawValue
-                p.addChild(explosion)
-                
-                explosion.run(SKAction.sequence([
-                    SKAction.group([
-                        SKAction.scale(to: 3.0, duration: 0.3),
-                        SKAction.fadeOut(withDuration: 0.3)
-                    ]),
-                    SKAction.removeFromParent()
-                ]))
-            }
-        }
+        let deathPosition = position
+        let explosionColors: [SKColor] = [.orange, .red, .yellow]
         
-        // Final big explosion
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak parent, position] in
-            guard let p = parent else { return }
+        // Create a container node for effects (persists after enemy is removed)
+        let effectsContainer = SKNode()
+        effectsContainer.position = .zero
+        effectsContainer.zPosition = GameConstants.ZPosition.effects.rawValue
+        parentNode.addChild(effectsContainer)
+        
+        // Multiple explosions with staggered delays using SKActions
+        for i in 0..<8 {
+            let delay = TimeInterval(i) * 0.1
+            let offset = CGPoint(
+                x: CGFloat.random(in: -30...30),
+                y: CGFloat.random(in: -30...30)
+            )
+            let color = explosionColors.randomElement() ?? .orange
             
-            let bigExplosion = SKShapeNode(circleOfRadius: 50)
-            bigExplosion.fillColor = .white
-            bigExplosion.strokeColor = .yellow
-            bigExplosion.lineWidth = 5
-            bigExplosion.position = position
-            bigExplosion.zPosition = GameConstants.ZPosition.effects.rawValue + 1
-            p.addChild(bigExplosion)
+            let explosion = SKShapeNode(circleOfRadius: 20)
+            explosion.fillColor = color
+            explosion.strokeColor = .white
+            explosion.lineWidth = 2
+            explosion.position = CGPoint(x: deathPosition.x + offset.x, y: deathPosition.y + offset.y)
+            explosion.setScale(0.1)
+            explosion.alpha = 0
+            effectsContainer.addChild(explosion)
             
-            bigExplosion.run(SKAction.sequence([
+            explosion.run(SKAction.sequence([
+                SKAction.wait(forDuration: delay),
                 SKAction.group([
-                    SKAction.scale(to: 4.0, duration: 0.4),
-                    SKAction.fadeOut(withDuration: 0.4)
+                    SKAction.fadeIn(withDuration: 0.05),
+                    SKAction.scale(to: 1.0, duration: 0.05)
+                ]),
+                SKAction.group([
+                    SKAction.scale(to: 3.0, duration: 0.3),
+                    SKAction.fadeOut(withDuration: 0.3)
                 ]),
                 SKAction.removeFromParent()
             ]))
         }
+        
+        // Final big explosion
+        let bigExplosion = SKShapeNode(circleOfRadius: 50)
+        bigExplosion.fillColor = .white
+        bigExplosion.strokeColor = .yellow
+        bigExplosion.lineWidth = 5
+        bigExplosion.position = deathPosition
+        bigExplosion.setScale(0.1)
+        bigExplosion.alpha = 0
+        effectsContainer.addChild(bigExplosion)
+        
+        bigExplosion.run(SKAction.sequence([
+            SKAction.wait(forDuration: 0.8),
+            SKAction.group([
+                SKAction.fadeIn(withDuration: 0.05),
+                SKAction.scale(to: 1.0, duration: 0.05)
+            ]),
+            SKAction.group([
+                SKAction.scale(to: 4.0, duration: 0.4),
+                SKAction.fadeOut(withDuration: 0.4)
+            ]),
+            SKAction.removeFromParent()
+        ]))
+        
+        // Remove effects container after all explosions complete
+        effectsContainer.run(SKAction.sequence([
+            SKAction.wait(forDuration: 1.5),
+            SKAction.removeFromParent()
+        ]))
         
         super.die()
     }
