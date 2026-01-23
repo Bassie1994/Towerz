@@ -1030,6 +1030,20 @@ extension GameScene: TowerInfoNodeDelegate {
         guard tower.towerType == .wall else { return }
         showConversionMenu(for: tower)
     }
+
+    func towerInfoDidChangePriority(_ tower: Tower, priority: TargetPriority) {
+        tower.targetPriority = priority
+        towerInfoNode.updateContent()
+    }
+
+    func towerInfoDidRequestMineDetonation(_ tower: MineTower) {
+        tower.detonateAllMines()
+    }
+
+    func towerInfoDidRequestMineClear(_ tower: MineTower) {
+        tower.clearAllMines()
+        towerInfoNode.updateContent()
+    }
     
     private func showConversionMenu(for wallTower: Tower) {
         // Create a simple conversion overlay
