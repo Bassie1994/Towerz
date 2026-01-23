@@ -655,9 +655,9 @@ final class HUDNode: SKNode {
             return handlePauseMenuTouch(at: location)
         }
         
-        // Check top bar buttons - start wave
-        let startLocalPos = convert(location, to: startWaveButton)
-        if startWaveButton.contains(startLocalPos) {
+        // Check top bar buttons - start wave (button is 120x35)
+        let startBounds = CGRect(x: startWaveButton.position.x - 60, y: startWaveButton.position.y - 17.5, width: 120, height: 35)
+        if startBounds.contains(location) {
             if isWaveActive {
                 toggleAutoStart()
                 delegate?.hudDidTapAutoStart()
@@ -668,18 +668,18 @@ final class HUDNode: SKNode {
             return true
         }
         
-        // Check speed button
-        let speedLocalPos = convert(location, to: speedButton)
-        if speedButton.contains(speedLocalPos) {
+        // Check speed button (button is 50x30)
+        let speedBounds = CGRect(x: speedButton.position.x - 25, y: speedButton.position.y - 15, width: 50, height: 30)
+        if speedBounds.contains(location) {
             toggleFastForward()
             delegate?.hudDidTapFastForward()
             animateButtonPress(speedButton)
             return true
         }
         
-        // Check pause button - opens menu
-        let pauseLocalPos = convert(location, to: pauseButton)
-        if pauseButton.contains(pauseLocalPos) {
+        // Check pause button (button is 40x30)
+        let pauseBounds = CGRect(x: pauseButton.position.x - 20, y: pauseButton.position.y - 15, width: 40, height: 30)
+        if pauseBounds.contains(location) {
             showPauseMenu()
             animateButtonPress(pauseButton)
             return true

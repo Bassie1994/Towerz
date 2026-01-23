@@ -823,6 +823,7 @@ extension GameScene: HUDNodeDelegate {
     }
     
     /// Place a temporary block obstacle that blocks enemies for 7 seconds
+    /// Enemies will walk to the block and wait until it expires
     private func placeBlockObstacle(at location: CGPoint) {
         guard BlockManager.shared.canActivate(currentTime: gameTime) else { return }
         
@@ -832,16 +833,14 @@ extension GameScene: HUDNodeDelegate {
         if gridPos.isInSpawnZone() || gridPos.isInExitZone() { return }
         
         // Can't place where a tower already is
-        if pathfindingGrid.isBlocked(gridPos) { return }
+        if gameManager.pathfindingGrid.isBlocked(gridPos) { return }
         
         // Activate the block power
         BlockManager.shared.activate(currentTime: gameTime, gridPosition: gridPos)
         
-        // Block the cell in pathfinding
-        pathfindingGrid.blockCell(gridPos)
-        
-        // Recalculate flow field
-        recalculateFlowField()
+        // Block the cell in pathfinding but DON'T recalculate flow field yet
+        // This way enemies will continue on their current path until they hit the block
+        gameManager.pathfindingGrid.blockCell(gridPos)
         
         // Create visual obstacle
         let worldPos = gridPos.toWorldPosition()
@@ -873,9 +872,9 @@ extension GameScene: HUDNodeDelegate {
         BlockManager.shared.onBlockExpired = { [weak self] expiredPos in
             guard let self = self else { return }
             
-            // Unblock the cell
-            self.pathfindingGrid.unblockCell(expiredPos)
-            self.recalculateFlowField()
+            // Unblock the cell and recalculate paths so enemies can continue
+            self.gameManager.pathfindingGrid.unblockCell(expiredPos)
+            self.notifyPathfindingChanged()
             
             // Remove visual
             if let obstacle = self.childNode(withName: "blockObstacle") {
