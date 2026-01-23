@@ -59,12 +59,11 @@ final class HUDNode: SKNode {
     
     // MARK: - Initialization
     
-    init(sceneSize: CGSize, safeAreaInsets: UIEdgeInsets) {
+    init(sceneSize: CGSize, safeAreaInsets: UIEdgeInsets = .zero) {
         layoutSize = sceneSize
         self.safeAreaInsets = safeAreaInsets
-        // Background bar
-        let horizontalPadding = safeAreaInsets.left + safeAreaInsets.right + 40
-        let hudWidth: CGFloat = max(400, sceneSize.width - horizontalPadding)
+        // Background bar - use fixed width relative to scene
+        let hudWidth: CGFloat = min(sceneSize.width - 40, 1200)
         let hudHeight: CGFloat = 50
         hudBackground = SKShapeNode(rectOf: CGSize(width: hudWidth, height: hudHeight))
         hudBackground.fillColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 0.9)

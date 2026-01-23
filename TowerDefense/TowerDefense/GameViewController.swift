@@ -2,6 +2,7 @@ import UIKit
 import SpriteKit
 
 class GameViewController: UIViewController {
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -12,10 +13,12 @@ class GameViewController: UIViewController {
             return skView
         }() as SKView? else { return }
         
-        let sceneSize = view.bounds.size
+        // Use a fixed scene size that fits the game design
+        // Playfield is 24*48=1152 wide + 100 left margin = 1252 minimum
+        // Playfield is 11*48=528 tall + 90 bottom margin = 618 minimum + HUD space
+        let sceneSize = CGSize(width: 1334, height: 750)  // Standard iPad-ish landscape
         let scene = GameScene(size: sceneSize)
-        scene.safeAreaInsets = view.safeAreaInsets
-        scene.scaleMode = .resizeFill
+        scene.scaleMode = .aspectFit  // Maintain aspect ratio, letterbox if needed
         
         view.presentScene(scene)
         view.ignoresSiblingOrder = true
@@ -24,6 +27,15 @@ class GameViewController: UIViewController {
         view.showsFPS = true
         view.showsNodeCount = true
         #endif
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Update safe area insets when layout changes
+        if let skView = self.view as? SKView,
+           let scene = skView.scene as? GameScene {
+            scene.safeAreaInsets = skView.safeAreaInsets
+        }
     }
     
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {

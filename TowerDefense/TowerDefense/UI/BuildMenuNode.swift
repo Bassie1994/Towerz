@@ -22,18 +22,17 @@ final class BuildMenuNode: SKNode {
     private let menuWidth: CGFloat
     private let menuHeight: CGFloat = 70
     private var layoutSize: CGSize = .zero
-    private var safeAreaInsets: UIEdgeInsets = .zero
     
     private let moneyLabel: SKLabelNode
     private let moneyIcon: SKLabelNode
     
     // MARK: - Initialization
     
-    init(sceneSize: CGSize, safeAreaInsets: UIEdgeInsets) {
+    init(sceneSize: CGSize, safeAreaInsets: UIEdgeInsets = .zero) {
         layoutSize = sceneSize
-        self.safeAreaInsets = safeAreaInsets
-        let widthPadding = safeAreaInsets.left + safeAreaInsets.right + 30
-        menuWidth = min(sceneSize.width - widthPadding, 1200)
+        // Calculate menu width based on scene size
+        menuWidth = min(sceneSize.width - 40, 1200)
+        
         // Background panel - horizontal bar at bottom of screen
         menuBackground = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 8)
         menuBackground.fillColor = SKColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 0.95)
@@ -66,10 +65,9 @@ final class BuildMenuNode: SKNode {
     }
     
     private func setupMenu() {
-        // Position menu along the bottom edge with slight padding from the playfield and screen edges
-        let bottomPadding: CGFloat = max(24, safeAreaInsets.bottom + 20)
-        let menuY = max(menuHeight / 2 + bottomPadding, GameConstants.playFieldOrigin.y - bottomPadding)
-        menuBackground.position = CGPoint(x: layoutSize.width / 2, y: menuY)
+        // Position menu along the bottom edge
+        let bottomPadding: CGFloat = 20
+        menuBackground.position = CGPoint(x: layoutSize.width / 2, y: menuHeight / 2 + bottomPadding)
         addChild(menuBackground)
         
         // Title on left
@@ -81,23 +79,25 @@ final class BuildMenuNode: SKNode {
         title.position = CGPoint(x: -menuWidth/2 + 15, y: -3)
         menuBackground.addChild(title)
 
-        // Create buttons for each tower type, spaced to fit the available width
-        let towerCount = CGFloat(TowerType.allCases.count)
-        let horizontalInset: CGFloat = 80
-        let buttonAreaWidth = max(200, menuWidth - horizontalInset * 2)
-        let buttonSpacing: CGFloat = towerCount > 1 ? buttonAreaWidth / (towerCount - 1) : 0
-        var xOffset: CGFloat = -buttonAreaWidth / 2
+        // Create buttons for each tower type with proper spacing
+        let towerTypes = TowerType.allCases
+        let towerCount = CGFloat(towerTypes.count)
+        let buttonWidth: CGFloat = 85  // Slightly smaller buttons
+        let totalButtonWidth = buttonWidth * towerCount
+        let availableWidth = menuWidth - 100  // Leave margin for title
+        let spacing = (availableWidth - totalButtonWidth) / max(1, towerCount - 1)
+        
+        // Start position (centered in available area)
+        let startX = -availableWidth / 2 + buttonWidth / 2 + 30
 
-        for towerType in TowerType.allCases {
-            let button = TowerButton(type: towerType)
-            button.position = CGPoint(x: xOffset, y: 0)
+        for (index, towerType) in towerTypes.enumerated() {
+            let button = TowerButton(type: towerType, buttonWidth: buttonWidth)
+            let xPos = startX + CGFloat(index) * (buttonWidth + spacing)
+            button.position = CGPoint(x: xPos, y: 0)
             button.name = "towerButton_\(towerType.rawValue)"
             menuBackground.addChild(button)
             towerButtons[towerType] = button
-
-            xOffset += buttonSpacing
         }
-
     }
     
     func updateMoney(_ amount: Int) {
@@ -172,42 +172,45 @@ private class TowerButton: SKNode {
     private let iconLabel: SKLabelNode
     private let nameLabel: SKLabelNode
     private let costLabel: SKLabelNode
+    private let buttonWidth: CGFloat
+    private let buttonHeight: CGFloat = 50
     
     private var isAffordable = true
     private var isButtonSelected = false
     
-    init(type: TowerType) {
+    init(type: TowerType, buttonWidth: CGFloat = 85) {
         self.towerType = type
+        self.buttonWidth = buttonWidth
         
         // Button size
-        background = SKShapeNode(rectOf: CGSize(width: 100, height: 50), cornerRadius: 6)
+        background = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 6)
         background.fillColor = type.color.withAlphaComponent(0.3)
         background.strokeColor = type.color
         background.lineWidth = 2
         
-        // Icon/symbol
+        // Icon/symbol - centered at left side of button
         iconLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        iconLabel.fontSize = 20
+        iconLabel.fontSize = 18
         iconLabel.fontColor = .white
         iconLabel.verticalAlignmentMode = .center
         iconLabel.horizontalAlignmentMode = .center
-        iconLabel.position = CGPoint(x: -30, y: 0)
+        iconLabel.position = CGPoint(x: -buttonWidth/2 + 18, y: 0)
         
-        // Tower name
+        // Tower name - to the right of icon
         nameLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        nameLabel.fontSize = 11
+        nameLabel.fontSize = 10
         nameLabel.fontColor = .white
         nameLabel.verticalAlignmentMode = .center
         nameLabel.horizontalAlignmentMode = .left
-        nameLabel.position = CGPoint(x: -10, y: 8)
+        nameLabel.position = CGPoint(x: -buttonWidth/2 + 32, y: 8)
         
-        // Cost
+        // Cost - below name
         costLabel = SKLabelNode(fontNamed: "Helvetica")
-        costLabel.fontSize = 10
+        costLabel.fontSize = 9
         costLabel.fontColor = .yellow
         costLabel.verticalAlignmentMode = .center
         costLabel.horizontalAlignmentMode = .left
-        costLabel.position = CGPoint(x: -10, y: -8)
+        costLabel.position = CGPoint(x: -buttonWidth/2 + 32, y: -8)
         
         super.init()
         
@@ -244,7 +247,7 @@ private class TowerButton: SKNode {
         case .splash:
             symbol.text = "◎"
         case .laser:
-            symbol.text = "🎯"  // Sniper crosshair
+            symbol.text = "🎯"
         case .antiAir:
             symbol.text = "↑"
         }
@@ -286,7 +289,7 @@ private class TowerButton: SKNode {
     
     func containsTouchPoint(_ p: CGPoint) -> Bool {
         let localPoint = convert(p, from: parent!)
-        let buttonFrame = CGRect(x: -50, y: -25, width: 100, height: 50)
+        let buttonFrame = CGRect(x: -buttonWidth/2, y: -buttonHeight/2, width: buttonWidth, height: buttonHeight)
         return buttonFrame.contains(localPoint)
     }
 }
