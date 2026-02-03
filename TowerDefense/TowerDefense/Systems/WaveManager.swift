@@ -194,9 +194,11 @@ struct WaveConfig: Codable {
         static let midCavalry: Double = 0.2
         
         /// Late game: Mixed composition (default)
-        static let lateInfantry: Double = 0.4
-        static let lateFlying: Double = 0.3
-        static let lateCavalry: Double = 0.3
+        static let lateInfantry: Double = 0.35
+        static let lateFlying: Double = 0.25
+        static let lateCavalry: Double = 0.2
+        static let lateShielded: Double = 0.1
+        static let lateSupport: Double = 0.1
     }
     
     /// Base HP values for enemy types (for boss HP calculation)
@@ -204,10 +206,14 @@ struct WaveConfig: Codable {
         static let infantry: CGFloat = 200
         static let flying: CGFloat = 80
         static let cavalry: CGFloat = 600
+        static let shielded: CGFloat = 260
+        static let support: CGFloat = 180
         
         static let infantryScaling: CGFloat = 0.3
         static let flyingScaling: CGFloat = 0.2
         static let cavalryScaling: CGFloat = 0.35
+        static let shieldedScaling: CGFloat = 0.28
+        static let supportScaling: CGFloat = 0.22
     }
     
     // MARK: - Wave Generation
@@ -239,15 +245,15 @@ struct WaveConfig: Codable {
     }
     
     /// Get enemy distribution ratios for a given wave number
-    private static func getEnemyDistribution(waveNumber: Int) -> (infantry: Double, flying: Double, cavalry: Double) {
+    private static func getEnemyDistribution(waveNumber: Int) -> (infantry: Double, flying: Double, cavalry: Double, shielded: Double, support: Double) {
         if waveNumber < 3 {
-            return (EnemyDistribution.earlyInfantry, 0.0, 0.0)
+            return (EnemyDistribution.earlyInfantry, 0.0, 0.0, 0.0, 0.0)
         } else if waveNumber < 6 {
-            return (EnemyDistribution.midEarlyInfantry, EnemyDistribution.midEarlyFlying, 0.0)
+            return (EnemyDistribution.midEarlyInfantry, EnemyDistribution.midEarlyFlying, 0.0, 0.0, 0.0)
         } else if waveNumber < 10 {
-            return (EnemyDistribution.midInfantry, EnemyDistribution.midFlying, EnemyDistribution.midCavalry)
+            return (EnemyDistribution.midInfantry, EnemyDistribution.midFlying, EnemyDistribution.midCavalry, 0.0, 0.0)
         } else {
-            return (EnemyDistribution.lateInfantry, EnemyDistribution.lateFlying, EnemyDistribution.lateCavalry)
+            return (EnemyDistribution.lateInfantry, EnemyDistribution.lateFlying, EnemyDistribution.lateCavalry, EnemyDistribution.lateShielded, EnemyDistribution.lateSupport)
         }
     }
     
@@ -258,7 +264,9 @@ struct WaveConfig: Codable {
         
         let infantryCount = Int(Double(totalEnemies) * distribution.infantry)
         let flyingCount = Int(Double(totalEnemies) * distribution.flying)
-        let cavalryCount = totalEnemies - infantryCount - flyingCount
+        let cavalryCount = Int(Double(totalEnemies) * distribution.cavalry)
+        let shieldedCount = Int(Double(totalEnemies) * distribution.shielded)
+        let supportCount = max(0, totalEnemies - infantryCount - flyingCount - cavalryCount - shieldedCount)
         
         let levelMultiplier = CGFloat(enemyLevel - 1)
         
@@ -266,6 +274,8 @@ struct WaveConfig: Codable {
         totalHP += CGFloat(infantryCount) * EnemyBaseHP.infantry * (1.0 + levelMultiplier * EnemyBaseHP.infantryScaling)
         totalHP += CGFloat(flyingCount) * EnemyBaseHP.flying * (1.0 + levelMultiplier * EnemyBaseHP.flyingScaling)
         totalHP += CGFloat(cavalryCount) * EnemyBaseHP.cavalry * (1.0 + levelMultiplier * EnemyBaseHP.cavalryScaling)
+        totalHP += CGFloat(shieldedCount) * EnemyBaseHP.shielded * (1.0 + levelMultiplier * EnemyBaseHP.shieldedScaling)
+        totalHP += CGFloat(supportCount) * EnemyBaseHP.support * (1.0 + levelMultiplier * EnemyBaseHP.supportScaling)
         
         return totalHP
     }
@@ -340,18 +350,35 @@ struct WaveConfig: Codable {
         } else {
             // Waves 10+: full mixed with varying compositions
             let waveType = number % 5
+            let supportCount = max(1, Int(Double(totalEnemies) * 0.08))
+            let shieldedCount = max(1, Int(Double(totalEnemies) * 0.08))
+            let remaining = max(0, totalEnemies - supportCount - shieldedCount)
             
             switch waveType {
             case 0: // Boss wave - heavy cavalry
-                let cavalryCount = Int(Double(totalEnemies) * 0.5)
-                let infantryCount = Int(Double(totalEnemies) * 0.3)
-                let flyingCount = totalEnemies - cavalryCount - infantryCount
+                let cavalryCount = Int(Double(remaining) * 0.5)
+                let infantryCount = Int(Double(remaining) * 0.3)
+                let flyingCount = remaining - cavalryCount - infantryCount
                 
                 groups.append(WaveConfig.EnemyGroup(
                     type: .cavalry,
                     count: cavalryCount,
                     level: enemyLevel + 1,
                     spawnInterval: baseInterval * 1.5
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .shielded,
+                    count: shieldedCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.6,
+                    groupDelay: 1.5
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .support,
+                    count: supportCount,
+                    level: max(1, enemyLevel - 1),
+                    spawnInterval: baseInterval * 1.3,
+                    groupDelay: 1.0
                 ))
                 groups.append(WaveConfig.EnemyGroup(
                     type: .infantry,
@@ -369,14 +396,28 @@ struct WaveConfig: Codable {
                 ))
                 
             case 1: // Swarm wave - lots of infantry
-                let infantryCount = Int(Double(totalEnemies) * 0.8)
-                let flyingCount = totalEnemies - infantryCount
+                let infantryCount = Int(Double(remaining) * 0.8)
+                let flyingCount = remaining - infantryCount
                 
                 groups.append(WaveConfig.EnemyGroup(
                     type: .infantry,
                     count: infantryCount,
                     level: enemyLevel,
                     spawnInterval: baseInterval * 0.7
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .shielded,
+                    count: shieldedCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.3,
+                    groupDelay: 1.0
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .support,
+                    count: supportCount,
+                    level: max(1, enemyLevel - 1),
+                    spawnInterval: baseInterval * 1.1,
+                    groupDelay: 0.8
                 ))
                 groups.append(WaveConfig.EnemyGroup(
                     type: .flying,
@@ -387,8 +428,8 @@ struct WaveConfig: Codable {
                 ))
                 
             case 2: // Air raid - heavy flying
-                let flyingCount = Int(Double(totalEnemies) * 0.6)
-                let infantryCount = totalEnemies - flyingCount
+                let flyingCount = Int(Double(remaining) * 0.6)
+                let infantryCount = remaining - flyingCount
                 
                 groups.append(WaveConfig.EnemyGroup(
                     type: .flying,
@@ -397,17 +438,31 @@ struct WaveConfig: Codable {
                     spawnInterval: baseInterval
                 ))
                 groups.append(WaveConfig.EnemyGroup(
+                    type: .support,
+                    count: supportCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.1,
+                    groupDelay: 1.2
+                ))
+                groups.append(WaveConfig.EnemyGroup(
                     type: .infantry,
                     count: infantryCount,
                     level: enemyLevel,
                     spawnInterval: baseInterval,
                     groupDelay: 2.0
                 ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .shielded,
+                    count: shieldedCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.4,
+                    groupDelay: 1.0
+                ))
                 
             case 3: // Tank rush
-                let cavalryCount = Int(Double(totalEnemies) * 0.4)
-                let infantryCount = Int(Double(totalEnemies) * 0.4)
-                let flyingCount = totalEnemies - cavalryCount - infantryCount
+                let cavalryCount = Int(Double(remaining) * 0.4)
+                let infantryCount = Int(Double(remaining) * 0.4)
+                let flyingCount = remaining - cavalryCount - infantryCount
                 
                 groups.append(WaveConfig.EnemyGroup(
                     type: .cavalry,
@@ -416,11 +471,25 @@ struct WaveConfig: Codable {
                     spawnInterval: baseInterval * 1.8
                 ))
                 groups.append(WaveConfig.EnemyGroup(
+                    type: .shielded,
+                    count: shieldedCount,
+                    level: enemyLevel + 1,
+                    spawnInterval: baseInterval * 1.5,
+                    groupDelay: 1.0
+                ))
+                groups.append(WaveConfig.EnemyGroup(
                     type: .infantry,
                     count: infantryCount,
                     level: enemyLevel,
                     spawnInterval: baseInterval,
                     groupDelay: 1.5
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .support,
+                    count: supportCount,
+                    level: max(1, enemyLevel - 1),
+                    spawnInterval: baseInterval * 1.2,
+                    groupDelay: 1.2
                 ))
                 groups.append(WaveConfig.EnemyGroup(
                     type: .flying,
@@ -431,9 +500,9 @@ struct WaveConfig: Codable {
                 ))
                 
             default: // Balanced
-                let infantryCount = Int(Double(totalEnemies) * 0.4)
-                let flyingCount = Int(Double(totalEnemies) * 0.35)
-                let cavalryCount = totalEnemies - infantryCount - flyingCount
+                let infantryCount = Int(Double(remaining) * 0.4)
+                let flyingCount = Int(Double(remaining) * 0.35)
+                let cavalryCount = remaining - infantryCount - flyingCount
                 
                 groups.append(WaveConfig.EnemyGroup(
                     type: .infantry,
@@ -442,11 +511,25 @@ struct WaveConfig: Codable {
                     spawnInterval: baseInterval
                 ))
                 groups.append(WaveConfig.EnemyGroup(
+                    type: .support,
+                    count: supportCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.1,
+                    groupDelay: 1.0
+                ))
+                groups.append(WaveConfig.EnemyGroup(
                     type: .flying,
                     count: flyingCount,
                     level: enemyLevel,
                     spawnInterval: baseInterval * 1.1,
                     groupDelay: 1.5
+                ))
+                groups.append(WaveConfig.EnemyGroup(
+                    type: .shielded,
+                    count: shieldedCount,
+                    level: enemyLevel,
+                    spawnInterval: baseInterval * 1.4,
+                    groupDelay: 1.2
                 ))
                 groups.append(WaveConfig.EnemyGroup(
                     type: .cavalry,
@@ -511,6 +594,24 @@ struct WaveConfig: Codable {
             level: bossLevel + 1,
             spawnInterval: 1.0,
             groupDelay: 3.0
+        ))
+        
+        // Support escorts
+        groups.append(WaveConfig.EnemyGroup(
+            type: .support,
+            count: max(1, escortCount / 3),
+            level: bossLevel,
+            spawnInterval: 1.2,
+            groupDelay: 2.5
+        ))
+        
+        // Shielded escorts
+        groups.append(WaveConfig.EnemyGroup(
+            type: .shielded,
+            count: max(1, escortCount / 3),
+            level: bossLevel,
+            spawnInterval: 1.4,
+            groupDelay: 2.8
         ))
         
         return WaveConfig(waveNumber: number, groups: groups)

@@ -55,6 +55,8 @@ enum EnemyType: String, CaseIterable, Codable {
     case infantry
     case cavalry
     case flying
+    case shielded
+    case support
     case boss
     
     var displayName: String {
@@ -62,6 +64,8 @@ enum EnemyType: String, CaseIterable, Codable {
         case .infantry: return "Infantry"
         case .cavalry: return "Cavalry"
         case .flying: return "Flying"
+        case .shielded: return "Shielded"
+        case .support: return "Support"
         case .boss: return "BOSS"
         }
     }
@@ -71,6 +75,8 @@ enum EnemyType: String, CaseIterable, Codable {
         case .infantry: return .green
         case .cavalry: return .orange
         case .flying: return .cyan
+        case .shielded: return SKColor(red: 0.25, green: 0.7, blue: 0.95, alpha: 1.0)
+        case .support: return SKColor(red: 0.7, green: 0.4, blue: 0.95, alpha: 1.0)
         case .boss: return SKColor(red: 0.8, green: 0.1, blue: 0.1, alpha: 1.0)
         }
     }

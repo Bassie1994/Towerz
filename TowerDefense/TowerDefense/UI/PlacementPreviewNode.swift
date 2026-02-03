@@ -120,18 +120,22 @@ final class PlacementPreviewNode: SKNode {
             previewNode.fillColor = currentTowerType?.color.withAlphaComponent(0.5) ?? .validPlacement
             previewNode.strokeColor = .white
             gridHighlight.strokeColor = .validPlacement
+            gridHighlight.lineWidth = 2
             rangeIndicator.strokeColor = SKColor.white.withAlphaComponent(0.3)
             rangeIndicator.fillColor = SKColor.white.withAlphaComponent(0.1)
             invalidLabel.isHidden = true
         } else {
+            let blocksAllPaths = invalidReason?.localizedCaseInsensitiveContains("block all paths") == true
             previewNode.fillColor = .invalidPlacement
-            previewNode.strokeColor = .healthBarRed
-            gridHighlight.strokeColor = .invalidPlacement
+            previewNode.strokeColor = blocksAllPaths ? .healthBarRed : .invalidPlacement
+            gridHighlight.strokeColor = blocksAllPaths ? .healthBarRed : .invalidPlacement
+            gridHighlight.lineWidth = blocksAllPaths ? 3 : 2
             rangeIndicator.strokeColor = SKColor.red.withAlphaComponent(0.3)
             rangeIndicator.fillColor = SKColor.red.withAlphaComponent(0.1)
             
             if let reason = invalidReason {
                 invalidLabel.text = reason
+                invalidLabel.fontColor = blocksAllPaths ? .healthBarRed : .white
                 invalidLabel.isHidden = false
                 
                 // Add background to label

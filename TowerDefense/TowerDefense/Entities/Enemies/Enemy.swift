@@ -31,6 +31,11 @@ class Enemy: SKNode {
     var slowEndTime: TimeInterval = 0
     var slowMultiplier: CGFloat = 1.0
     
+    // Support buff status
+    var supportSpeedMultiplier: CGFloat = 1.0
+    var supportDamageReduction: CGFloat = 0.0
+    private var supportEndTime: TimeInterval = 0
+    
     // Drunk movement (Booze effect) - 1.5 cell amplitude swerving
     var drunkPhase: CGFloat = CGFloat.random(in: 0...(.pi * 2))
     var drunkAmplitude: CGFloat = CGFloat.random(in: 0.8...1.2)  // Very strong sway
@@ -40,6 +45,7 @@ class Enemy: SKNode {
     let healthBarBackground: SKShapeNode
     let healthBarFill: SKShapeNode
     let slowIndicator: SKShapeNode
+    let supportIndicator: SKShapeNode
     
     // Movement
     var currentDirection: CGVector = CGVector(dx: 1, dy: 0)
@@ -97,9 +103,17 @@ class Enemy: SKNode {
         slowIndicator.lineWidth = 2
         slowIndicator.isHidden = true
         
+        // Create support indicator
+        supportIndicator = SKShapeNode(circleOfRadius: enemySize / 2 + 5)
+        supportIndicator.fillColor = .clear
+        supportIndicator.strokeColor = .buffEffect
+        supportIndicator.lineWidth = 2
+        supportIndicator.isHidden = true
+        
         super.init()
         
         addChild(slowIndicator)
+        addChild(supportIndicator)
         addChild(bodyNode)
         addChild(healthBarBackground)
         addChild(healthBarFill)
@@ -128,6 +142,10 @@ class Enemy: SKNode {
             indicator.text = "C"
         case .flying:
             indicator.text = "F"
+        case .shielded:
+            indicator.text = "🛡"
+        case .support:
+            indicator.text = "+"
         case .boss:
             indicator.text = "💀"
             // Add wing indicators for flying
@@ -159,6 +177,8 @@ class Enemy: SKNode {
         
         // Update slow status
         updateSlowStatus(currentTime: currentTime)
+        updateSupportStatus(currentTime: currentTime)
+        moveSpeed = baseMoveSpeed * supportSpeedMultiplier
         
         // Calculate actual speed first (needed for recovery mode)
         let actualSpeed = moveSpeed * slowMultiplier
@@ -745,6 +765,33 @@ class Enemy: SKNode {
         }
     }
     
+    // MARK: - Support Buff
+    
+    func applySupportBuff(speedMultiplier: CGFloat, damageReduction: CGFloat, duration: TimeInterval, currentTime: TimeInterval) {
+        supportSpeedMultiplier = max(supportSpeedMultiplier, speedMultiplier)
+        supportDamageReduction = max(supportDamageReduction, min(0.8, damageReduction))
+        supportEndTime = max(supportEndTime, currentTime + duration)
+        supportIndicator.isHidden = false
+        
+        if supportIndicator.action(forKey: "supportPulse") == nil {
+            let pulse = SKAction.sequence([
+                SKAction.scale(to: 1.1, duration: 0.3),
+                SKAction.scale(to: 1.0, duration: 0.3)
+            ])
+            supportIndicator.run(SKAction.repeatForever(pulse), withKey: "supportPulse")
+        }
+    }
+    
+    private func updateSupportStatus(currentTime: TimeInterval) {
+        if supportEndTime > 0 && currentTime >= supportEndTime {
+            supportSpeedMultiplier = 1.0
+            supportDamageReduction = 0.0
+            supportEndTime = 0
+            supportIndicator.isHidden = true
+            supportIndicator.removeAction(forKey: "supportPulse")
+        }
+    }
+    
     // MARK: - Damage
     
     func takeDamage(_ damage: CGFloat, armorPenetration: CGFloat = 0) {
@@ -753,7 +800,7 @@ class Enemy: SKNode {
         // Calculate effective damage
         let effectiveArmor = max(0, armor - armorPenetration)
         let damageReduction = effectiveArmor / (effectiveArmor + 100) // Diminishing returns
-        let actualDamage = damage * (1 - damageReduction)
+        let actualDamage = damage * (1 - damageReduction) * (1 - supportDamageReduction)
         
         currentHealth -= actualDamage
         
