@@ -49,6 +49,26 @@ struct GameConfig {
             speedScaling: 0,
             armorScaling: 0,
             rewardScaling: 0
+        ),
+        .shielded: EnemyStats(
+            health: 260,
+            speed: 80,
+            armor: 10,
+            reward: 4,
+            healthScaling: 0.28,
+            speedScaling: 0,
+            armorScaling: 6,
+            rewardScaling: 1
+        ),
+        .support: EnemyStats(
+            health: 180,
+            speed: 90,
+            armor: 0,
+            reward: 3,
+            healthScaling: 0.22,
+            speedScaling: 0,
+            armorScaling: 4,
+            rewardScaling: 1
         )
     ]
     
