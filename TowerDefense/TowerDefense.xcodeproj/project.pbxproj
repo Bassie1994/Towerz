@@ -32,6 +32,8 @@
 		004000005 /* CavalryEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004000004 /* CavalryEnemy.swift */; };
 		004000007 /* FlyingEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004000006 /* FlyingEnemy.swift */; };
 		004000009 /* BossEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004000008 /* BossEnemy.swift */; };
+		00400000C /* ShieldedEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00400000A /* ShieldedEnemy.swift */; };
+		00400000D /* SupportEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00400000B /* SupportEnemy.swift */; };
 		
 		/* Towers */
 		005000001 /* Tower.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005000000 /* Tower.swift */; };
@@ -99,6 +101,8 @@
 		004000004 /* CavalryEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CavalryEnemy.swift; sourceTree = "<group>"; };
 		004000006 /* FlyingEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlyingEnemy.swift; sourceTree = "<group>"; };
 		004000008 /* BossEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BossEnemy.swift; sourceTree = "<group>"; };
+		00400000A /* ShieldedEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShieldedEnemy.swift; sourceTree = "<group>"; };
+		00400000B /* SupportEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportEnemy.swift; sourceTree = "<group>"; };
 		
 		/* Towers */
 		005000000 /* Tower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tower.swift; sourceTree = "<group>"; };
@@ -225,6 +229,8 @@
 				004000004 /* CavalryEnemy.swift */,
 				004000006 /* FlyingEnemy.swift */,
 				004000008 /* BossEnemy.swift */,
+				00400000A /* ShieldedEnemy.swift */,
+				00400000B /* SupportEnemy.swift */,
 			);
 			path = Enemies;
 			sourceTree = "<group>";
@@ -381,6 +387,8 @@
 				004000005 /* CavalryEnemy.swift in Sources */,
 				004000007 /* FlyingEnemy.swift in Sources */,
 				004000009 /* BossEnemy.swift in Sources */,
+				00400000C /* ShieldedEnemy.swift in Sources */,
+				00400000D /* SupportEnemy.swift in Sources */,
 				005000001 /* Tower.swift in Sources */,
 				005000003 /* MachineGunTower.swift in Sources */,
 				005000005 /* CannonTower.swift in Sources */,

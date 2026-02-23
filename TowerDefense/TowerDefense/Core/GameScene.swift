@@ -39,6 +39,7 @@ final class GameScene: SKScene {
     
     // Grid visualization
     private var gridNode: SKNode?
+    private let pathHighlightNode = SKShapeNode()
     private var navigationDebugLabel: SKLabelNode?
     private var lastNavigationDebugUpdateTime: TimeInterval = 0
     
@@ -155,7 +156,18 @@ final class GameScene: SKScene {
         
         // Draw exit zone in bottom-right corner only
         drawExitZone()
+
+        setupPathHighlight()
         
+    }
+
+    private func setupPathHighlight() {
+        pathHighlightNode.strokeColor = SKColor.yellow.withAlphaComponent(0.8)
+        pathHighlightNode.lineWidth = 3
+        pathHighlightNode.lineCap = .round
+        pathHighlightNode.isHidden = true
+        pathHighlightNode.zPosition = GameConstants.ZPosition.grid.rawValue + 2
+        gameLayer.addChild(pathHighlightNode)
     }
     
     private func drawSpawnZone() {
@@ -573,6 +585,7 @@ final class GameScene: SKScene {
         
         if gameManager.placeTower(type: type, at: gridPos) != nil {
             placementPreviewNode.animatePlacementSuccess()
+            showPathHighlight()
             
             // Keep placement mode active for consecutive placements
             // Or exit if desired:
@@ -580,6 +593,51 @@ final class GameScene: SKScene {
         } else {
             placementPreviewNode.animatePlacementFailed()
         }
+    }
+
+    private func showPathHighlight() {
+        let pathfinder = AStarPathfinder(grid: gameManager.pathfindingGrid)
+        let spawnPositions = gameManager.pathfindingGrid.spawnPositions
+        let sortedSpawns = spawnPositions.sorted {
+            abs($0.y - GameConstants.gridHeight / 2) < abs($1.y - GameConstants.gridHeight / 2)
+        }
+
+        var pathPositions: [GridPosition] = []
+        for spawn in sortedSpawns {
+            if let path = pathfinder.findPathToExit(from: spawn) {
+                pathPositions = path
+                break
+            }
+        }
+
+        guard !pathPositions.isEmpty else {
+            pathHighlightNode.isHidden = true
+            return
+        }
+
+        let path = CGMutablePath()
+        for (index, gridPos) in pathPositions.enumerated() {
+            let worldPos = gridPos.toWorldPosition()
+            if index == 0 {
+                path.move(to: worldPos)
+            } else {
+                path.addLine(to: worldPos)
+            }
+        }
+
+        pathHighlightNode.path = path
+        pathHighlightNode.removeAllActions()
+        pathHighlightNode.alpha = 0
+        pathHighlightNode.isHidden = false
+
+        let fadeIn = SKAction.fadeAlpha(to: 0.9, duration: 0.2)
+        let wait = SKAction.wait(forDuration: 1.2)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.4)
+        let hide = SKAction.run { [weak self] in
+            self?.pathHighlightNode.isHidden = true
+        }
+
+        pathHighlightNode.run(SKAction.sequence([fadeIn, wait, fadeOut, hide]))
     }
     
     private func enterPlacementMode(type: TowerType) {
@@ -704,6 +762,10 @@ final class GameScene: SKScene {
             enemy = CavalryEnemy(level: max(1, level))
         case .flying:
             enemy = FlyingEnemy(level: max(1, level))
+        case .shielded:
+            enemy = ShieldedEnemy(level: max(1, level))
+        case .support:
+            enemy = SupportEnemy(level: max(1, level))
         case .boss:
             // Level >= 1000 means it encodes HP in thousands
             if level >= 1000 {
