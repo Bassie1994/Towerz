@@ -9,6 +9,35 @@ protocol EnemyDelegate: AnyObject {
 
 /// Base class for all enemy types
 class Enemy: SKNode {
+
+    struct NavigationDebugSnapshot {
+        let collisionDetours: Int
+        let flowRescues: Int
+        let recoveryModeEntries: Int
+        let nearestCellFallbacks: Int
+    }
+
+    private struct NavigationDebugStats {
+        var collisionDetours = 0
+        var flowRescues = 0
+        var recoveryModeEntries = 0
+        var nearestCellFallbacks = 0
+    }
+
+    private static var navigationDebugStats = NavigationDebugStats()
+    
+    static func resetNavigationDebugStats() {
+        navigationDebugStats = NavigationDebugStats()
+    }
+
+    static func navigationDebugSnapshot() -> NavigationDebugSnapshot {
+        NavigationDebugSnapshot(
+            collisionDetours: navigationDebugStats.collisionDetours,
+            flowRescues: navigationDebugStats.flowRescues,
+            recoveryModeEntries: navigationDebugStats.recoveryModeEntries,
+            nearestCellFallbacks: navigationDebugStats.nearestCellFallbacks
+        )
+    }
     
     // MARK: - Properties
     
@@ -40,6 +69,8 @@ class Enemy: SKNode {
     let healthBarBackground: SKShapeNode
     let healthBarFill: SKShapeNode
     let slowIndicator: SKShapeNode
+    var healthBarBaseScaleX: CGFloat = 1.0
+    var healthBarBaseScaleY: CGFloat = 1.0
     
     // Movement
     var currentDirection: CGVector = CGVector(dx: 1, dy: 0)
@@ -288,6 +319,7 @@ class Enemy: SKNode {
             lastDistanceToExit = currentDistance
 
             if progressStallTime > 2.5, let reachable = flowField.nearestReachableCell(from: currentGrid, maxSearchRadius: 8) {
+                Enemy.navigationDebugStats.flowRescues += 1
                 position = reachable.toWorldPosition()
                 lastPosition = position
                 stuckTime = 0
@@ -307,6 +339,7 @@ class Enemy: SKNode {
             stuckTime += deltaTime
             
             if stuckTime >= 7.0 && !isInRecoveryMode {
+                Enemy.navigationDebugStats.recoveryModeEntries += 1
                 // Enter recovery mode - snap to current cell center and follow path centers
                 isInRecoveryMode = true
                 recoveryCellsRemaining = 6
@@ -481,12 +514,19 @@ class Enemy: SKNode {
     
     private func calculateSeparation(from enemies: [Enemy]) -> CGVector {
         var separation = CGVector.zero
-        let separationRadius: CGFloat = enemySize * 1.2  // Reduced radius
+        let separationRadius: CGFloat = {
+            switch enemyType {
+            case .boss: return enemySize * 1.7
+            case .cavalry: return enemySize * 1.45
+            case .infantry, .flying: return enemySize * 1.2
+            }
+        }()
         let radiusSquared = separationRadius * separationRadius
         
-        // Optimization: limit checks to 5 for better performance
+        // Optimization: cap checks, but allow enough neighbors to react in chokepoints.
         var checksPerformed = 0
-        let maxChecks = 5
+        let maxChecks = 12
+        var closeNeighborCount = 0
         
         for other in enemies {
             guard checksPerformed < maxChecks else { break }
@@ -499,11 +539,19 @@ class Enemy: SKNode {
             
             if distSquared < radiusSquared && distSquared > 1 {
                 checksPerformed += 1
+                closeNeighborCount += 1
                 // Approximate separation without sqrt for performance
                 let invDist = 1.0 / (distSquared + 10)  // +10 to avoid division issues
                 separation.dx += dx * invDist * 50
                 separation.dy += dy * invDist * 50
             }
+        }
+
+        // Stronger push when units pile up in narrow corridors.
+        if closeNeighborCount > 2 {
+            let crowdMultiplier = min(2.4, 1.0 + CGFloat(closeNeighborCount - 2) * 0.18)
+            separation.dx *= crowdMultiplier
+            separation.dy *= crowdMultiplier
         }
         
         // Simple normalization
@@ -636,7 +684,7 @@ class Enemy: SKNode {
         let origin = GameConstants.playFieldOrigin
         let flowField = delegate?.getFlowField()
         let currentGridPos = position.toGridPosition()
-        let clearance = max(3.0, min(enemySize * 0.2, cellSize * 0.18))
+        let clearance = cornerClearance(for: cellSize)
         
         // Helper to check if a grid cell is blocked
         func isBlocked(_ gridPos: GridPosition) -> Bool {
@@ -756,6 +804,7 @@ class Enemy: SKNode {
         }
 
         if let bestCandidate {
+            Enemy.navigationDebugStats.collisionDetours += 1
             return bestCandidate
         }
 
@@ -766,6 +815,7 @@ class Enemy: SKNode {
             let toCenter = CGVector(dx: center.x - position.x, dy: center.y - position.y)
             let len = sqrt(toCenter.dx * toCenter.dx + toCenter.dy * toCenter.dy)
             if len > 0.001 {
+                Enemy.navigationDebugStats.nearestCellFallbacks += 1
                 let step = min(moveDistance, len)
                 return CGPoint(
                     x: position.x + toCenter.dx / len * step,
@@ -846,8 +896,10 @@ class Enemy: SKNode {
         let fullWidth: CGFloat = enemySize + 8
         
         // Update fill width using scale
-        healthBarFill.xScale = healthPercent
-        healthBarFill.position.x = -(fullWidth * (1 - healthPercent)) / 2
+        healthBarFill.xScale = healthBarBaseScaleX * healthPercent
+        healthBarFill.yScale = healthBarBaseScaleY
+        let scaledWidth = fullWidth * healthBarBaseScaleX
+        healthBarFill.position.x = -(scaledWidth * (1 - healthPercent)) / 2
         
         // Update color based on health
         if healthPercent > 0.6 {
@@ -857,6 +909,29 @@ class Enemy: SKNode {
         } else {
             healthBarFill.fillColor = .healthBarRed
         }
+    }
+
+    func configureHealthBarScale(x: CGFloat, y: CGFloat) {
+        healthBarBaseScaleX = max(0.1, x)
+        healthBarBaseScaleY = max(0.1, y)
+        healthBarFill.xScale = healthBarBaseScaleX
+        healthBarFill.yScale = healthBarBaseScaleY
+        updateHealthBar()
+    }
+
+    private func cornerClearance(for cellSize: CGFloat) -> CGFloat {
+        let tunedClearance: CGFloat
+        switch enemyType {
+        case .boss:
+            tunedClearance = min(enemySize * 0.42, cellSize * 0.28)
+        case .cavalry:
+            tunedClearance = min(enemySize * 0.32, cellSize * 0.24)
+        case .infantry:
+            tunedClearance = min(enemySize * 0.24, cellSize * 0.20)
+        case .flying:
+            tunedClearance = min(enemySize * 0.18, cellSize * 0.14)
+        }
+        return max(3.0, tunedClearance)
     }
     
     // MARK: - Death & Exit

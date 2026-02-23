@@ -116,8 +116,8 @@ final class BossEnemy: Enemy {
         healthBarBackground.position = CGPoint(x: 0, y: bossHealthBarY)
         healthBarBackground.zPosition = 10
         
-        // Also scale and reposition the fill bar
-        healthBarFill.setScale(3.0)
+        // Scale and reposition the fill bar while preserving left-anchored shrink behavior.
+        configureHealthBarScale(x: 3.0, y: 3.0)
         healthBarFill.position = CGPoint(x: 0, y: bossHealthBarY)
         healthBarFill.zPosition = 11
     }

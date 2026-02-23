@@ -22,16 +22,87 @@ final class PathfindingGrid {
     
     // Spawn positions (left side of the map)
     private(set) var spawnPositions: [GridPosition] = []
+
+    struct ZoneValidationResult {
+        let isValid: Bool
+        let issues: [String]
+
+        var message: String {
+            issues.isEmpty ? "OK" : issues.joined(separator: "; ")
+        }
+    }
+
+    /// Pure helper for validating zone constants against grid size.
+    /// This can be reused in tests to guard against future layout regressions.
+    static func validateZoneDefinitions(
+        width: Int,
+        height: Int,
+        spawnZoneWidth: Int,
+        spawnZoneHeight: Int,
+        exitZoneWidth: Int,
+        exitZoneHeight: Int
+    ) -> ZoneValidationResult {
+        var issues: [String] = []
+
+        if width <= 0 || height <= 0 {
+            issues.append("Grid dimensions must be positive")
+        }
+
+        if spawnZoneWidth <= 0 || spawnZoneHeight <= 0 {
+            issues.append("Spawn zone dimensions must be positive")
+        }
+        if exitZoneWidth <= 0 || exitZoneHeight <= 0 {
+            issues.append("Exit zone dimensions must be positive")
+        }
+
+        if spawnZoneWidth > width || spawnZoneHeight > height {
+            issues.append("Spawn zone exceeds grid bounds")
+        }
+        if exitZoneWidth > width || exitZoneHeight > height {
+            issues.append("Exit zone exceeds grid bounds")
+        }
+
+        if issues.isEmpty {
+            let spawnXRange = 0..<spawnZoneWidth
+            let spawnYRange = (height - spawnZoneHeight)..<height
+            let exitXRange = (width - exitZoneWidth)..<width
+            let exitYRange = 0..<exitZoneHeight
+            let zonesOverlap = spawnXRange.overlaps(exitXRange) && spawnYRange.overlaps(exitYRange)
+            if zonesOverlap {
+                issues.append("Spawn and exit zones overlap")
+            }
+        }
+
+        return ZoneValidationResult(isValid: issues.isEmpty, issues: issues)
+    }
     
     init(width: Int, height: Int) {
         self.width = width
         self.height = height
+
+        let zoneValidation = PathfindingGrid.validateZoneDefinitions(
+            width: width,
+            height: height,
+            spawnZoneWidth: GameConstants.spawnZoneWidth,
+            spawnZoneHeight: GameConstants.spawnZoneHeight,
+            exitZoneWidth: GameConstants.exitZoneWidth,
+            exitZoneHeight: GameConstants.exitZoneHeight
+        )
+        assert(zoneValidation.isValid, "Invalid pathfinding zone definitions: \(zoneValidation.message)")
+        if !zoneValidation.isValid {
+            print("PathfindingGrid warning: \(zoneValidation.message)")
+        }
         
         // Initialize all cells as walkable
         self.walkable = Array(repeating: Array(repeating: true, count: height), count: width)
         
         // Setup spawn and exit positions
         setupZones()
+
+        let expectedSpawnCount = GameConstants.spawnZoneWidth * GameConstants.spawnZoneHeight
+        let expectedExitCount = GameConstants.exitZoneWidth * GameConstants.exitZoneHeight
+        assert(spawnPositions.count == expectedSpawnCount, "Spawn zone cell count mismatch")
+        assert(exitPositions.count == expectedExitCount, "Exit zone cell count mismatch")
     }
     
     private func setupZones() {

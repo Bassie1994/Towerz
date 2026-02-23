@@ -78,18 +78,28 @@ final class WaveManager {
         var currentDelay: TimeInterval = 0
         
         for group in config.groups {
-            for i in 0..<group.count {
+            let adjustedCount = adjustedEnemyCount(for: group)
+            for i in 0..<adjustedCount {
                 spawnQueue.append((
                     type: group.type,
                     level: group.level,
                     delay: currentDelay + Double(i) * group.spawnInterval
                 ))
             }
-            currentDelay += Double(group.count) * group.spawnInterval + group.groupDelay
+            currentDelay += Double(adjustedCount) * group.spawnInterval + group.groupDelay
         }
         
         // Sort by delay
         spawnQueue.sort { $0.delay < $1.delay }
+    }
+
+    private func adjustedEnemyCount(for group: WaveConfig.EnemyGroup) -> Int {
+        guard group.count > 0 else { return 0 }
+        let scaled = Int((Double(group.count) * GameConstants.Balance.enemyCountMultiplier).rounded(.toNearestOrAwayFromZero))
+        if group.type == .boss {
+            return max(1, scaled)
+        }
+        return max(1, scaled)
     }
     
     // MARK: - Update

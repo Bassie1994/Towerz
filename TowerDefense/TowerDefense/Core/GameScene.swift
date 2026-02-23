@@ -39,6 +39,8 @@ final class GameScene: SKScene {
     
     // Grid visualization
     private var gridNode: SKNode?
+    private var navigationDebugLabel: SKLabelNode?
+    private var lastNavigationDebugUpdateTime: TimeInterval = 0
     
     // MARK: - Scene Lifecycle
     
@@ -76,6 +78,7 @@ final class GameScene: SKScene {
     }
     
     private func setupGameManager() {
+        Enemy.resetNavigationDebugStats()
         gameManager = GameManager()
         gameManager.setup(scene: self)
         
@@ -102,6 +105,33 @@ final class GameScene: SKScene {
         // Placement Preview
         placementPreviewNode = PlacementPreviewNode()
         gameLayer.addChild(placementPreviewNode)
+
+        setupNavigationDebugOverlay()
+    }
+
+    private func setupNavigationDebugOverlay() {
+        guard GameConstants.Debug.showNavigationDiagnostics else { return }
+
+        let label = SKLabelNode(fontNamed: "Menlo-Bold")
+        label.fontSize = 11
+        label.fontColor = SKColor(red: 0.8, green: 0.95, blue: 1.0, alpha: 1.0)
+        label.horizontalAlignmentMode = .left
+        label.verticalAlignmentMode = .top
+        label.position = CGPoint(x: 20, y: size.height - 90)
+        label.zPosition = GameConstants.ZPosition.hud.rawValue + 10
+        label.text = "NAV DBG"
+        uiLayer.addChild(label)
+        navigationDebugLabel = label
+    }
+
+    private func updateNavigationDebugOverlay(currentTime: TimeInterval) {
+        guard GameConstants.Debug.showNavigationDiagnostics,
+              let label = navigationDebugLabel else { return }
+        guard currentTime - lastNavigationDebugUpdateTime >= GameConstants.Debug.navigationOverlayUpdateInterval else { return }
+        lastNavigationDebugUpdateTime = currentTime
+
+        let stats = Enemy.navigationDebugSnapshot()
+        label.text = "NAV detours:\(stats.collisionDetours) rescue:\(stats.flowRescues) recover:\(stats.recoveryModeEntries) fallback:\(stats.nearestCellFallbacks)"
     }
     
     private func setupPlayfield() {
@@ -304,6 +334,7 @@ final class GameScene: SKScene {
         
         // Update UI
         updateUI()
+        updateNavigationDebugOverlay(currentTime: gameTime)
     }
     
     func updateUI() {
@@ -748,6 +779,8 @@ final class GameScene: SKScene {
         gameTime = 0
         lastUpdateTime = 0
         gameSpeed = 1.0
+        lastNavigationDebugUpdateTime = 0
+        Enemy.resetNavigationDebugStats()
         
         // Reset powers
         BlockManager.shared.reset()
