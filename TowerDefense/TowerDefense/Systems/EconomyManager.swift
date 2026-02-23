@@ -92,7 +92,7 @@ final class EconomyManager {
     
     @discardableResult
     func rewardForKill(enemy: Enemy) -> Int {
-        let reward = enemy.killReward
+        let reward = max(1, Int((Double(enemy.killReward) * GameConstants.Balance.incomeMultiplier).rounded(.toNearestOrAwayFromZero)))
         earn(reward)
         return reward
     }
@@ -100,7 +100,8 @@ final class EconomyManager {
     // MARK: - Wave Bonuses
     
     func waveCompletionBonus(waveNumber: Int) {
-        let bonus = 20 + waveNumber * 10
+        let baseBonus = 20 + waveNumber * 10
+        let bonus = max(1, Int((Double(baseBonus) * GameConstants.Balance.incomeMultiplier).rounded(.toNearestOrAwayFromZero)))
         earn(bonus)
     }
     

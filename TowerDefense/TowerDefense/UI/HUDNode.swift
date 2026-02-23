@@ -680,6 +680,7 @@ final class HUDNode: SKNode {
         // Check pause button (button is 40x30)
         let pauseBounds = CGRect(x: pauseButton.position.x - 20, y: pauseButton.position.y - 15, width: 40, height: 30)
         if pauseBounds.contains(location) {
+            delegate?.hudDidTapPause()
             showPauseMenu()
             animateButtonPress(pauseButton)
             return true
@@ -759,9 +760,6 @@ final class HUDNode: SKNode {
     // MARK: - Pause Menu
     
     private func showPauseMenu() {
-        // Pause the game
-        delegate?.hudDidTapPause()
-        
         // Remove any existing pause menu
         childNode(withName: "pauseMenuOverlay")?.removeFromParent()
         
@@ -1006,9 +1004,8 @@ final class HUDNode: SKNode {
             return true
         }
         
-        // Touch on overlay but not on button - consume it
-        let overlayBounds = CGRect(x: -175, y: -menuHeight/2, width: 350, height: menuHeight)
-        return overlayBounds.contains(localPos)
+        // Consume all touches while pause menu is visible to prevent pass-through.
+        return true
     }
     
     private func showHighscoresFromPauseMenu() {

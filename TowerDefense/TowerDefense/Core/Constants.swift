@@ -25,6 +25,22 @@ enum GameConstants {
     // Starting resources
     static let startingLives = 20
     static let startingMoney = 500
+
+    // Global balance knobs
+    enum Balance {
+        // Target: about 50% fewer enemies spawned per wave.
+        static let enemyCountMultiplier: Double = 0.5
+
+        // Target: about 10% lower income from rewards/bonuses.
+        static let incomeMultiplier: Double = 0.9
+    }
+
+    // Debug feature toggles
+    enum Debug {
+        // Set true locally when tuning enemy movement and stuck recovery.
+        static let showNavigationDiagnostics = false
+        static let navigationOverlayUpdateInterval: Double = 0.25
+    }
     
     // Z-positions for layering
     enum ZPosition: CGFloat {

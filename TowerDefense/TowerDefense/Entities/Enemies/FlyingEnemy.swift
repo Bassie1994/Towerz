@@ -152,7 +152,7 @@ final class FlyingEnemy: Enemy {
         
         // Check exit (bottom-right corner)
         let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
-        let exitY = GameConstants.playFieldOrigin.y + CGFloat(4) * GameConstants.cellSize
+        let exitY = GameConstants.playFieldOrigin.y + CGFloat(GameConstants.exitZoneHeight) * GameConstants.cellSize
         if position.x >= exitX && position.y < exitY {
             isAlive = false
             // AudioManager.shared.playSound(.enemyReachExit)
