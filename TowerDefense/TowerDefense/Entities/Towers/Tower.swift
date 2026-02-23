@@ -261,10 +261,10 @@ class Tower: SKNode {
     
     func getUpgradeCost() -> Int? {
         guard upgradeLevel < maxUpgradeLevel else { return nil }
-        // Upgrade costs scale: 40%, 50%, 60% of base cost
-        // Level 1→2: 40%, Level 2→3: 50%, Level 3→4: 60%
-        let costPercent = 0.40 + Double(upgradeLevel) * 0.10
-        return Int(Double(towerType.baseCost) * costPercent)
+        // Requested scaling: level 1 = 3x, level 2 = 6x, level 3 = 10x
+        let costMultipliers: [Double] = [3.0, 6.0, 10.0]
+        let multiplier = costMultipliers[min(upgradeLevel, costMultipliers.count - 1)]
+        return Int((Double(towerType.baseCost) * multiplier).rounded(.toNearestOrAwayFromZero))
     }
     
     func canUpgrade() -> Bool {
@@ -280,19 +280,13 @@ class Tower: SKNode {
         
         upgradeLevel += 1
         
-        // BUFFED upgrade scaling - makes upgrades more valuable than buying new towers
-        // Each upgrade gives 35% damage, 15% range, 25% fire rate
-        // Level 4 tower has: 205% damage, 145% range, 175% fire rate
-        // At 150% total cost (40% + 50% + 60% = 150% for all upgrades)
-        // Much more efficient than buying multiple towers!
-        // So upgrading one tower is more efficient!
-        let upgradeDamageMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.35)  // +35% per level
-        let upgradeRangeMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.15)   // +15% per level
-        let upgradeFireRateMultiplier = 1.0 + (CGFloat(upgradeLevel) * 0.25) // +25% per level
-        
-        damage = baseDamage * upgradeDamageMultiplier
-        range = baseRange * upgradeRangeMultiplier
-        fireRate = baseFireRate * upgradeFireRateMultiplier
+        // Requested scaling: level 1 = 3x, level 2 = 6x, level 3 = 10x
+        let statMultipliers: [CGFloat] = [3.0, 6.0, 10.0]
+        let upgradeStatMultiplier = statMultipliers[min(upgradeLevel - 1, statMultipliers.count - 1)]
+
+        damage = baseDamage * upgradeStatMultiplier
+        range = baseRange * upgradeStatMultiplier
+        fireRate = baseFireRate * upgradeStatMultiplier
         
         // Update range indicator
         let newPath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)

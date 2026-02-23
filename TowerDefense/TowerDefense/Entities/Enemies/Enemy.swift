@@ -246,14 +246,20 @@ class Enemy: SKNode {
         // Apply separation from other enemies
         let separation = calculateSeparation(from: enemies)
         
-        // Apply corridor centering - keep units in middle 25% of available path
+        // Apply corridor centering - keep units in middle of available path width
         let centering = calculateCorridorCentering()
-        
-        // Combine forces (centering is stronger for larger units)
-        let centeringStrength: CGFloat = enemyType == .boss ? 0.6 : (enemyType == .cavalry ? 0.5 : 0.4)
+
+        // Explicit centerline guidance to keep units on path center segments.
+        let centerlineGuidance = calculateCenterlineGuidance()
+
+        // Combine forces:
+        // - centering keeps units away from walls
+        // - centerline keeps them on the middle of the active flow segment
+        let centeringStrength: CGFloat = enemyType == .boss ? 0.35 : (enemyType == .cavalry ? 0.30 : 0.25)
+        let centerlineStrength: CGFloat = enemyType == .boss ? 0.95 : (enemyType == .cavalry ? 0.80 : 0.70)
         var combinedDirection = CGVector(
-            dx: direction.dx + separation.dx * 0.3 + centering.dx * centeringStrength,
-            dy: direction.dy + separation.dy * 0.3 + centering.dy * centeringStrength
+            dx: direction.dx + separation.dx * 0.3 + centering.dx * centeringStrength + centerlineGuidance.dx * centerlineStrength,
+            dy: direction.dy + separation.dy * 0.3 + centering.dy * centeringStrength + centerlineGuidance.dy * centerlineStrength
         )
         
         // Safety: ensure combined direction is valid before normalizing
@@ -695,6 +701,88 @@ class Enemy: SKNode {
             return CGVector(dx: centeringForce.dx / len, dy: centeringForce.dy / len)
         }
         return .zero
+    }
+
+    /// Calculate steering toward the centerline of the current flow segment.
+    /// This prevents units from riding along cell edges and clipping tower corners.
+    private func calculateCenterlineGuidance() -> CGVector {
+        guard let flowField = delegate?.getFlowField() else { return .zero }
+
+        let gridPos = position.toGridPosition()
+        guard gridPos.x >= 0 && gridPos.x < GameConstants.gridWidth &&
+              gridPos.y >= 0 && gridPos.y < GameConstants.gridHeight else {
+            return .zero
+        }
+
+        let currentCenter = gridPos.toWorldPosition()
+
+        guard let dir = flowField.getDirection(at: gridPos) else {
+            // If direction is unavailable, fall back to local cell center.
+            let toCenter = CGVector(dx: currentCenter.x - position.x, dy: currentCenter.y - position.y)
+            let len = sqrt(toCenter.dx * toCenter.dx + toCenter.dy * toCenter.dy)
+            guard len > 0.05 else { return .zero }
+            return CGVector(dx: toCenter.dx / len, dy: toCenter.dy / len)
+        }
+
+        // Convert flow vector to a reliable grid step.
+        var stepX = 0
+        var stepY = 0
+        if dir.dx > 0.2 { stepX = 1 }
+        else if dir.dx < -0.2 { stepX = -1 }
+
+        if dir.dy > 0.2 { stepY = 1 }
+        else if dir.dy < -0.2 { stepY = -1 }
+
+        // Fallback when vector is shallow.
+        if stepX == 0 && stepY == 0 {
+            if abs(dir.dx) >= abs(dir.dy) {
+                stepX = dir.dx >= 0 ? 1 : -1
+            } else {
+                stepY = dir.dy >= 0 ? 1 : -1
+            }
+        }
+
+        let nextGrid = GridPosition(
+            x: max(0, min(GameConstants.gridWidth - 1, gridPos.x + stepX)),
+            y: max(0, min(GameConstants.gridHeight - 1, gridPos.y + stepY))
+        )
+        let nextCenter = nextGrid.toWorldPosition()
+
+        let segX = nextCenter.x - currentCenter.x
+        let segY = nextCenter.y - currentCenter.y
+        let segLenSq = segX * segX + segY * segY
+
+        // Degenerate segment: just steer to current center.
+        guard segLenSq > 0.001 else {
+            let toCenter = CGVector(dx: currentCenter.x - position.x, dy: currentCenter.y - position.y)
+            let len = sqrt(toCenter.dx * toCenter.dx + toCenter.dy * toCenter.dy)
+            guard len > 0.05 else { return .zero }
+            return CGVector(dx: toCenter.dx / len, dy: toCenter.dy / len)
+        }
+
+        // Project position onto currentCenter->nextCenter to get closest point on centerline.
+        let relX = position.x - currentCenter.x
+        let relY = position.y - currentCenter.y
+        let tRaw = (relX * segX + relY * segY) / segLenSq
+        let t = max(0, min(1, tRaw))
+
+        let closestPoint = CGPoint(
+            x: currentCenter.x + segX * t,
+            y: currentCenter.y + segY * t
+        )
+
+        let toLine = CGVector(dx: closestPoint.x - position.x, dy: closestPoint.y - position.y)
+        let toCenter = CGVector(dx: currentCenter.x - position.x, dy: currentCenter.y - position.y)
+
+        // Blend line attraction with cell-center attraction for stable movement.
+        let guide = CGVector(
+            dx: toLine.dx * 0.85 + toCenter.dx * 0.35,
+            dy: toLine.dy * 0.85 + toCenter.dy * 0.35
+        )
+
+        let len = sqrt(guide.dx * guide.dx + guide.dy * guide.dy)
+        guard len > 0.05 else { return .zero }
+        return CGVector(dx: guide.dx / len, dy: guide.dy / len)
     }
     
     /// Robust maze collision:

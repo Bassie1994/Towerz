@@ -28,11 +28,11 @@ enum GameConstants {
 
     // Global balance knobs
     enum Balance {
-        // Target: about 50% fewer enemies spawned per wave.
-        static let enemyCountMultiplier: Double = 0.5
-
-        // Target: about 10% lower income from rewards/bonuses.
-        static let incomeMultiplier: Double = 0.9
+        // Reapplied tuning pass:
+        // - 50% fewer enemies once more on top of previous pass
+        // - ~10% lower income once more on top of previous pass
+        static let enemyCountMultiplier: Double = 0.25
+        static let incomeMultiplier: Double = 0.81
     }
 
     // Debug feature toggles
