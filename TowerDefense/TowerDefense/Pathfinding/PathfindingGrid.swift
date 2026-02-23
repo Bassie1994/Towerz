@@ -12,6 +12,7 @@ final class PathfindingGrid {
     
     // Track tower positions for quick lookup
     private var towerPositions: Set<GridPosition> = []
+    private var staticBlockedPositions: Set<GridPosition> = []
     
     // Cached flow field (invalidated when grid changes)
     private var cachedFlowField: FlowField?
@@ -142,15 +143,43 @@ final class PathfindingGrid {
     
     func blockCell(_ position: GridPosition) {
         guard isValidPosition(position) else { return }
-        walkable[position.x][position.y] = false
         towerPositions.insert(position)
+        walkable[position.x][position.y] = false
         invalidateFlowField()
     }
     
     func unblockCell(_ position: GridPosition) {
         guard isValidPosition(position) else { return }
-        walkable[position.x][position.y] = true
         towerPositions.remove(position)
+        walkable[position.x][position.y] = !staticBlockedPositions.contains(position)
+        invalidateFlowField()
+    }
+
+    /// Blocks/unblocks terrain independently from tower occupancy.
+    /// Used by Puzzle mode elevated tiles.
+    func setStaticBlocked(_ position: GridPosition, blocked: Bool) {
+        guard isValidPosition(position) else { return }
+        if blocked {
+            staticBlockedPositions.insert(position)
+            walkable[position.x][position.y] = false
+        } else {
+            staticBlockedPositions.remove(position)
+            walkable[position.x][position.y] = !towerPositions.contains(position)
+        }
+        invalidateFlowField()
+    }
+
+    func isStaticBlocked(_ position: GridPosition) -> Bool {
+        return staticBlockedPositions.contains(position)
+    }
+
+    func clearStaticBlockedCells() {
+        for position in staticBlockedPositions {
+            if !towerPositions.contains(position) {
+                walkable[position.x][position.y] = true
+            }
+        }
+        staticBlockedPositions.removeAll()
         invalidateFlowField()
     }
     

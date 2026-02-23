@@ -5,6 +5,7 @@ protocol EnemyDelegate: AnyObject {
     func enemyDidReachExit(_ enemy: Enemy)
     func enemyDidDie(_ enemy: Enemy)
     func getFlowField() -> FlowField?
+    func isGridCellWalkable(_ position: GridPosition) -> Bool
 }
 
 /// Base class for all enemy types
@@ -476,7 +477,9 @@ class Enemy: SKNode {
     }
 
     func shouldUseCenterLockedPathing() -> Bool {
-        return false
+        // Apply center-locked movement to non-standard ground enemies.
+        // Flying units have their own direct-path movement logic.
+        return enemyType == .cavalry || enemyType == .shielded || enemyType == .support || enemyType == .boss
     }
 
     private func handleCenterLockedPathing(deltaTime: TimeInterval, actualSpeed: CGFloat) -> CGPoint? {
@@ -877,6 +880,7 @@ class Enemy: SKNode {
         let cellSize = GameConstants.cellSize
         let origin = GameConstants.playFieldOrigin
         let flowField = delegate?.getFlowField()
+        let enemyDelegate = delegate
         let currentGridPos = position.toGridPosition()
         let clearance = cornerClearance(for: cellSize)
         
@@ -885,8 +889,8 @@ class Enemy: SKNode {
             guard gridPos.x >= 0 && gridPos.x < GameConstants.gridWidth &&
                   gridPos.y >= 0 && gridPos.y < GameConstants.gridHeight else { return true }
             if gridPos.isInSpawnZone() || gridPos.isInExitZone() { return false }
-            guard let flowField else { return true }
-            return flowField.getDirection(at: gridPos) == nil
+            guard let enemyDelegate else { return true }
+            return !enemyDelegate.isGridCellWalkable(gridPos)
         }
         
         // Helper to get cell center

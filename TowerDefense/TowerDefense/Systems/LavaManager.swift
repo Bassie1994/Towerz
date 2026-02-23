@@ -6,10 +6,14 @@ final class LavaManager {
     static let shared = LavaManager()
     
     // Configuration
-    let lavaDuration: TimeInterval = 10.0     // How long lava lasts
-    let lavaCooldown: TimeInterval = 45.0     // Cooldown between uses
-    let lavaDamagePerSecond: CGFloat = 25.0   // Damage dealt per second
-    let lavaRadius: CGFloat = 80.0            // Area of effect
+    let lavaDuration: TimeInterval = 10.0           // How long lava lasts
+    let lavaCooldown: TimeInterval = 45.0           // Cooldown between uses
+    let lavaTotalHealthPercentDamage: CGFloat = 0.30 // ~30% max HP over full duration
+    let lavaRadius: CGFloat = 80.0                  // Area of effect
+
+    var lavaPercentDamagePerSecond: CGFloat {
+        return lavaTotalHealthPercentDamage / CGFloat(lavaDuration)
+    }
     
     // State
     private(set) var isActive: Bool = false

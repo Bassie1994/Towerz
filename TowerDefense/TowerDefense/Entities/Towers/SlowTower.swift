@@ -12,8 +12,8 @@ final class SlowTower: Tower {
         fireRate: 2.0   // Apply slow every 0.5 seconds
     )
     
-    var slowStrength: CGFloat = 0.5   // 50% speed reduction
-    var slowDuration: TimeInterval = 2.0
+    var slowStrength: CGFloat = 0.35   // 35% speed reduction
+    var slowDuration: TimeInterval = 1.6
     
     // Visual
     let slowFieldNode: SKShapeNode
@@ -146,8 +146,8 @@ final class SlowTower: Tower {
         
         if result {
             // Increase slow strength and duration
-            slowStrength = min(0.7, 0.5 + CGFloat(upgradeLevel) * 0.1)
-            slowDuration = 2.0 + Double(upgradeLevel) * 0.5
+            slowStrength = min(0.55, 0.35 + CGFloat(upgradeLevel) * 0.04)
+            slowDuration = 1.6 + Double(upgradeLevel) * 0.25
             
             // Update visual
             let newPath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)

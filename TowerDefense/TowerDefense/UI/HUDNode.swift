@@ -43,6 +43,7 @@ final class HUDNode: SKNode {
     private(set) var isTrashHighlighted = false
     private(set) var isAutoStartEnabled = false
     private var isWaveActive = false
+    private var currentGameTime: TimeInterval = 0
 
     // Block power
     private let blockButton: SKShapeNode
@@ -426,6 +427,7 @@ final class HUDNode: SKNode {
     }
     
     func updateBlock(currentTime: TimeInterval) {
+        currentGameTime = currentTime
         let block = BlockManager.shared
         
         // Update active ring visibility
@@ -479,6 +481,7 @@ final class HUDNode: SKNode {
     }
     
     func updateLava(currentTime: TimeInterval) {
+        currentGameTime = currentTime
         let lava = LavaManager.shared
         
         // Update active ring visibility
@@ -633,6 +636,10 @@ final class HUDNode: SKNode {
         if childNode(withName: "loadConfirmOverlay") != nil {
             return handleLoadConfirmTouch(at: location)
         }
+
+        if childNode(withName: "guideOverlay") != nil {
+            return handleGuideTouch(at: location)
+        }
         
         // Check highscores overlay
         if let highscoresOverlay = childNode(withName: "highscoresOverlay") {
@@ -680,8 +687,13 @@ final class HUDNode: SKNode {
         // Check pause button (button is 40x30)
         let pauseBounds = CGRect(x: pauseButton.position.x - 20, y: pauseButton.position.y - 15, width: 40, height: 30)
         if pauseBounds.contains(location) {
-            delegate?.hudDidTapPause()
-            showPauseMenu()
+            if childNode(withName: "pauseMenuOverlay") != nil {
+                childNode(withName: "pauseMenuOverlay")?.removeFromParent()
+                delegate?.hudDidTapPause()
+            } else {
+                delegate?.hudDidTapPause()
+                showPauseMenu()
+            }
             animateButtonPress(pauseButton)
             return true
         }
@@ -689,7 +701,7 @@ final class HUDNode: SKNode {
         // Check block button
         let blockDistance = sqrt(pow(location.x - blockButton.position.x, 2) + pow(location.y - blockButton.position.y, 2))
         if blockDistance <= 40 {  // Touch radius slightly larger than button
-            if BlockManager.shared.canActivate(currentTime: 0) {  // Will check properly when placed
+            if BlockManager.shared.canActivate(currentTime: currentGameTime) {
                 isBlockPlacementMode = true
                 blockButton.strokeColor = .white
                 blockButton.lineWidth = 4
@@ -701,7 +713,7 @@ final class HUDNode: SKNode {
         // Check lava button
         let lavaDistance = sqrt(pow(location.x - lavaButton.position.x, 2) + pow(location.y - lavaButton.position.y, 2))
         if lavaDistance <= 40 {
-            if LavaManager.shared.canActivate(currentTime: 0) {  // Will check properly when placed
+            if LavaManager.shared.canActivate(currentTime: currentGameTime) {
                 isLavaPlacementMode = true
                 lavaButton.strokeColor = .white
                 lavaButton.lineWidth = 4
@@ -756,6 +768,25 @@ final class HUDNode: SKNode {
     func getSpeedMultiplier() -> CGFloat {
         return speedMultiplier
     }
+
+    func syncPauseMenuVisibility(isPaused: Bool) {
+        if !isPaused {
+            removePauseRelatedOverlays()
+        }
+    }
+
+    private func removePauseRelatedOverlays() {
+        let overlayNames = [
+            "pauseMenuOverlay",
+            "highscoresOverlay",
+            "saveConfirmOverlay",
+            "loadConfirmOverlay",
+            "guideOverlay"
+        ]
+        for name in overlayNames {
+            childNode(withName: name)?.removeFromParent()
+        }
+    }
     
     // MARK: - Pause Menu
     
@@ -765,7 +796,7 @@ final class HUDNode: SKNode {
         
         // Create larger overlay for all options
         let menuWidth: CGFloat = 350
-        let menuHeight: CGFloat = 480
+        let menuHeight: CGFloat = 540
         let overlay = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 15)
         overlay.fillColor = SKColor(red: 0.08, green: 0.08, blue: 0.12, alpha: 0.98)
         overlay.strokeColor = SKColor(red: 0.4, green: 0.5, blue: 0.7, alpha: 1.0)
@@ -826,6 +857,23 @@ final class HUDNode: SKNode {
         highscoreLabel.text = "🏆 Highscores"
         highscoreLabel.verticalAlignmentMode = .center
         highscoreBtn.addChild(highscoreLabel)
+        yPos -= buttonSpacing
+
+        // Guide button
+        let guideBtn = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
+        guideBtn.fillColor = SKColor(red: 0.32, green: 0.48, blue: 0.3, alpha: 1.0)
+        guideBtn.strokeColor = .white
+        guideBtn.lineWidth = 2
+        guideBtn.position = CGPoint(x: 0, y: yPos)
+        guideBtn.name = "pauseMenuGuide"
+        overlay.addChild(guideBtn)
+
+        let guideLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        guideLabel.fontSize = 18
+        guideLabel.fontColor = .white
+        guideLabel.text = "📘 Enemy & Power Guide"
+        guideLabel.verticalAlignmentMode = .center
+        guideBtn.addChild(guideLabel)
         yPos -= buttonSpacing
         
         // Save button
@@ -927,7 +975,7 @@ final class HUDNode: SKNode {
         
         let buttonWidth: CGFloat = 260
         let buttonHeight: CGFloat = 50
-        let menuHeight: CGFloat = 480
+        let menuHeight: CGFloat = 540
         var yPos: CGFloat = menuHeight / 2 - 50 - 60  // Start position of first button
         let buttonSpacing: CGFloat = 58
         
@@ -960,6 +1008,14 @@ final class HUDNode: SKNode {
         if let btn = checkButton("pauseMenuHighscores", yCenter: yPos) {
             animateButtonPress(btn)
             showHighscoresFromPauseMenu()
+            return true
+        }
+        yPos -= buttonSpacing
+
+        // Check guide button
+        if let btn = checkButton("pauseMenuGuide", yCenter: yPos) {
+            animateButtonPress(btn)
+            showGuideOverlay()
             return true
         }
         yPos -= buttonSpacing
@@ -1087,6 +1143,89 @@ final class HUDNode: SKNode {
         backBtn.addChild(backLabel)
         
         addChild(overlay)
+    }
+
+    private func showGuideOverlay() {
+        childNode(withName: "pauseMenuOverlay")?.removeFromParent()
+        childNode(withName: "guideOverlay")?.removeFromParent()
+
+        let overlay = SKShapeNode(rectOf: CGSize(width: 680, height: 560), cornerRadius: 15)
+        overlay.fillColor = SKColor(red: 0.08, green: 0.1, blue: 0.12, alpha: 0.98)
+        overlay.strokeColor = SKColor(red: 0.4, green: 0.55, blue: 0.7, alpha: 1.0)
+        overlay.lineWidth = 4
+        overlay.position = CGPoint(x: 667, y: 375)
+        overlay.zPosition = GameConstants.ZPosition.menu.rawValue
+        overlay.name = "guideOverlay"
+
+        let title = SKLabelNode(fontNamed: "Helvetica-Bold")
+        title.fontSize = 28
+        title.fontColor = .white
+        title.text = "Enemy & Power Guide"
+        title.position = CGPoint(x: 0, y: 240)
+        overlay.addChild(title)
+
+        let subtitle = SKLabelNode(fontNamed: "Helvetica")
+        subtitle.fontSize = 14
+        subtitle.fontColor = SKColor(white: 0.8, alpha: 1.0)
+        subtitle.text = "Short summary of each enemy and active power."
+        subtitle.position = CGPoint(x: 0, y: 214)
+        overlay.addChild(subtitle)
+
+        let rows: [(String, String)] = [
+            ("Infantry", "Balanced ground unit."),
+            ("Cavalry", "Tanky and armored ground unit."),
+            ("Flying", "Ignores towers on the ground."),
+            ("Shielded", "Starts with temporary damage reduction shield."),
+            ("Support", "Buffs nearby allies with speed and mitigation."),
+            ("Boss", "Very high HP, slow, and center-locked pathing."),
+            ("Block Power", "Place a temporary obstacle to stop/redirect enemies."),
+            ("Lava Power", "Damages enemies over time in an area (~30% max HP if full duration).")
+        ]
+
+        var yPos: CGFloat = 170
+        for (name, description) in rows {
+            let rowLabel = SKLabelNode(fontNamed: "Helvetica")
+            rowLabel.fontSize = 16
+            rowLabel.fontColor = .white
+            rowLabel.horizontalAlignmentMode = .left
+            rowLabel.text = "• \(name): \(description)"
+            rowLabel.position = CGPoint(x: -310, y: yPos)
+            overlay.addChild(rowLabel)
+            yPos -= 42
+        }
+
+        let backBtn = SKShapeNode(rectOf: CGSize(width: 150, height: 45), cornerRadius: 10)
+        backBtn.fillColor = SKColor(red: 0.3, green: 0.3, blue: 0.4, alpha: 1.0)
+        backBtn.strokeColor = .white
+        backBtn.lineWidth = 2
+        backBtn.position = CGPoint(x: 0, y: -235)
+        backBtn.name = "guideBack"
+        overlay.addChild(backBtn)
+
+        let backLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        backLabel.fontSize = 18
+        backLabel.fontColor = .white
+        backLabel.text = "← Back"
+        backLabel.verticalAlignmentMode = .center
+        backBtn.addChild(backLabel)
+
+        addChild(overlay)
+    }
+
+    private func handleGuideTouch(at location: CGPoint) -> Bool {
+        guard let overlay = childNode(withName: "guideOverlay") else { return false }
+        let localPos = convert(location, to: overlay)
+
+        if let _ = overlay.childNode(withName: "guideBack") as? SKShapeNode {
+            let bounds = CGRect(x: -75, y: -257, width: 150, height: 45)
+            if bounds.contains(localPos) {
+                overlay.removeFromParent()
+                showPauseMenu()
+                return true
+            }
+        }
+
+        return true
     }
     
     private func showSecretMessage() {

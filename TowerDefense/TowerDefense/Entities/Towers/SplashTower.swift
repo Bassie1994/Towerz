@@ -148,6 +148,9 @@ final class SplashTower: Tower {
         for enemy in enemies where enemy.isAlive && enemy.enemyType != .flying {
             let distance = impactPosition.distance(to: enemy.position)
             if distance <= effectiveSplashRadius {
+                if isElevated && position.distance(to: enemy.position) < GameConstants.cellSize {
+                    continue
+                }
                 // Calculate damage with falloff
                 let falloffFactor = 1.0 - (distance / effectiveSplashRadius) * splashDamageFalloff
                 let actualDamage = effectiveDamage * falloffFactor
