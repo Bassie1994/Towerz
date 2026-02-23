@@ -36,6 +36,7 @@ final class GameScene: SKScene {
     private var lastUpdateTime: TimeInterval = 0
     private var gameSpeed: CGFloat = 1.0
     private var gameTime: TimeInterval = 0  // Accumulated game time (respects speed)
+    private var currentGameMode: GameMode = .campaign
     
     // Grid visualization
     private var gridNode: SKNode?
@@ -52,8 +53,7 @@ final class GameScene: SKScene {
         setupGameManager()
         setupUI()
         setupPlayfield()
-        
-        gameManager.startGame()
+        showGameModeMenu()
     }
     
     // MARK: - Setup
@@ -284,6 +284,146 @@ final class GameScene: SKScene {
         labelNode.zRotation = .pi / 2
         zone.addChild(labelNode)
     }
+
+    private func showGameModeMenu() {
+        childNode(withName: "gameModeOverlay")?.removeFromParent()
+
+        let overlay = SKNode()
+        overlay.name = "gameModeOverlay"
+        overlay.zPosition = GameConstants.ZPosition.menu.rawValue + 50
+
+        let dimmer = SKShapeNode(rectOf: size)
+        dimmer.fillColor = SKColor.black.withAlphaComponent(0.7)
+        dimmer.strokeColor = .clear
+        dimmer.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        dimmer.name = "modeDimmer"
+        overlay.addChild(dimmer)
+
+        let panel = SKShapeNode(rectOf: CGSize(width: 520, height: 360), cornerRadius: 16)
+        panel.fillColor = SKColor(red: 0.1, green: 0.12, blue: 0.16, alpha: 0.98)
+        panel.strokeColor = SKColor(red: 0.45, green: 0.55, blue: 0.75, alpha: 1.0)
+        panel.lineWidth = 3
+        panel.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        panel.name = "modePanel"
+        overlay.addChild(panel)
+
+        let title = SKLabelNode(fontNamed: "Helvetica-Bold")
+        title.fontSize = 30
+        title.fontColor = .white
+        title.text = "Choose Game Mode"
+        title.position = CGPoint(x: 0, y: 125)
+        panel.addChild(title)
+
+        let subtitle = SKLabelNode(fontNamed: "Helvetica")
+        subtitle.fontSize = 14
+        subtitle.fontColor = SKColor(white: 0.8, alpha: 1.0)
+        subtitle.text = "Campaign is classic. Endless keeps scaling forever."
+        subtitle.position = CGPoint(x: 0, y: 92)
+        panel.addChild(subtitle)
+
+        func makeModeButton(name: String, text: String, subtext: String, color: SKColor, y: CGFloat) -> SKShapeNode {
+            let button = SKShapeNode(rectOf: CGSize(width: 420, height: 90), cornerRadius: 12)
+            button.fillColor = color
+            button.strokeColor = .white
+            button.lineWidth = 2
+            button.position = CGPoint(x: 0, y: y)
+            button.name = name
+
+            let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+            label.fontSize = 24
+            label.fontColor = .white
+            label.text = text
+            label.position = CGPoint(x: 0, y: 8)
+            label.name = "\(name)_label"
+            button.addChild(label)
+
+            let detail = SKLabelNode(fontNamed: "Helvetica")
+            detail.fontSize = 13
+            detail.fontColor = SKColor(white: 0.9, alpha: 0.95)
+            detail.text = subtext
+            detail.position = CGPoint(x: 0, y: -22)
+            detail.name = "\(name)_detail"
+            button.addChild(detail)
+
+            return button
+        }
+
+        let campaignButton = makeModeButton(
+            name: "modeCampaignButton",
+            text: "Campaign",
+            subtext: "Start at Level 1, complete all 50 levels",
+            color: SKColor(red: 0.24, green: 0.45, blue: 0.7, alpha: 1.0),
+            y: 28
+        )
+        panel.addChild(campaignButton)
+
+        let endlessButton = makeModeButton(
+            name: "modeEndlessButton",
+            text: "Endless",
+            subtext: "3000 coins, starts at Level 5, scales every 50 levels",
+            color: SKColor(red: 0.6, green: 0.32, blue: 0.7, alpha: 1.0),
+            y: -86
+        )
+        panel.addChild(endlessButton)
+
+        addChild(overlay)
+    }
+
+    private func handleGameModeTouch(at location: CGPoint) -> Bool {
+        guard childNode(withName: "gameModeOverlay") != nil else { return false }
+        let touchedNodes = nodes(at: location)
+
+        for node in touchedNodes {
+            let hitName = node.name ?? node.parent?.name
+            if hitName == "modeCampaignButton" || hitName == "modeCampaignButton_label" || hitName == "modeCampaignButton_detail" {
+                beginGame(mode: .campaign)
+                return true
+            }
+            if hitName == "modeEndlessButton" || hitName == "modeEndlessButton_label" || hitName == "modeEndlessButton_detail" {
+                beginGame(mode: .endless)
+                return true
+            }
+        }
+
+        // Consume touches while mode picker is shown.
+        return true
+    }
+
+    private func beginGame(mode: GameMode) {
+        currentGameMode = mode
+        childNode(withName: "gameModeOverlay")?.removeFromParent()
+        gameManager.configureGameMode(mode)
+        gameManager.startGame()
+
+        if mode == .endless {
+            if gameTime < 0.1 {
+                gameTime = 0.1
+            }
+            gameManager.startWave(currentTime: gameTime)
+        }
+
+        updateUI()
+    }
+
+    private func showEndlessCycleBanner(_ transition: GameManager.EndlessCycleTransition) {
+        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        label.fontSize = 20
+        label.fontColor = SKColor(red: 1.0, green: 0.9, blue: 0.3, alpha: 1.0)
+        let difficulty = Int(transition.difficultyMultiplier.rounded(.toNearestOrAwayFromZero))
+        label.text = "ENDLESS CYCLE \(transition.cycle + 1): x\(difficulty) difficulty • Max upgrade \(transition.maxUpgradeLevel)"
+        label.position = CGPoint(x: size.width / 2, y: size.height / 2 + 130)
+        label.zPosition = GameConstants.ZPosition.effects.rawValue + 120
+        label.alpha = 0
+        addChild(label)
+
+        let animation = SKAction.sequence([
+            SKAction.fadeIn(withDuration: 0.2),
+            SKAction.wait(forDuration: 2.1),
+            SKAction.fadeOut(withDuration: 0.4),
+            SKAction.removeFromParent()
+        ])
+        label.run(animation)
+    }
     
     // MARK: - Update Loop
     
@@ -370,6 +510,7 @@ final class GameScene: SKScene {
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if childNode(withName: "gameModeOverlay") != nil { return }
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
@@ -384,6 +525,7 @@ final class GameScene: SKScene {
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if childNode(withName: "gameModeOverlay") != nil { return }
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
@@ -406,6 +548,11 @@ final class GameScene: SKScene {
         // Check conversion overlay first
         if let overlay = childNode(withName: "conversionOverlay") {
             handleConversionTouch(at: location, overlay: overlay)
+            return
+        }
+
+        // Require selecting a start mode before interacting with gameplay.
+        if handleGameModeTouch(at: location) {
             return
         }
         
@@ -713,7 +860,8 @@ final class GameScene: SKScene {
         case .antiAir:
             tower = AntiAirTower(gridPosition: gridPosition)
         }
-        
+
+        tower.setMaxUpgradeLevel(gameManager.maxTowerUpgradeLevel)
         tower.delegate = self
         towers.append(tower)
         towerLayer.addChild(tower)
@@ -849,8 +997,10 @@ final class GameScene: SKScene {
         LavaManager.shared.reset()
         
         // Reset managers
+        let modeToRestart = currentGameMode
         gameManager = GameManager()
         gameManager.setup(scene: self)
+        gameManager.configureGameMode(modeToRestart)
         
         // Remove overlays
         hudNode.childNode(withName: "gameOverOverlay")?.removeFromParent()
@@ -858,10 +1008,21 @@ final class GameScene: SKScene {
         
         // Restart
         gameManager.startGame()
+        if modeToRestart == .endless {
+            gameTime = max(gameTime, 0.1)
+            gameManager.startWave(currentTime: gameTime)
+        }
         updateUI()
     }
     
     // MARK: - Public Accessors
+
+    func applyTowerUpgradeLevelCap(_ maxLevel: Int) {
+        for tower in towers {
+            tower.setMaxUpgradeLevel(maxLevel)
+        }
+        towerInfoNode.updateContent()
+    }
     
     func getAllEnemies() -> [Enemy] {
         return enemies
@@ -887,6 +1048,9 @@ extension GameScene: HUDNodeDelegate {
             gameTime = 0.1
         }
         gameManager.startWave(currentTime: gameTime)
+        if let transition = gameManager.consumePendingEndlessTransition() {
+            showEndlessCycleBanner(transition)
+        }
     }
     
     func hudDidTapAutoStart() {
@@ -1104,6 +1268,7 @@ extension GameScene: HUDNodeDelegate {
                     
                     // Create tower
                     let tower = createTowerOfType(type, at: gridPos)
+                    tower.setMaxUpgradeLevel(gameManager.maxTowerUpgradeLevel)
                     tower.delegate = self
                     tower.position = gridPos.toWorldPosition()
                     
@@ -1391,7 +1556,7 @@ extension GameScene: WaveManagerDelegate {
         let label = SKLabelNode(fontNamed: "Helvetica-Bold")
         label.fontSize = 36
         label.fontColor = .white
-        label.text = "Wave \(waveNumber)"
+        label.text = "Level \(waveNumber)"
         label.position = CGPoint(x: 667, y: 375)
         label.zPosition = GameConstants.ZPosition.effects.rawValue + 100
         addChild(label)
@@ -1414,7 +1579,7 @@ extension GameScene: WaveManagerDelegate {
         let label = SKLabelNode(fontNamed: "Helvetica-Bold")
         label.fontSize = 24
         label.fontColor = .healthBarGreen
-        label.text = "Wave \(waveNumber) Complete!"
+        label.text = "Level \(waveNumber) Complete!"
         label.position = CGPoint(x: 667, y: 375)
         label.zPosition = GameConstants.ZPosition.effects.rawValue + 100
         addChild(label)

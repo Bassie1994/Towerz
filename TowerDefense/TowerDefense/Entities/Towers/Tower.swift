@@ -47,7 +47,7 @@ class Tower: SKNode {
     
     // Upgrade state
     var upgradeLevel: Int = 0
-    let maxUpgradeLevel: Int = 3  // 3 upgrades possible (levels 1-4)
+    private(set) var maxUpgradeLevel: Int = 3  // Can increase in endless cycles.
     
     // Buff state (from buff towers)
     var damageMultiplier: CGFloat = 1.0
@@ -258,12 +258,26 @@ class Tower: SKNode {
     }
     
     // MARK: - Upgrades
+
+    func setMaxUpgradeLevel(_ level: Int) {
+        maxUpgradeLevel = max(3, level)
+    }
+
+    private func upgradeMultiplier(for level: Int) -> CGFloat {
+        switch level {
+        case 1: return 3.0
+        case 2: return 6.0
+        case 3: return 10.0
+        default:
+            // Endless tiers continue scaling after the requested 3/6/10 baseline.
+            return 10.0 + CGFloat(level - 3) * 5.0
+        }
+    }
     
     func getUpgradeCost() -> Int? {
         guard upgradeLevel < maxUpgradeLevel else { return nil }
-        // Requested scaling: level 1 = 3x, level 2 = 6x, level 3 = 10x
-        let costMultipliers: [Double] = [3.0, 6.0, 10.0]
-        let multiplier = costMultipliers[min(upgradeLevel, costMultipliers.count - 1)]
+        let nextLevel = upgradeLevel + 1
+        let multiplier = Double(upgradeMultiplier(for: nextLevel))
         return Int((Double(towerType.baseCost) * multiplier).rounded(.toNearestOrAwayFromZero))
     }
     
@@ -280,17 +294,15 @@ class Tower: SKNode {
         
         upgradeLevel += 1
         
-        // Requested scaling: level 1 = 3x, level 2 = 6x, level 3 = 10x
-        let statMultipliers: [CGFloat] = [3.0, 6.0, 10.0]
-        let upgradeStatMultiplier = statMultipliers[min(upgradeLevel - 1, statMultipliers.count - 1)]
+        let upgradeStatMultiplier = upgradeMultiplier(for: upgradeLevel)
 
         damage = baseDamage * upgradeStatMultiplier
-        range = baseRange * upgradeStatMultiplier
+        // Requested behavior: range is NOT affected by upgrade multiplier.
+        range = baseRange
         fireRate = baseFireRate * upgradeStatMultiplier
         
         // Update range indicator
-        let newPath = CGPath(ellipseIn: CGRect(x: -range, y: -range, width: range * 2, height: range * 2), transform: nil)
-        rangeIndicator.path = newPath
+        updateRangeIndicatorForBuff()
         
         // Update visual indicator with bright contrasting color
         if upgradeLevel <= upgradeIndicators.count {

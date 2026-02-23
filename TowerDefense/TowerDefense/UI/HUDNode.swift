@@ -121,7 +121,7 @@ final class HUDNode: SKNode {
         startWaveLabel.fontColor = .white
         startWaveLabel.horizontalAlignmentMode = .center
         startWaveLabel.verticalAlignmentMode = .center
-        startWaveLabel.text = "Start Wave"
+        startWaveLabel.text = "Start Level"
         
         // Speed button
         speedButton = SKShapeNode(rectOf: CGSize(width: 50, height: 30), cornerRadius: 5)
@@ -367,7 +367,7 @@ final class HUDNode: SKNode {
         // Initial values
         updateLives(GameConstants.startingLives)
         updateMoney(GameConstants.startingMoney)
-        updateWave(0, total: 10, active: false)
+        updateWave(0, total: 50, active: false)
     }
     
     // MARK: - Updates
@@ -405,7 +405,7 @@ final class HUDNode: SKNode {
         isWaveActive = active
         
         if active {
-            waveLabel.text = "Wave \(current)/\(total)"
+            waveLabel.text = "Level \(current)/\(total)"
             // During wave: show auto-start toggle button
             startWaveButton.isHidden = false
             updateAutoStartButton()
@@ -414,12 +414,12 @@ final class HUDNode: SKNode {
             startWaveButton.isHidden = true
             isAutoStartEnabled = false
         } else {
-            waveLabel.text = "Wave \(current)/\(total)"
+            waveLabel.text = "Level \(current)/\(total)"
             startWaveButton.isHidden = false
             if isAutoStartEnabled {
                 updateAutoStartButton()
             } else {
-                startWaveLabel.text = current == 0 ? "Start Wave 1" : "Next Wave"
+                startWaveLabel.text = current == 0 ? "Start Level 1" : "Next Level"
                 startWaveButton.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.2, alpha: 1.0)
             }
         }
@@ -908,7 +908,7 @@ final class HUDNode: SKNode {
         let secretLabel = SKLabelNode(fontNamed: "Helvetica")
         secretLabel.fontSize = 12
         secretLabel.fontColor = SKColor(white: 0.6, alpha: 1.0)
-        secretLabel.text = "niet hier op klikken!"
+        secretLabel.text = "do not click this"
         secretLabel.verticalAlignmentMode = .center
         secretLabel.name = "secretLabel"
         secretBtn.addChild(secretLabel)
@@ -1061,7 +1061,7 @@ final class HUDNode: SKNode {
                 let waveLabel = SKLabelNode(fontNamed: "Helvetica")
                 waveLabel.fontSize = 14
                 waveLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
-                waveLabel.text = "Wave \(entry.wave)"
+                waveLabel.text = "Level \(entry.wave)"
                 waveLabel.horizontalAlignmentMode = .right
                 waveLabel.position = CGPoint(x: 170, y: yPos)
                 overlay.addChild(waveLabel)
@@ -1102,7 +1102,7 @@ final class HUDNode: SKNode {
         let message = SKLabelNode(fontNamed: "Helvetica-Bold")
         message.fontSize = 28
         message.fontColor = SKColor(red: 1.0, green: 0.3, blue: 0.6, alpha: 1.0)
-        message.text = "Kut Melis :)"
+        message.text = "Jeff is gey"
         message.position = CGPoint(x: 0, y: 10)
         secretOverlay.addChild(message)
         
@@ -1149,14 +1149,14 @@ final class HUDNode: SKNode {
         let warning1 = SKLabelNode(fontNamed: "Helvetica")
         warning1.fontSize = 14
         warning1.fontColor = SKColor(red: 1.0, green: 0.8, blue: 0.3, alpha: 1.0)
-        warning1.text = "⚠️ Let op: Er is GEEN autosave!"
+        warning1.text = "⚠️ Warning: There is NO autosave!"
         warning1.position = CGPoint(x: 0, y: 25)
         overlay.addChild(warning1)
         
         let warning2 = SKLabelNode(fontNamed: "Helvetica")
         warning2.fontSize = 13
         warning2.fontColor = SKColor(white: 0.7, alpha: 1.0)
-        warning2.text = "Dit overschrijft je vorige save."
+        warning2.text = "This will overwrite your previous save."
         warning2.position = CGPoint(x: 0, y: 5)
         overlay.addChild(warning2)
         
@@ -1172,7 +1172,7 @@ final class HUDNode: SKNode {
         let yesLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         yesLabel.fontSize = 18
         yesLabel.fontColor = .white
-        yesLabel.text = "Ja, save!"
+        yesLabel.text = "Yes, save!"
         yesLabel.verticalAlignmentMode = .center
         yesBtn.addChild(yesLabel)
         
@@ -1188,7 +1188,7 @@ final class HUDNode: SKNode {
         let noLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         noLabel.fontSize = 18
         noLabel.fontColor = .white
-        noLabel.text = "Annuleer"
+        noLabel.text = "Cancel"
         noLabel.verticalAlignmentMode = .center
         noBtn.addChild(noLabel)
         
@@ -1223,14 +1223,14 @@ final class HUDNode: SKNode {
             let warning1 = SKLabelNode(fontNamed: "Helvetica")
             warning1.fontSize = 14
             warning1.fontColor = SKColor(red: 1.0, green: 0.8, blue: 0.3, alpha: 1.0)
-            warning1.text = "⚠️ Je huidige voortgang gaat verloren!"
+            warning1.text = "⚠️ Your current progress will be lost!"
             warning1.position = CGPoint(x: 0, y: 25)
             overlay.addChild(warning1)
             
             let warning2 = SKLabelNode(fontNamed: "Helvetica")
             warning2.fontSize = 13
             warning2.fontColor = SKColor(white: 0.7, alpha: 1.0)
-            warning2.text = "Weet je het zeker?"
+            warning2.text = "Are you sure?"
             warning2.position = CGPoint(x: 0, y: 5)
             overlay.addChild(warning2)
             
@@ -1246,7 +1246,7 @@ final class HUDNode: SKNode {
             let yesLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
             yesLabel.fontSize = 18
             yesLabel.fontColor = .white
-            yesLabel.text = "Ja, load!"
+            yesLabel.text = "Yes, load!"
             yesLabel.verticalAlignmentMode = .center
             yesBtn.addChild(yesLabel)
         } else {
@@ -1254,7 +1254,7 @@ final class HUDNode: SKNode {
             let noSave = SKLabelNode(fontNamed: "Helvetica")
             noSave.fontSize = 16
             noSave.fontColor = SKColor(red: 1.0, green: 0.5, blue: 0.5, alpha: 1.0)
-            noSave.text = "❌ Geen saved game gevonden!"
+            noSave.text = "❌ No saved game found!"
             noSave.position = CGPoint(x: 0, y: 15)
             overlay.addChild(noSave)
         }
@@ -1271,7 +1271,7 @@ final class HUDNode: SKNode {
         let noLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         noLabel.fontSize = 18
         noLabel.fontColor = .white
-        noLabel.text = hasSave ? "Annuleer" : "Terug"
+        noLabel.text = hasSave ? "Cancel" : "Back"
         noLabel.verticalAlignmentMode = .center
         noBtn.addChild(noLabel)
         
@@ -1395,7 +1395,7 @@ final class HUDNode: SKNode {
         let statsLabel = SKLabelNode(fontNamed: "Helvetica")
         statsLabel.fontSize = 14
         statsLabel.fontColor = .gray
-        statsLabel.text = "Wave \(wave) • \(enemiesKilled) kills"
+        statsLabel.text = "Level \(wave) • \(enemiesKilled) kills"
         statsLabel.position = CGPoint(x: 0, y: yPos)
         overlay.addChild(statsLabel)
         yPos -= 30
@@ -1490,7 +1490,7 @@ final class HUDNode: SKNode {
         let statsLabel = SKLabelNode(fontNamed: "Helvetica")
         statsLabel.fontSize = 14
         statsLabel.fontColor = .gray
-        statsLabel.text = "All \(wave) waves • \(enemiesKilled) kills • \(livesRemaining) lives"
+        statsLabel.text = "All \(wave) levels • \(enemiesKilled) kills • \(livesRemaining) lives"
         statsLabel.position = CGPoint(x: 0, y: yPos)
         overlay.addChild(statsLabel)
         yPos -= 30
