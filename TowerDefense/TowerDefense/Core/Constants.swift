@@ -31,6 +31,12 @@ enum GameConstants {
         static let startingWave = 5
     }
 
+    enum Puzzle {
+        static let startBlockedRatio: Double = 1.0 / 6.0
+        static let endBlockedRatio: Double = 1.0 / 3.0
+        static let elevatedRangeMultiplier: CGFloat = 1.2
+    }
+
     // Global balance knobs
     enum Balance {
         // Reapplied tuning pass:
@@ -127,7 +133,7 @@ enum TowerType: String, CaseIterable {
         case .slow: return "Slow"
         case .buff: return "Buff"
         case .mine: return "Mine"
-        case .splash: return "Splash"
+        case .splash: return "Rocket"
         case .laser: return "Sniper"
         case .antiAir: return "AA"
         }
@@ -174,6 +180,7 @@ enum GameState {
 enum GameMode {
     case campaign
     case endless
+    case puzzle
 }
 
 // MARK: - Placement State

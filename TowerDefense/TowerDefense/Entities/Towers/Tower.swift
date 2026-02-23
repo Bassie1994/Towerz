@@ -47,7 +47,7 @@ class Tower: SKNode {
     
     // Upgrade state
     var upgradeLevel: Int = 0
-    private(set) var maxUpgradeLevel: Int = 3  // Can increase in endless cycles.
+    private(set) var maxUpgradeLevel: Int = 5  // Can increase in endless cycles.
     
     // Buff state (from buff towers)
     var damageMultiplier: CGFloat = 1.0
@@ -60,6 +60,11 @@ class Tower: SKNode {
     var currentTarget: Enemy?
     var isSelected: Bool = false
     var targetPriority: TargetPriority = .first
+
+    // Puzzle elevated placement modifiers
+    private(set) var isElevated: Bool = false
+    private var elevatedRangeMultiplier: CGFloat = 1.0
+    private var minimumTargetDistance: CGFloat = 0
     
     // Visual components
     let baseNode: SKShapeNode
@@ -108,15 +113,15 @@ class Tower: SKNode {
         rangeIndicator.isHidden = true
         rangeIndicator.zPosition = GameConstants.ZPosition.rangeIndicator.rawValue
         
-        // Create upgrade indicators (3 for 3 upgrade levels) - inside the tower
+        // Create upgrade indicators (5 dots)
         var indicators: [SKShapeNode] = []
-        for i in 0..<3 {
+        for i in 0..<5 {
             let indicator = SKShapeNode(circleOfRadius: 4)
             indicator.fillColor = SKColor.black.withAlphaComponent(0.6)  // Dark unfilled
             indicator.strokeColor = .white
             indicator.lineWidth = 1.5
-            // Position 3 indicators inside tower at bottom, evenly spaced
-            indicator.position = CGPoint(x: -12 + CGFloat(i) * 12, y: -towerSize / 2 + 10)
+            // Position 5 indicators inside tower at bottom, evenly spaced
+            indicator.position = CGPoint(x: -24 + CGFloat(i) * 12, y: -towerSize / 2 + 10)
             indicator.zPosition = 5  // Above tower base
             indicators.append(indicator)
         }
@@ -209,7 +214,12 @@ class Tower: SKNode {
     }
 
     func selectTarget(from enemies: [Enemy]) -> Enemy? {
-        let alive = enemies.filter { $0.isAlive }
+        let alive = enemies.filter { enemy in
+            guard enemy.isAlive else { return false }
+            let distance = position.distance(to: enemy.position)
+            guard distance <= getEffectiveRange() else { return false }
+            return distance >= minimumTargetDistance
+        }
 
         switch targetPriority {
         case .first:
@@ -260,7 +270,7 @@ class Tower: SKNode {
     // MARK: - Upgrades
 
     func setMaxUpgradeLevel(_ level: Int) {
-        maxUpgradeLevel = max(3, level)
+        maxUpgradeLevel = max(5, level)
     }
 
     private func upgradeMultiplier(for level: Int) -> CGFloat {
@@ -268,9 +278,11 @@ class Tower: SKNode {
         case 1: return 3.0
         case 2: return 6.0
         case 3: return 10.0
+        case 4: return 15.0
+        case 5: return 21.0
         default:
-            // Endless tiers continue scaling after the requested 3/6/10 baseline.
-            return 10.0 + CGFloat(level - 3) * 5.0
+            // Endless tiers continue scaling after level 5.
+            return 21.0 + CGFloat(level - 5) * 6.0
         }
     }
     
@@ -394,7 +406,7 @@ class Tower: SKNode {
     
     /// Update range indicator to reflect current buff state
     func updateRangeIndicatorForBuff() {
-        let effectiveRange = range * rangeMultiplier
+        let effectiveRange = getEffectiveRange()
         let newPath = CGPath(ellipseIn: CGRect(x: -effectiveRange, y: -effectiveRange, width: effectiveRange * 2, height: effectiveRange * 2), transform: nil)
         rangeIndicator.path = newPath
         
@@ -454,7 +466,18 @@ class Tower: SKNode {
     
     /// Get effective range (including buff)
     func getEffectiveRange() -> CGFloat {
-        return range * rangeMultiplier
+        return range * rangeMultiplier * elevatedRangeMultiplier
+    }
+
+    var minimumAttackDistance: CGFloat {
+        return minimumTargetDistance
+    }
+
+    func setElevationBonus(enabled: Bool) {
+        isElevated = enabled
+        elevatedRangeMultiplier = enabled ? GameConstants.Puzzle.elevatedRangeMultiplier : 1.0
+        minimumTargetDistance = enabled ? GameConstants.cellSize : 0
+        updateRangeIndicatorForBuff()
     }
     
     func getStats() -> [String: String] {
@@ -471,6 +494,9 @@ class Tower: SKNode {
         // Add buff indicator if buffed
         if isBuffed {
             stats["Buffed"] = "✓ +\(Int((rangeMultiplier - 1) * 100))% range"
+        }
+        if isElevated {
+            stats["Position Bonus"] = "+20% range (adjacent blind spot)"
         }
         
         return stats

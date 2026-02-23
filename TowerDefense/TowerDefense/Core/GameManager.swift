@@ -11,7 +11,7 @@ final class GameManager {
     private(set) var gameState: GameState = .preparing
     private(set) var gameMode: GameMode = .campaign
     private(set) var lives: Int = GameConstants.startingLives
-    private(set) var maxTowerUpgradeLevel: Int = 3
+    private(set) var maxTowerUpgradeLevel: Int = 5
     
     // Stats tracking
     private(set) var totalEnemiesKilled: Int = 0
@@ -59,7 +59,7 @@ final class GameManager {
 
     func configureGameMode(_ mode: GameMode) {
         gameMode = mode
-        maxTowerUpgradeLevel = 3
+        maxTowerUpgradeLevel = 5
         pendingEndlessTransition = nil
 
         switch mode {
@@ -73,6 +73,11 @@ final class GameManager {
             configuredStartingLives = GameConstants.startingLives
             startingWave = GameConstants.Endless.startingWave
             waveManager.setEndlessMode(true)
+        case .puzzle:
+            configuredStartingMoney = GameConstants.startingMoney
+            configuredStartingLives = GameConstants.startingLives
+            startingWave = 1
+            waveManager.setEndlessMode(false)
         }
     }
 

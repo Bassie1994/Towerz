@@ -19,7 +19,8 @@ final class TargetingSystem {
         
         return enemies.filter { enemy in
             guard enemy.isAlive else { return false }
-            return tower.position.distance(to: enemy.position) <= effectiveRange
+            let distance = tower.position.distance(to: enemy.position)
+            return distance <= effectiveRange && distance >= tower.minimumAttackDistance
         }
     }
     

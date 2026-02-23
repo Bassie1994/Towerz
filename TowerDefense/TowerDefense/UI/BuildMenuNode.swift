@@ -80,7 +80,8 @@ final class BuildMenuNode: SKNode {
         menuBackground.addChild(title)
 
         // Create buttons for each tower type with proper spacing
-        let towerTypes = TowerType.allCases
+        // Cannon removed from build options.
+        let towerTypes = TowerType.allCases.filter { $0 != .cannon }
         let towerCount = CGFloat(towerTypes.count)
         let buttonWidth: CGFloat = 110  // Bigger buttons for clearer text
         let buttonHeight: CGFloat = 60
@@ -247,7 +248,7 @@ private class TowerButton: SKNode {
         case .mine:
             symbol.text = "💣"
         case .splash:
-            symbol.text = "◎"
+            symbol.text = "🚀"
         case .laser:
             symbol.text = "🎯"
         case .antiAir:

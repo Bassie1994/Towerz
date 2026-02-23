@@ -37,9 +37,11 @@ final class GameScene: SKScene {
     private var gameSpeed: CGFloat = 1.0
     private var gameTime: TimeInterval = 0  // Accumulated game time (respects speed)
     private var currentGameMode: GameMode = .campaign
+    private var puzzleElevatedCells: Set<GridPosition> = []
     
     // Grid visualization
     private var gridNode: SKNode?
+    private let puzzleTerrainLayer = SKNode()
     private let pathHighlightNode = SKShapeNode()
     private var navigationDebugLabel: SKLabelNode?
     private var lastNavigationDebugUpdateTime: TimeInterval = 0
@@ -61,6 +63,9 @@ final class GameScene: SKScene {
     private func setupLayers() {
         gameLayer.zPosition = 0
         addChild(gameLayer)
+
+        puzzleTerrainLayer.zPosition = GameConstants.ZPosition.grid.rawValue - 0.4
+        gameLayer.addChild(puzzleTerrainLayer)
         
         enemyLayer.zPosition = GameConstants.ZPosition.enemy.rawValue
         gameLayer.addChild(enemyLayer)
@@ -168,6 +173,99 @@ final class GameScene: SKScene {
         pathHighlightNode.isHidden = true
         pathHighlightNode.zPosition = GameConstants.ZPosition.grid.rawValue + 2
         gameLayer.addChild(pathHighlightNode)
+    }
+
+    private func puzzleBaseCandidateCells() -> [GridPosition] {
+        var cells: [GridPosition] = []
+        for x in 0..<GameConstants.gridWidth {
+            for y in 0..<GameConstants.gridHeight {
+                let pos = GridPosition(x: x, y: y)
+                if pos.isInSpawnZone() || pos.isInExitZone() { continue }
+                cells.append(pos)
+            }
+        }
+        return cells
+    }
+
+    private func puzzleTargetBlockedCount(forLevel level: Int) -> Int {
+        let clampedLevel = max(1, min(WaveConfig.totalLevels, level))
+        let progress = Double(clampedLevel - 1) / Double(max(1, WaveConfig.totalLevels - 1))
+        let ratio = GameConstants.Puzzle.startBlockedRatio + (GameConstants.Puzzle.endBlockedRatio - GameConstants.Puzzle.startBlockedRatio) * progress
+        let candidateCount = puzzleBaseCandidateCells().count
+        return max(1, Int((Double(candidateCount) * ratio).rounded(.toNearestOrAwayFromZero)))
+    }
+
+    private func drawPuzzleElevatedTile(at gridPosition: GridPosition) {
+        let tile = SKShapeNode(rectOf: CGSize(width: GameConstants.cellSize - 8, height: GameConstants.cellSize - 8), cornerRadius: 6)
+        tile.fillColor = SKColor(red: 0.28, green: 0.3, blue: 0.34, alpha: 0.75)
+        tile.strokeColor = SKColor(red: 0.65, green: 0.72, blue: 0.78, alpha: 0.9)
+        tile.lineWidth = 1.5
+        tile.position = gridPosition.toWorldPosition()
+        tile.zPosition = 0
+        tile.name = "puzzleElevated_\(gridPosition.x)_\(gridPosition.y)"
+
+        let marker = SKLabelNode(fontNamed: "Helvetica-Bold")
+        marker.text = "▲"
+        marker.fontSize = 14
+        marker.fontColor = SKColor(white: 0.92, alpha: 0.9)
+        marker.verticalAlignmentMode = .center
+        marker.horizontalAlignmentMode = .center
+        tile.addChild(marker)
+
+        puzzleTerrainLayer.addChild(tile)
+    }
+
+    private func clearPuzzleTerrain() {
+        for pos in puzzleElevatedCells {
+            gameManager.pathfindingGrid.setStaticBlocked(pos, blocked: false)
+        }
+        puzzleElevatedCells.removeAll()
+        puzzleTerrainLayer.removeAllChildren()
+        notifyPathfindingChanged()
+    }
+
+    private func configurePuzzleTerrain(forLevel level: Int, reset: Bool) {
+        guard currentGameMode == .puzzle else { return }
+
+        if reset {
+            clearPuzzleTerrain()
+        }
+
+        let targetBlockedCount = puzzleTargetBlockedCount(forLevel: level)
+        guard puzzleElevatedCells.count < targetBlockedCount else { return }
+
+        let candidates = puzzleBaseCandidateCells().shuffled()
+        for candidate in candidates {
+            if puzzleElevatedCells.count >= targetBlockedCount { break }
+            if puzzleElevatedCells.contains(candidate) { continue }
+            if gameManager.pathfindingGrid.hasTower(at: candidate) { continue }
+            if !gameManager.pathfindingGrid.isValidPosition(candidate) { continue }
+            if !gameManager.pathfindingGrid.testBlockCell(candidate) { continue }
+
+            gameManager.pathfindingGrid.setStaticBlocked(candidate, blocked: true)
+            puzzleElevatedCells.insert(candidate)
+            drawPuzzleElevatedTile(at: candidate)
+        }
+
+        notifyPathfindingChanged()
+    }
+
+    private func canPlaceOnPuzzleElevatedCell(_ gridPos: GridPosition) -> Bool {
+        guard currentGameMode == .puzzle else { return false }
+        guard puzzleElevatedCells.contains(gridPos) else { return false }
+        guard !gridPos.isInSpawnZone(), !gridPos.isInExitZone() else { return false }
+        guard !gameManager.pathfindingGrid.hasTower(at: gridPos) else { return false }
+        return true
+    }
+
+    private func attemptPuzzleElevatedPlacement(type: TowerType, at gridPos: GridPosition) -> Bool {
+        guard canPlaceOnPuzzleElevatedCell(gridPos) else { return false }
+        guard gameManager.economyManager.purchaseTower(type: type) else { return false }
+
+        // Occupy the elevated cell as a tower cell while keeping terrain blocked.
+        gameManager.pathfindingGrid.blockCell(gridPos)
+        _ = createTower(type: type, at: gridPos)
+        return true
     }
     
     private func drawSpawnZone() {
@@ -299,7 +397,7 @@ final class GameScene: SKScene {
         dimmer.name = "modeDimmer"
         overlay.addChild(dimmer)
 
-        let panel = SKShapeNode(rectOf: CGSize(width: 520, height: 360), cornerRadius: 16)
+        let panel = SKShapeNode(rectOf: CGSize(width: 540, height: 470), cornerRadius: 16)
         panel.fillColor = SKColor(red: 0.1, green: 0.12, blue: 0.16, alpha: 0.98)
         panel.strokeColor = SKColor(red: 0.45, green: 0.55, blue: 0.75, alpha: 1.0)
         panel.lineWidth = 3
@@ -317,7 +415,7 @@ final class GameScene: SKScene {
         let subtitle = SKLabelNode(fontNamed: "Helvetica")
         subtitle.fontSize = 14
         subtitle.fontColor = SKColor(white: 0.8, alpha: 1.0)
-        subtitle.text = "Campaign is classic. Endless keeps scaling forever."
+        subtitle.text = "Campaign is classic. Endless scales forever. Puzzle adds elevated blocked terrain."
         subtitle.position = CGPoint(x: 0, y: 92)
         panel.addChild(subtitle)
 
@@ -353,7 +451,7 @@ final class GameScene: SKScene {
             text: "Campaign",
             subtext: "Start at Level 1, complete all 50 levels",
             color: SKColor(red: 0.24, green: 0.45, blue: 0.7, alpha: 1.0),
-            y: 28
+            y: 82
         )
         panel.addChild(campaignButton)
 
@@ -362,9 +460,18 @@ final class GameScene: SKScene {
             text: "Endless",
             subtext: "3000 coins, starts at Level 5, scales every 50 levels",
             color: SKColor(red: 0.6, green: 0.32, blue: 0.7, alpha: 1.0),
-            y: -86
+            y: -30
         )
         panel.addChild(endlessButton)
+
+        let puzzleButton = makeModeButton(
+            name: "modePuzzleButton",
+            text: "Puzzle",
+            subtext: "Elevated blocked tiles (1/6 to 1/3), +20% range on elevated towers",
+            color: SKColor(red: 0.32, green: 0.55, blue: 0.36, alpha: 1.0),
+            y: -142
+        )
+        panel.addChild(puzzleButton)
 
         addChild(overlay)
     }
@@ -383,6 +490,10 @@ final class GameScene: SKScene {
                 beginGame(mode: .endless)
                 return true
             }
+            if hitName == "modePuzzleButton" || hitName == "modePuzzleButton_label" || hitName == "modePuzzleButton_detail" {
+                beginGame(mode: .puzzle)
+                return true
+            }
         }
 
         // Consume touches while mode picker is shown.
@@ -394,6 +505,12 @@ final class GameScene: SKScene {
         childNode(withName: "gameModeOverlay")?.removeFromParent()
         gameManager.configureGameMode(mode)
         gameManager.startGame()
+
+        if mode == .puzzle {
+            configurePuzzleTerrain(forLevel: 1, reset: true)
+        } else {
+            clearPuzzleTerrain()
+        }
 
         if mode == .endless {
             if gameTime < 0.1 {
@@ -473,13 +590,12 @@ final class GameScene: SKScene {
         BlockManager.shared.update(currentTime: gameTime)
         hudNode.updateBlock(currentTime: gameTime)
         
-        // Update lava power and deal damage
+        // Update lava power and deal percentage-based damage.
         LavaManager.shared.update(currentTime: gameTime, enemies: enemies)
         if LavaManager.shared.isActive {
-            let lavaDPS = LavaManager.shared.lavaDamagePerSecond
-            let scaledDamage = lavaDPS * CGFloat(scaledDeltaTime)
             for enemy in enemies where enemy.isAlive && LavaManager.shared.isInLavaArea(enemy) {
-                enemy.takeDamage(scaledDamage)
+                let percentDamage = enemy.maxHealth * LavaManager.shared.lavaPercentDamagePerSecond * CGFloat(scaledDeltaTime)
+                enemy.takeDamage(percentDamage)
             }
         }
         hudNode.updateLava(currentTime: gameTime)
@@ -497,6 +613,7 @@ final class GameScene: SKScene {
             total: gameManager.waveManager.totalWaves,
             active: gameManager.waveManager.isWaveActive
         )
+        hudNode.syncPauseMenuVisibility(isPaused: gameManager.gameState == .paused)
         buildMenuNode.updateAffordability(money: gameManager.economyManager.money)
     }
     
@@ -690,16 +807,20 @@ final class GameScene: SKScene {
         guard let towerType = selectedTowerType else { return }
         
         let gridPos = gameManager.placementValidator.snapToGrid(worldPosition: location)
-        let result = gameManager.canPlaceTower(at: gridPos, type: towerType)
+        let elevatedPlacement = canPlaceOnPuzzleElevatedCell(gridPos)
+        let result = elevatedPlacement
+            ? PlacementValidationResult.valid(at: gridPos)
+            : gameManager.canPlaceTower(at: gridPos, type: towerType)
         
         // Calculate buff multiplier at this position
         let buffMultiplier = getBuffRangeMultiplierAt(position: gridPos.toWorldPosition())
+        let elevatedBonus = elevatedPlacement ? GameConstants.Puzzle.elevatedRangeMultiplier : 1.0
         
         placementPreviewNode.updatePosition(
             gridPosition: gridPos,
             isValid: result.isValid,
             invalidReason: result.reason,
-            buffRangeMultiplier: buffMultiplier
+            buffRangeMultiplier: buffMultiplier * elevatedBonus
         )
     }
     
@@ -729,8 +850,15 @@ final class GameScene: SKScene {
         }
         
         let gridPos = gameManager.placementValidator.snapToGrid(worldPosition: location)
-        
-        if gameManager.placeTower(type: type, at: gridPos) != nil {
+
+        let placed: Bool
+        if canPlaceOnPuzzleElevatedCell(gridPos) {
+            placed = attemptPuzzleElevatedPlacement(type: type, at: gridPos)
+        } else {
+            placed = gameManager.placeTower(type: type, at: gridPos) != nil
+        }
+
+        if placed {
             placementPreviewNode.animatePlacementSuccess()
             showPathHighlight()
             
@@ -846,7 +974,7 @@ final class GameScene: SKScene {
         case .machineGun:
             tower = MachineGunTower(gridPosition: gridPosition)
         case .cannon:
-            tower = CannonTower(gridPosition: gridPosition)
+            tower = MachineGunTower(gridPosition: gridPosition)
         case .slow:
             tower = SlowTower(gridPosition: gridPosition)
         case .buff:
@@ -859,6 +987,10 @@ final class GameScene: SKScene {
             tower = LaserTower(gridPosition: gridPosition)
         case .antiAir:
             tower = AntiAirTower(gridPosition: gridPosition)
+        }
+
+        if currentGameMode == .puzzle && puzzleElevatedCells.contains(gridPosition) {
+            tower.setElevationBonus(enabled: true)
         }
 
         tower.setMaxUpgradeLevel(gameManager.maxTowerUpgradeLevel)
@@ -979,11 +1111,14 @@ final class GameScene: SKScene {
         towers.removeAll()
         
         // Reset pathfinding grid
+        gameManager.pathfindingGrid.clearStaticBlockedCells()
         for x in 0..<GameConstants.gridWidth {
             for y in 0..<GameConstants.gridHeight {
                 gameManager.pathfindingGrid.unblockCell(GridPosition(x: x, y: y))
             }
         }
+        puzzleElevatedCells.removeAll()
+        puzzleTerrainLayer.removeAllChildren()
         
         // Reset timing
         gameTime = 0
@@ -1008,6 +1143,9 @@ final class GameScene: SKScene {
         
         // Restart
         gameManager.startGame()
+        if modeToRestart == .puzzle {
+            configurePuzzleTerrain(forLevel: 1, reset: true)
+        }
         if modeToRestart == .endless {
             gameTime = max(gameTime, 0.1)
             gameManager.startWave(currentTime: gameTime)
@@ -1039,6 +1177,7 @@ extension GameScene: HUDNodeDelegate {
     func hudDidTapPause() {
         clearTowerInteractionState()
         gameManager.togglePause()
+        hudNode.syncPauseMenuVisibility(isPaused: gameManager.gameState == .paused)
     }
     
     func hudDidTapStartWave() {
@@ -1106,9 +1245,9 @@ extension GameScene: HUDNodeDelegate {
         // Activate the block power
         BlockManager.shared.activate(currentTime: gameTime, gridPosition: gridPos)
         
-        // Block the cell in pathfinding but DON'T recalculate flow field yet
-        // This way enemies will continue on their current path until they hit the block
+        // Block the cell and immediately invalidate flow field so all units treat it as solid.
         gameManager.pathfindingGrid.blockCell(gridPos)
+        notifyPathfindingChanged()
         
         // Create visual obstacle
         let worldPos = gridPos.toWorldPosition()
@@ -1268,6 +1407,9 @@ extension GameScene: HUDNodeDelegate {
                     
                     // Create tower
                     let tower = createTowerOfType(type, at: gridPos)
+                    if currentGameMode == .puzzle && puzzleElevatedCells.contains(gridPos) {
+                        tower.setElevationBonus(enabled: true)
+                    }
                     tower.setMaxUpgradeLevel(gameManager.maxTowerUpgradeLevel)
                     tower.delegate = self
                     tower.position = gridPos.toWorldPosition()
@@ -1286,6 +1428,11 @@ extension GameScene: HUDNodeDelegate {
                     towers.append(tower)
                     towerLayer.addChild(tower)
                 }
+            }
+
+            if currentGameMode == .puzzle {
+                let levelForTerrain = max(1, gameManager.waveManager.currentWave == 0 ? 1 : gameManager.waveManager.currentWave)
+                configurePuzzleTerrain(forLevel: levelForTerrain, reset: true)
             }
             
             // Recalculate pathfinding
@@ -1313,6 +1460,11 @@ extension GameScene: HUDNodeDelegate {
             tower.removeFromParent()
         }
         towers.removeAll()
+
+        // Clear puzzle terrain flags from the grid.
+        gameManager.pathfindingGrid.clearStaticBlockedCells()
+        puzzleElevatedCells.removeAll()
+        puzzleTerrainLayer.removeAllChildren()
         
         // Reset managers
         BlockManager.shared.reset()
@@ -1330,7 +1482,7 @@ extension GameScene: HUDNodeDelegate {
         switch type {
         case .wall: return WallTower(gridPosition: gridPosition)
         case .machineGun: return MachineGunTower(gridPosition: gridPosition)
-        case .cannon: return CannonTower(gridPosition: gridPosition)
+        case .cannon: return MachineGunTower(gridPosition: gridPosition)
         case .slow: return SlowTower(gridPosition: gridPosition)
         case .buff: return BuffTower(gridPosition: gridPosition)
         case .mine: return MineTower(gridPosition: gridPosition)
@@ -1388,17 +1540,33 @@ extension GameScene: BuildMenuNodeDelegate {
 // MARK: - TowerInfoNodeDelegate
 
 extension GameScene: TowerInfoNodeDelegate {
-    func towerInfoDidTapUpgrade(_ tower: Tower) {
-        if gameManager.upgradeTower(tower) {
+    func towerInfoDidTapUpgrade(_ tower: Tower, applyToAllOfType: Bool) {
+        if applyToAllOfType {
+            let matching = towers.filter { $0.towerType == tower.towerType }
+            for candidate in matching {
+                guard candidate.canUpgrade() else { continue }
+                guard let cost = candidate.getUpgradeCost(), gameManager.economyManager.canAfford(cost) else { continue }
+                _ = gameManager.upgradeTower(candidate)
+            }
+        } else if gameManager.upgradeTower(tower) {
             // AudioManager.shared.playSound(.towerUpgrade)
         }
         towerInfoNode.updateContent()
         updateUI()
     }
     
-    func towerInfoDidTapSell(_ tower: Tower) {
+    func towerInfoDidTapSell(_ tower: Tower, applyToAllOfType: Bool) {
+        let targets: [Tower]
+        if applyToAllOfType {
+            targets = towers.filter { $0.towerType == tower.towerType }
+        } else {
+            targets = [tower]
+        }
+
         towerInfoNode.hide()
-        gameManager.sellTower(tower)
+        for target in targets {
+            gameManager.sellTower(target)
+        }
         updateUI()
     }
     
@@ -1408,8 +1576,14 @@ extension GameScene: TowerInfoNodeDelegate {
         showConversionMenu(for: tower)
     }
 
-    func towerInfoDidChangePriority(_ tower: Tower, priority: TargetPriority) {
-        tower.targetPriority = priority
+    func towerInfoDidChangePriority(_ tower: Tower, priority: TargetPriority, applyToAllOfType: Bool) {
+        if applyToAllOfType {
+            for target in towers where target.towerType == tower.towerType {
+                target.targetPriority = priority
+            }
+        } else {
+            tower.targetPriority = priority
+        }
         towerInfoNode.updateContent()
     }
 
@@ -1438,7 +1612,9 @@ extension GameScene: TowerInfoNodeDelegate {
         
         // Panel
         let panelWidth: CGFloat = 400
-        let panelHeight: CGFloat = 500
+        let convertibleTypes: [TowerType] = [.machineGun, .slow, .buff, .mine, .splash, .laser, .antiAir]
+        let rowCount = Int(ceil(Double(convertibleTypes.count) / 2.0))
+        let panelHeight: CGFloat = CGFloat(max(4, rowCount)) * 55 + 170
         let panel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 15)
         panel.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.2, alpha: 0.95)
         panel.strokeColor = SKColor(red: 0.5, green: 0.5, blue: 0.6, alpha: 1.0)
@@ -1454,8 +1630,7 @@ extension GameScene: TowerInfoNodeDelegate {
         title.position = CGPoint(x: 0, y: panelHeight / 2 - 35)
         panel.addChild(title)
         
-        // Tower buttons - excluding wall
-        let convertibleTypes: [TowerType] = [.machineGun, .cannon, .slow, .buff, .mine, .splash, .laser, .antiAir]
+        // Tower buttons - excluding wall/cannon
         let buttonWidth: CGFloat = 170
         let buttonHeight: CGFloat = 45
         let startY: CGFloat = panelHeight / 2 - 80
@@ -1530,6 +1705,13 @@ extension GameScene: EnemyDelegate {
     func getFlowField() -> FlowField? {
         return gameManager.getFlowField()
     }
+
+    func isGridCellWalkable(_ position: GridPosition) -> Bool {
+        if position.isInSpawnZone() || position.isInExitZone() {
+            return true
+        }
+        return gameManager.pathfindingGrid.isWalkable(position)
+    }
 }
 
 // MARK: - TowerDelegate
@@ -1551,6 +1733,9 @@ extension GameScene: TowerDelegate {
 extension GameScene: WaveManagerDelegate {
     func waveDidStart(waveNumber: Int) {
         // AudioManager.shared.playSound(.waveStart)
+        if currentGameMode == .puzzle {
+            configurePuzzleTerrain(forLevel: waveNumber, reset: false)
+        }
         
         // Show wave start notification
         let label = SKLabelNode(fontNamed: "Helvetica-Bold")
