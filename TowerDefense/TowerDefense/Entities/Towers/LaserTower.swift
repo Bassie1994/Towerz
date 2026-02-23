@@ -22,6 +22,7 @@ final class LaserTower: Tower {
     
     // Damage tracking
     private var lastDamageTime: TimeInterval = 0
+    private let visualsEnabled = false
     
     init(gridPosition: GridPosition) {
         super.init(
@@ -32,7 +33,9 @@ final class LaserTower: Tower {
             fireRate: LaserTower.stats.fireRate
         )
         
-        setupLaserVisuals()
+        if visualsEnabled {
+            setupLaserVisuals()
+        }
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -57,11 +60,13 @@ final class LaserTower: Tower {
         turretNode.addChild(crystal)
         
         // Pulsing core
-        let pulse = SKAction.sequence([
-            SKAction.scale(to: 1.2, duration: 0.3),
-            SKAction.scale(to: 1.0, duration: 0.3)
-        ])
-        crystal.run(SKAction.repeatForever(pulse))
+        if visualsEnabled {
+            let pulse = SKAction.sequence([
+                SKAction.scale(to: 1.2, duration: 0.3),
+                SKAction.scale(to: 1.0, duration: 0.3)
+            ])
+            crystal.run(SKAction.repeatForever(pulse))
+        }
     }
     
     private func createDiamondPath(size: CGFloat) -> CGPath {
@@ -131,7 +136,7 @@ final class LaserTower: Tower {
         }
         
         // Hide laser after brief display
-        if isLaserActive && currentTime - lastDamageTime > 0.15 {
+        if visualsEnabled && isLaserActive && currentTime - lastDamageTime > 0.15 {
             deactivateLaser()
         }
     }
@@ -149,8 +154,10 @@ final class LaserTower: Tower {
     }
     
     private func fireSniperShot(at target: Enemy) {
-        isLaserActive = true
-        lastDamageTime = lastFireTime
+        if visualsEnabled {
+            isLaserActive = true
+            lastDamageTime = lastFireTime
+        }
 
         laserAngle = turretNode.zRotation
 
@@ -163,24 +170,17 @@ final class LaserTower: Tower {
             y: beamDirection.dy * beamLength
         )
         
-        // Update beam visual - brief intense flash
-        let beamPath = CGMutablePath()
-        beamPath.move(to: CGPoint(x: towerSize * 0.4, y: 0))
-        beamPath.addLine(to: beamEnd)
-        
-        laserBeam?.path = beamPath
-        laserBeam?.isHidden = false
-        laserBeam?.alpha = 1.0
-        laserBeam?.lineWidth = 6  // Thicker for sniper shot
-        
-        laserGlow?.path = beamPath
-        laserGlow?.isHidden = false
-        laserGlow?.alpha = 0.8
-        laserGlow?.lineWidth = 16
-        
-        // Impact marker at target
-        laserImpact?.position = beamEnd
-        laserImpact?.isHidden = false
+        if visualsEnabled {
+            let beamPath = CGMutablePath()
+            beamPath.move(to: CGPoint(x: towerSize * 0.4, y: 0))
+            beamPath.addLine(to: beamEnd)
+            laserBeam?.path = beamPath
+            laserBeam?.isHidden = false
+            laserGlow?.path = beamPath
+            laserGlow?.isHidden = false
+            laserImpact?.position = beamEnd
+            laserImpact?.isHidden = false
+        }
         
         // Apply damage to every grounded enemy along the rail path
         let effectiveDamage = damage * damageMultiplier
@@ -202,17 +202,11 @@ final class LaserTower: Tower {
 
             for enemy in hitEnemies {
                 enemy.takeDamage(effectiveDamage)
-                spawnSniperImpact(at: enemy.position)
+                if visualsEnabled {
+                    spawnSniperImpact(at: enemy.position)
+                }
             }
         }
-
-        // Screen shake effect (subtle)
-        let shake = SKAction.sequence([
-            SKAction.moveBy(x: 2, y: 0, duration: 0.02),
-            SKAction.moveBy(x: -4, y: 0, duration: 0.02),
-            SKAction.moveBy(x: 2, y: 0, duration: 0.02)
-        ])
-        parent?.run(shake)
         
         delegate?.towerDidFire(self, at: target)
     }

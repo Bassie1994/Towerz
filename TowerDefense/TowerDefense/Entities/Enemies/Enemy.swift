@@ -89,6 +89,7 @@ class Enemy: SKNode {
     private var isInRecoveryMode: Bool = false
     private var recoveryCellsRemaining: Int = 0
     private var recoveryTargetCenter: CGPoint = .zero
+    private var centerLockedTarget: CGPoint?
     private var lastDistanceToExit: Int = Int.max
     private var progressStallTime: TimeInterval = 0
     
@@ -213,6 +214,26 @@ class Enemy: SKNode {
         
         // Calculate actual speed first (needed for recovery mode)
         let actualSpeed = moveSpeed * slowMultiplier
+
+        if shouldUseCenterLockedPathing(),
+           let lockedPosition = handleCenterLockedPathing(deltaTime: deltaTime, actualSpeed: actualSpeed) {
+            let moveDistance = actualSpeed * CGFloat(deltaTime)
+            position = validateAndAdjustPosition(lockedPosition, moveDistance: moveDistance)
+
+            let minY = GameConstants.playFieldOrigin.y + enemySize / 2
+            let maxY = GameConstants.playFieldOrigin.y + GameConstants.playFieldSize.height - enemySize / 2
+            let minX = GameConstants.playFieldOrigin.x + enemySize / 2
+            let maxX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - enemySize / 2
+            position.y = max(minY, min(maxY, position.y))
+            position.x = max(minX, min(maxX, position.x))
+
+            lastPosition = position
+
+            if hasReachedExit() {
+                reachExit()
+            }
+            return
+        }
         
         // Check if in recovery mode (stuck for 7+ seconds, following cell centers)
         if let recoveryPos = handleRecoveryMode(deltaTime: deltaTime, actualSpeed: actualSpeed) {
@@ -452,6 +473,69 @@ class Enemy: SKNode {
         
         // Fallback: move toward bottom-right
         return CGVector(dx: 1, dy: -1).normalized()
+    }
+
+    func shouldUseCenterLockedPathing() -> Bool {
+        return false
+    }
+
+    private func handleCenterLockedPathing(deltaTime: TimeInterval, actualSpeed: CGFloat) -> CGPoint? {
+        guard let flowField = delegate?.getFlowField() else {
+            centerLockedTarget = nil
+            return nil
+        }
+
+        let cellSize = GameConstants.cellSize
+
+        if centerLockedTarget == nil {
+            centerLockedTarget = position.toGridPosition().toWorldPosition()
+        }
+
+        guard var target = centerLockedTarget else { return nil }
+
+        if position.distance(to: target) <= cellSize * 0.2 {
+            let currentGrid = target.toGridPosition()
+
+            if let dir = flowField.getDirection(at: currentGrid) {
+                var stepX = 0
+                var stepY = 0
+
+                if dir.dx > 0.2 { stepX = 1 }
+                else if dir.dx < -0.2 { stepX = -1 }
+
+                if dir.dy > 0.2 { stepY = 1 }
+                else if dir.dy < -0.2 { stepY = -1 }
+
+                if stepX == 0 && stepY == 0 {
+                    if abs(dir.dx) >= abs(dir.dy) {
+                        stepX = dir.dx >= 0 ? 1 : -1
+                    } else {
+                        stepY = dir.dy >= 0 ? 1 : -1
+                    }
+                }
+
+                let nextGrid = GridPosition(
+                    x: max(0, min(GameConstants.gridWidth - 1, currentGrid.x + stepX)),
+                    y: max(0, min(GameConstants.gridHeight - 1, currentGrid.y + stepY))
+                )
+                target = nextGrid.toWorldPosition()
+            } else if let reachable = flowField.nearestReachableCell(from: currentGrid, maxSearchRadius: 8) {
+                target = reachable.toWorldPosition()
+            } else {
+                target = currentGrid.toWorldPosition()
+            }
+
+            centerLockedTarget = target
+        }
+
+        let toTarget = CGVector(dx: target.x - position.x, dy: target.y - position.y)
+        let length = sqrt(toTarget.dx * toTarget.dx + toTarget.dy * toTarget.dy)
+        guard length > 0.001 else { return position }
+
+        return CGPoint(
+            x: position.x + (toTarget.dx / length) * actualSpeed * CGFloat(deltaTime),
+            y: position.y + (toTarget.dy / length) * actualSpeed * CGFloat(deltaTime)
+        )
     }
     
     /// Check if there's a clear line to the exit - returns direction if clear

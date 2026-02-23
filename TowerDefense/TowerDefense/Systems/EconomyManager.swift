@@ -92,7 +92,13 @@ final class EconomyManager {
     
     @discardableResult
     func rewardForKill(enemy: Enemy) -> Int {
-        let reward = max(1, Int((Double(enemy.killReward) * GameConstants.Balance.incomeMultiplier).rounded(.toNearestOrAwayFromZero)))
+        // Boss rewards are not reduced by the global income multiplier.
+        let reward: Int
+        if enemy.enemyType == .boss {
+            reward = max(1, enemy.killReward)
+        } else {
+            reward = max(1, Int((Double(enemy.killReward) * GameConstants.Balance.incomeMultiplier).rounded(.toNearestOrAwayFromZero)))
+        }
         earn(reward)
         return reward
     }

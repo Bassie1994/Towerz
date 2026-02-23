@@ -9,7 +9,9 @@ final class GameManager {
     
     // Game state
     private(set) var gameState: GameState = .preparing
+    private(set) var gameMode: GameMode = .campaign
     private(set) var lives: Int = GameConstants.startingLives
+    private(set) var maxTowerUpgradeLevel: Int = 3
     
     // Stats tracking
     private(set) var totalEnemiesKilled: Int = 0
@@ -22,6 +24,17 @@ final class GameManager {
     // Pathfinding
     let pathfindingGrid: PathfindingGrid
     let placementValidator: PlacementValidator
+
+    private var startingWave: Int = 1
+    private var configuredStartingMoney: Int = GameConstants.startingMoney
+    private var configuredStartingLives: Int = GameConstants.startingLives
+    private var pendingEndlessTransition: EndlessCycleTransition?
+
+    struct EndlessCycleTransition {
+        let cycle: Int
+        let difficultyMultiplier: Double
+        let maxUpgradeLevel: Int
+    }
     
     // MARK: - Initialization
     
@@ -43,17 +56,56 @@ final class GameManager {
     }
     
     // MARK: - Game Flow
+
+    func configureGameMode(_ mode: GameMode) {
+        gameMode = mode
+        maxTowerUpgradeLevel = 3
+        pendingEndlessTransition = nil
+
+        switch mode {
+        case .campaign:
+            configuredStartingMoney = GameConstants.startingMoney
+            configuredStartingLives = GameConstants.startingLives
+            startingWave = 1
+            waveManager.setEndlessMode(false)
+        case .endless:
+            configuredStartingMoney = GameConstants.Endless.startingMoney
+            configuredStartingLives = GameConstants.startingLives
+            startingWave = GameConstants.Endless.startingWave
+            waveManager.setEndlessMode(true)
+        }
+    }
+
+    func consumePendingEndlessTransition() -> EndlessCycleTransition? {
+        defer { pendingEndlessTransition = nil }
+        return pendingEndlessTransition
+    }
     
     func startGame() {
         gameState = .preparing
-        lives = GameConstants.startingLives
+        lives = configuredStartingLives
         totalEnemiesKilled = 0
         totalMoneyEarned = 0
+        waveManager.setWave(max(0, startingWave - 1))
+        economyManager.setMoney(configuredStartingMoney)
+        scene?.applyTowerUpgradeLevelCap(maxTowerUpgradeLevel)
         scene?.updateUI()
     }
     
     func startWave(currentTime: TimeInterval) {
         guard gameState != .gameOver && gameState != .victory else { return }
+
+        if waveManager.isEndlessCycleBoundary() {
+            waveManager.advanceEndlessCycle()
+            maxTowerUpgradeLevel += 1
+            scene?.applyTowerUpgradeLevelCap(maxTowerUpgradeLevel)
+            pendingEndlessTransition = EndlessCycleTransition(
+                cycle: waveManager.endlessCycle,
+                difficultyMultiplier: waveManager.endlessDifficultyMultiplier,
+                maxUpgradeLevel: maxTowerUpgradeLevel
+            )
+        }
+
         gameState = .playing
         waveManager.startNextWave(currentTime: currentTime)
     }
@@ -163,7 +215,11 @@ final class GameManager {
         economyManager.waveCompletionBonus(waveNumber: waveNumber)
         
         if waveNumber >= waveManager.totalWaves {
-            victory()
+            if gameMode == .endless {
+                gameState = .preparing
+            } else {
+                victory()
+            }
         } else {
             gameState = .preparing
         }

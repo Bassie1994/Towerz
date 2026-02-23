@@ -130,6 +130,11 @@ final class BossEnemy: Enemy {
         }
         return CGVector(dx: 1, dy: 0)
     }
+
+    override func shouldUseCenterLockedPathing() -> Bool {
+        // Keep bosses in the middle of the corridor to avoid corner lockups.
+        return true
+    }
     
     
     override func die() {

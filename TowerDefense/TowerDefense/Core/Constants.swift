@@ -26,6 +26,11 @@ enum GameConstants {
     static let startingLives = 20
     static let startingMoney = 500
 
+    enum Endless {
+        static let startingMoney = 3000
+        static let startingWave = 5
+    }
+
     // Global balance knobs
     enum Balance {
         // Reapplied tuning pass:
@@ -164,6 +169,11 @@ enum GameState {
     case paused
     case gameOver
     case victory
+}
+
+enum GameMode {
+    case campaign
+    case endless
 }
 
 // MARK: - Placement State
