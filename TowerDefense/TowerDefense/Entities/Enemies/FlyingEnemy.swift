@@ -100,6 +100,8 @@ final class FlyingEnemy: Enemy {
             slowIndicator.isHidden = true
             slowIndicator.removeAction(forKey: "slowPulse")
         }
+        updateSupportStatus(currentTime: currentTime)
+        moveSpeed = baseMoveSpeed * supportSpeedMultiplier
         
         // Calculate movement - DIRECT PATH, no flow field
         let direction = calculateMovementDirection()
