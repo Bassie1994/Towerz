@@ -1004,9 +1004,8 @@ final class HUDNode: SKNode {
             return true
         }
         
-        // Touch on overlay but not on button - consume it
-        let overlayBounds = CGRect(x: -175, y: -menuHeight/2, width: 350, height: menuHeight)
-        return overlayBounds.contains(localPos)
+        // Consume all touches while pause menu is visible to prevent pass-through.
+        return true
     }
     
     private func showHighscoresFromPauseMenu() {
