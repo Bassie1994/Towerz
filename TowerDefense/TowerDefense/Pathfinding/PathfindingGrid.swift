@@ -35,15 +35,16 @@ final class PathfindingGrid {
     }
     
     private func setupZones() {
-        // Spawn zone: leftmost columns
-        for y in 0..<height {
+        // Spawn zone: top-left corner (first N columns, top M rows)
+        let spawnMinY = max(0, height - GameConstants.spawnZoneHeight)
+        for y in spawnMinY..<height {
             for x in 0..<GameConstants.spawnZoneWidth {
                 spawnPositions.append(GridPosition(x: x, y: y))
             }
         }
         
-        // Exit zone: bottom-right corner (last 2 columns, bottom 4 rows)
-        for y in 0..<4 {  // Bottom 4 rows only
+        // Exit zone: bottom-right corner (last N columns, bottom M rows)
+        for y in 0..<GameConstants.exitZoneHeight {
             for x in (width - GameConstants.exitZoneWidth)..<width {
                 exitPositions.append(GridPosition(x: x, y: y))
             }

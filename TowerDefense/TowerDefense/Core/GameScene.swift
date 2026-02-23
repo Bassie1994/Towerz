@@ -562,6 +562,12 @@ final class GameScene: SKScene {
         placementPreviewNode.endPreview()
         buildMenuNode.setSelectedTower(nil)
     }
+
+    /// Clear tower UI interactions so gameplay controls never leave sticky selections behind.
+    private func clearTowerInteractionState() {
+        towerInfoNode.hide()
+        exitPlacementMode()
+    }
     
     private func selectTower(_ tower: Tower) {
         // Deselect previous
@@ -775,10 +781,12 @@ final class GameScene: SKScene {
 
 extension GameScene: HUDNodeDelegate {
     func hudDidTapPause() {
+        clearTowerInteractionState()
         gameManager.togglePause()
     }
     
     func hudDidTapStartWave() {
+        clearTowerInteractionState()
         // Ensure gameTime has started (at least a small value)
         if gameTime < 0.1 {
             gameTime = 0.1
@@ -787,10 +795,11 @@ extension GameScene: HUDNodeDelegate {
     }
     
     func hudDidTapAutoStart() {
-        // Auto-start toggled - nothing extra needed, HUD handles visual
+        clearTowerInteractionState()
     }
     
     func hudDidTapFastForward() {
+        clearTowerInteractionState()
         gameSpeed = hudNode.getSpeedMultiplier()
     }
     

@@ -59,21 +59,20 @@ final class GameManager {
     }
     
     func pauseGame() {
-        guard gameState == .playing else { return }
+        guard gameState == .playing || gameState == .preparing else { return }
         gameState = .paused
-        scene?.isPaused = true
     }
     
     func resumeGame() {
         guard gameState == .paused else { return }
-        gameState = .playing
-        scene?.isPaused = false
+        // Resume to preparing if no wave is active, otherwise continue playing.
+        gameState = waveManager.isWaveActive ? .playing : .preparing
     }
     
     func togglePause() {
         if gameState == .paused {
             resumeGame()
-        } else if gameState == .playing {
+        } else if gameState == .playing || gameState == .preparing {
             pauseGame()
         }
     }

@@ -287,7 +287,7 @@ class Enemy: SKNode {
 
             lastDistanceToExit = currentDistance
 
-            if progressStallTime > 3.0, let reachable = flowField.nearestReachableCell(from: currentGrid, maxSearchRadius: 8) {
+            if progressStallTime > 2.5, let reachable = flowField.nearestReachableCell(from: currentGrid, maxSearchRadius: 8) {
                 position = reachable.toWorldPosition()
                 lastPosition = position
                 stuckTime = 0
@@ -627,17 +627,23 @@ class Enemy: SKNode {
         return .zero
     }
     
-    /// SIMPLE MAZE COLLISION: Validate position and slide along walls if blocked
+    /// Robust maze collision:
+    /// - keeps units out of blocked cells
+    /// - avoids hugging tower corners
+    /// - picks the best fallback step when direct movement is blocked
     private func validateAndAdjustPosition(_ desiredPos: CGPoint, moveDistance: CGFloat) -> CGPoint {
         let cellSize = GameConstants.cellSize
         let origin = GameConstants.playFieldOrigin
+        let flowField = delegate?.getFlowField()
+        let currentGridPos = position.toGridPosition()
+        let clearance = max(3.0, min(enemySize * 0.2, cellSize * 0.18))
         
         // Helper to check if a grid cell is blocked
         func isBlocked(_ gridPos: GridPosition) -> Bool {
             guard gridPos.x >= 0 && gridPos.x < GameConstants.gridWidth &&
                   gridPos.y >= 0 && gridPos.y < GameConstants.gridHeight else { return true }
             if gridPos.isInSpawnZone() || gridPos.isInExitZone() { return false }
-            guard let flowField = delegate?.getFlowField() else { return true }
+            guard let flowField else { return true }
             return flowField.getDirection(at: gridPos) == nil
         }
         
@@ -648,73 +654,134 @@ class Enemy: SKNode {
                 y: origin.y + CGFloat(gridPos.y) * cellSize + cellSize / 2
             )
         }
-        
-        let desiredGridPos = desiredPos.toGridPosition()
-        let currentGridPos = position.toGridPosition()
-        
-        // If desired position is not blocked, allow it
-        if !isBlocked(desiredGridPos) {
+
+        func flowDistanceScore(at gridPos: GridPosition) -> CGFloat {
+            guard let flowField else { return 9_999 }
+            let distance = flowField.getDistance(at: gridPos)
+            if distance >= 1_000_000 { return 9_999 }
+            return CGFloat(distance)
+        }
+
+        // Validate not just by cell occupancy, but also by local clearance to blocked neighbors.
+        func isSafePosition(_ worldPos: CGPoint) -> Bool {
+            let gridPos = worldPos.toGridPosition()
+            guard !isBlocked(gridPos) else { return false }
+
+            let center = cellCenter(gridPos)
+            let localX = worldPos.x - center.x
+            let localY = worldPos.y - center.y
+            let halfCell = cellSize / 2
+
+            let nearRight = localX > halfCell - clearance
+            let nearLeft = localX < -halfCell + clearance
+            let nearTop = localY > halfCell - clearance
+            let nearBottom = localY < -halfCell + clearance
+
+            if nearRight && isBlocked(GridPosition(x: gridPos.x + 1, y: gridPos.y)) { return false }
+            if nearLeft && isBlocked(GridPosition(x: gridPos.x - 1, y: gridPos.y)) { return false }
+            if nearTop && isBlocked(GridPosition(x: gridPos.x, y: gridPos.y + 1)) { return false }
+            if nearBottom && isBlocked(GridPosition(x: gridPos.x, y: gridPos.y - 1)) { return false }
+
+            // Extra corner protection to prevent snagging on tower corners.
+            if nearRight && nearTop && isBlocked(GridPosition(x: gridPos.x + 1, y: gridPos.y + 1)) { return false }
+            if nearRight && nearBottom && isBlocked(GridPosition(x: gridPos.x + 1, y: gridPos.y - 1)) { return false }
+            if nearLeft && nearTop && isBlocked(GridPosition(x: gridPos.x - 1, y: gridPos.y + 1)) { return false }
+            if nearLeft && nearBottom && isBlocked(GridPosition(x: gridPos.x - 1, y: gridPos.y - 1)) { return false }
+
+            return true
+        }
+
+        // Happy path: direct movement is valid.
+        if isSafePosition(desiredPos) {
             return desiredPos
         }
-        
-        // Desired cell is blocked - try to slide along the wall
-        // Try moving only in X
-        let xOnlyPos = CGPoint(x: desiredPos.x, y: position.y)
-        let xOnlyGrid = xOnlyPos.toGridPosition()
-        if !isBlocked(xOnlyGrid) {
-            return xOnlyPos
+
+        var candidates: [CGPoint] = []
+        candidates.reserveCapacity(24)
+
+        // Axis slides often resolve simple corner blocks.
+        candidates.append(CGPoint(x: desiredPos.x, y: position.y))
+        candidates.append(CGPoint(x: position.x, y: desiredPos.y))
+        candidates.append(position)
+
+        // Try small angular variations around current direction.
+        let baseAngle = atan2(currentDirection.dy, currentDirection.dx)
+        let angleOffsets: [CGFloat] = [0, .pi / 8, -.pi / 8, .pi / 4, -.pi / 4, .pi / 2, -.pi / 2]
+        for offset in angleOffsets {
+            let angle = baseAngle + offset
+            candidates.append(
+                CGPoint(
+                    x: position.x + cos(angle) * moveDistance,
+                    y: position.y + sin(angle) * moveDistance
+                )
+            )
         }
-        
-        // Try moving only in Y
-        let yOnlyPos = CGPoint(x: position.x, y: desiredPos.y)
-        let yOnlyGrid = yOnlyPos.toGridPosition()
-        if !isBlocked(yOnlyGrid) {
-            return yOnlyPos
-        }
-        
-        // Both X and Y blocked - try diagonal slides
-        let directions: [(CGFloat, CGFloat)] = [
-            (moveDistance, 0),    // Right
-            (-moveDistance, 0),   // Left  
-            (0, moveDistance),    // Up
-            (0, -moveDistance),   // Down
-            (moveDistance, moveDistance),    // Up-Right
-            (moveDistance, -moveDistance),   // Down-Right
-            (-moveDistance, moveDistance),   // Up-Left
-            (-moveDistance, -moveDistance),  // Down-Left
-        ]
-        
-        for (dx, dy) in directions {
-            let testPos = CGPoint(x: position.x + dx, y: position.y + dy)
-            let testGrid = testPos.toGridPosition()
-            if !isBlocked(testGrid) {
-                return testPos
-            }
-        }
-        
-        // Completely stuck - push away from current cell center toward the last valid cell
-        if !isBlocked(currentGridPos) {
-            // We're in a valid cell, just stay put but nudge toward center
-            let center = cellCenter(currentGridPos)
-            let toCenterX = center.x - position.x
-            let toCenterY = center.y - position.y
-            let dist = sqrt(toCenterX * toCenterX + toCenterY * toCenterY)
-            if dist > 1 {
-                return CGPoint(
-                    x: position.x + (toCenterX / dist) * moveDistance * 0.5,
-                    y: position.y + (toCenterY / dist) * moveDistance * 0.5
+
+        // Also try moving toward centers of neighboring walkable cells.
+        for dx in -1...1 {
+            for dy in -1...1 {
+                if dx == 0 && dy == 0 { continue }
+                let neighbor = GridPosition(x: currentGridPos.x + dx, y: currentGridPos.y + dy)
+                guard !isBlocked(neighbor) else { continue }
+
+                let center = cellCenter(neighbor)
+                let toCenter = CGVector(dx: center.x - position.x, dy: center.y - position.y)
+                let len = sqrt(toCenter.dx * toCenter.dx + toCenter.dy * toCenter.dy)
+                guard len > 0.001 else { continue }
+
+                let step = min(moveDistance, len)
+                candidates.append(
+                    CGPoint(
+                        x: position.x + toCenter.dx / len * step,
+                        y: position.y + toCenter.dy / len * step
+                    )
                 )
             }
         }
-        
-        // Absolute fallback - don't move
+
+        var bestCandidate: CGPoint?
+        var bestScore = CGFloat.greatestFiniteMagnitude
+
+        for candidate in candidates where isSafePosition(candidate) {
+            let gridPos = candidate.toGridPosition()
+            let score =
+                flowDistanceScore(at: gridPos) * 100 +
+                candidate.distance(to: desiredPos) +
+                candidate.distance(to: cellCenter(gridPos)) * 0.05
+
+            if score < bestScore {
+                bestScore = score
+                bestCandidate = candidate
+            }
+        }
+
+        if let bestCandidate {
+            return bestCandidate
+        }
+
+        // Last resort: nudge back toward the nearest reachable flow cell.
+        if let flowField,
+           let reachable = flowField.nearestReachableCell(from: currentGridPos, maxSearchRadius: 5) {
+            let center = cellCenter(reachable)
+            let toCenter = CGVector(dx: center.x - position.x, dy: center.y - position.y)
+            let len = sqrt(toCenter.dx * toCenter.dx + toCenter.dy * toCenter.dy)
+            if len > 0.001 {
+                let step = min(moveDistance, len)
+                return CGPoint(
+                    x: position.x + toCenter.dx / len * step,
+                    y: position.y + toCenter.dy / len * step
+                )
+            }
+        }
+
+        // Absolute fallback: don't move this frame.
         return position
     }
     
     private func hasReachedExit() -> Bool {
         // Exit is in bottom-right corner
         let exitX = GameConstants.playFieldOrigin.x + GameConstants.playFieldSize.width - CGFloat(GameConstants.exitZoneWidth) * GameConstants.cellSize
-        let exitY = GameConstants.playFieldOrigin.y + CGFloat(4) * GameConstants.cellSize  // Top of exit zone (4 rows)
+        let exitY = GameConstants.playFieldOrigin.y + CGFloat(GameConstants.exitZoneHeight) * GameConstants.cellSize
         
         // Must be in both the right columns AND bottom rows
         return position.x >= exitX && position.y < exitY
